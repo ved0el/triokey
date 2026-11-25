@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # Held back on purpose: their newer versions link Windows APIs through raw-dylib
+      # (windows-sys 0.60+, getrandom 0.3+), which needs dlltool.exe, and the GNU toolchain
+      # this project builds with does not find one. See crates/xtask/Cargo.toml.
+      - dependency-name: windows-sys
+      - dependency-name: minisign
+      - dependency-name: getrandom
+      - dependency-name: rpassword
+      - dependency-name: rtoolbox

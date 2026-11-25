@@ -1,0 +1,4 @@
+[workspace]
+resolver = "2"
+# glob: every crate under crates/ is a member
+members = ["crates/*"]

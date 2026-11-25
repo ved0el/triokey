@@ -1,0 +1,8 @@
+# LF in every checkout: the word lists and test data are compiled in or compared byte for
+# byte, and the Windows CI runner would otherwise check them out with CRLF
+* text=auto eol=lf
+*.png binary
+# copied unchanged from their sources, CRLF included: stored byte for byte
+crates/triokey-engine/data/SCOWL-Copyright.txt -text
+crates/triokey-engine/tests/data/VieLotus-LICENSE.txt -text
+crates/triokey-engine/tests/data/vielotus_test_suite.csv -text
