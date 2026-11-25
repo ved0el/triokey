@@ -1,0 +1,14 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "TrioKey release tooling (not shipped): update-signing keys and signatures"
+
+[dependencies]
+minisign = "0.7"
+# Not used directly. minisign pulls both in, and newer ones need windows-sys 0.61 (raw-dylib), which
+# the GNU toolchain cannot link without dlltool.exe. Drop the pin once that is no longer true.
+rpassword = "=7.3.1"
+rtoolbox = "=0.0.2"

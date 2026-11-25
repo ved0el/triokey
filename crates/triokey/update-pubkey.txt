@@ -1,0 +1,7 @@
+# PLACEHOLDER: no update key yet, so this build never checks for, downloads or installs updates.
+#
+# The owner replaces this file with the PUBLIC key written by
+#   cargo run -p xtask -- keygen <secret-out-path> <public-out-path>
+# (see docs/RELEASING.md). Lines starting with '#' or 'untrusted comment:' are ignored; the
+# file must then hold exactly one more line, the base64 minisign public key.
+# The secret key never goes into this repository.

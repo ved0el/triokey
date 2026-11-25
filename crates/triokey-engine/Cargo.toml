@@ -1,0 +1,10 @@
+[package]
+name = "triokey-engine"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ved0el/triokey"
+description = "TrioKey engine: Telex composition and the English/Vietnamese decision per word, no OS calls"
+
+[dependencies]
+vi = "0.8.0"

@@ -1,0 +1,44 @@
+[package]
+name = "triokey"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ved0el/triokey"
+description = "Vietnamese Telex typing for Windows that leaves English words alone and yields to Chinese, Japanese and Korean IMEs"
+
+[dependencies]
+triokey-engine = { path = "../triokey-engine" }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Input_Ime",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    # SetWinEventHook (focus / foreground changes) lives here
+    "Win32_UI_Accessibility",
+    # M4: single-instance mutex, Run value, admin install (task, ProgramFiles copy)
+    "Win32_Security",
+    "Win32_Security_Authentication_Identity",
+    "Win32_System_Registry",
+    "Win32_System_Com",
+    "Win32_System_SystemInformation",
+    "Win32_Storage_FileSystem",
+    # with the manifest: per-monitor DPI calls, InitCommonControlsEx
+    "Win32_UI_HiDpi",
+    "Win32_UI_Controls",
+    # update check: system TLS and proxy, no HTTP crate
+    "Win32_Networking_WinHttp",
+] }
+# update signatures (Ed25519); no dependencies of its own
+minisign-verify = "0.2"
+
+[dev-dependencies]
+# signs with a throwaway key in the update tests; version held back, see crates/xtask/Cargo.toml
+minisign = "0.7"
+
+[build-dependencies]
+# pure Rust: embeds the application manifest without windres/rc (see build.rs)
+embed-manifest = "1.4"

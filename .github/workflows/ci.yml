@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # the toolchain mise.toml pins for local builds, so CI checks what is shipped
+  RUSTUP_TOOLCHAIN: stable-x86_64-pc-windows-gnu
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the Rust toolchain
+        run: rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal --component rustfmt,clippy --no-self-update
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: cargo-${{ runner.os }}-gnu-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-gnu-
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --locked
+      - name: Release build
+        run: cargo build -p triokey --release --locked

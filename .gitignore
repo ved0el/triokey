@@ -1,0 +1,6 @@
+/target
+# update-signing secret keys never belong here (docs/RELEASING.md); the public key is
+# crates/triokey/update-pubkey.txt
+*.key
+*.minisig
+minisign.pub
