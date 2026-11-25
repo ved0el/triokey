@@ -33,7 +33,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_Networking_WinHttp",
 ] }
 # update signatures (Ed25519); no dependencies of its own
-minisign-verify = "0.2"
+minisign-verify = "0.3"
 
 [dev-dependencies]
 # signs with a throwaway key in the update tests; version held back, see crates/xtask/Cargo.toml
