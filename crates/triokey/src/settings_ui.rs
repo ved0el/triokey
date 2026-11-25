@@ -19,7 +19,6 @@ use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 use crate::admin::{self, Elevated};
 use crate::config::HOTKEYS;
-use crate::icon::{self, Glyph};
 use crate::tray::wide;
 use crate::{app, autostart, hook, tray, update};
 
@@ -114,7 +113,10 @@ pub fn open() {
             return;
         }
         HWND_SETTINGS.store(hwnd, Relaxed);
-        let icons = ICONS.get_or_init(|| [GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CXICON)].map(|n| icon::hicon(Glyph::V, n, icon::ACCENT) as usize));
+        // the app icon (resource 1, build.rs) at the exact sizes this monitor wants
+        let icons = ICONS.get_or_init(|| {
+            [GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CXICON)].map(|n| LoadImageW(hinst, 1 as _, IMAGE_ICON, n, n, LR_DEFAULTCOLOR) as usize)
+        });
         SendMessageW(hwnd, WM_SETICON, ICON_SMALL as usize, icons[0] as isize);
         SendMessageW(hwnd, WM_SETICON, ICON_BIG as usize, icons[1] as isize);
         let dpi = match GetDpiForWindow(hwnd) {

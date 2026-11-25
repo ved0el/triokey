@@ -2,7 +2,7 @@
 
 Agent chỉ biên dịch và chạy `cargo test`, chưa từng chạy `triokey.exe`. Phần gõ thử là việc của người dùng. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`.
 
-**Phạm vi:** TrioKey nhường cho IME CJK (Chinese, Japanese, Korean). Tiếng Nhật (Microsoft IME, layout `0411`) đã được gõ thử tay: AT1–AT3 dưới đây. Tiếng Trung và tiếng Hàn mới có luật được kiểm bằng unit test (`crates/triokey/src/ime.rs`), chưa ai gõ thử tay; các bước ở mục AT2-CK, làm khi có máy cài hai layout đó.
+**Phạm vi:** TrioKey nhường cho IME CJK (Chinese, Japanese, Korean). Tiếng Nhật (Microsoft IME, layout `0411`) đã được gõ thử tay trên một bản dựng trước đây: AT1 và AT2 dưới đây đạt (chưa điền vào các ô kết quả); bản hiện tại chưa gõ thử lại. Tiếng Trung và tiếng Hàn mới có luật được kiểm bằng unit test (`crates/triokey/src/ime.rs`), chưa ai gõ thử tay; các bước ở mục AT2-CK, làm khi có máy cài hai layout đó.
 
 Tên tạm trước đây là EVJ. Nếu từng chạy bản thử tên cũ: **thoát `evj.exe` trước** (bản mới dùng mutex tên khác nên không nhận ra bản cũ đang chạy; hai bản sẽ sửa chữ của nhau). Lần chạy đầu, TrioKey chép `config.txt`, `force_vi.txt`, `force_en.txt` từ `%APPDATA%\evj` sang `%APPDATA%\triokey` nếu thư mục mới chưa có (không chép khi đang chạy quyền admin; `run_as_admin` về `false`, phải bật lại chế độ admin và `Khởi động cùng Windows` trong `Cài đặt…`). Thư mục cũ được để nguyên; cách dọn ở mục "Gỡ hẳn".
 
@@ -156,7 +156,7 @@ Dùng cùng file `target\m4\release\triokey.exe` như ở đầu trang. Nếu v�
 | 2h | Bỏ `Nhường khi IME Nhật/Trung/Hàn đang bật`, bật hiragana | khay về `V` trong ~0,1 s (TrioKey không nhường nữa); chọn lại → `E` | |
 | 2i | `Mở thư mục cấu hình…` (bản thường) | Explorer mở `%APPDATA%\triokey`; `config.txt` phản ánh mọi thay đổi ở trên | |
 | 2j | Thoát, chạy lại TrioKey, mở `Cài đặt…` | các lựa chọn ở trên còn nguyên | |
-| 2j2 | Bản build với khoá giữ chỗ (trạng thái repo trước bản phát hành đầu tiên): nhìn ô `Tự động cập nhật` và nút `Kiểm tra bản mới` | cả hai bị mờ, dòng bên dưới ghi `Bản build này không có khoá cập nhật nên không tự cập nhật.`; `config.txt` có `auto_update = true` và `last_update_check = 0` (không đổi dù để chạy lâu) | |
+| 2j2 | Bản build với khoá giữ chỗ (repo nay đã có khoá thật: build riêng sau khi tạm thay nội dung `crates/triokey/update-pubkey.txt` bằng một dòng `#`, **không commit**, rồi trả lại bằng `git checkout -- crates/triokey/update-pubkey.txt`): nhìn ô `Tự động cập nhật` và nút `Kiểm tra bản mới` | cả hai bị mờ, dòng bên dưới ghi `Bản build này không có khoá cập nhật nên không tự cập nhật.`; `config.txt` có `auto_update = true` và `last_update_check = 0` (không đổi dù để chạy lâu) | |
 | 2k | (Nếu có hai màn hình khác tỉ lệ, hoặc đổi Scale khi cửa sổ đang mở) kéo cửa sổ sang màn hình kia | cửa sổ đổi cỡ theo màn hình mới, chữ sắc nét, không ô nào bị cắt hay lệch; các lựa chọn giữ nguyên | |
 | 2l | Thoát. Mở `config.txt` bằng Notepad, Save As với Encoding `UTF-16 LE`. Chạy lại, mở `Cài đặt…`, đổi một ô | mỗi lần mở cửa sổ có cảnh báo "Không đọc được config.txt…"; TrioKey chạy với giá trị mặc định; file `config.txt` **không** bị ghi đè. Lưu lại file dạng `UTF-8` (có BOM cũng được), chạy lại: hết cảnh báo, dòng đầu `enabled = …` vẫn được đọc | |
 
@@ -201,7 +201,7 @@ Chưa ai kiểm (agent không chạy được): `schtasks /Run` từ bản thư�
 
 # M5 — Tự cập nhật (AT10)
 
-Chỉ làm được sau khi đã có khoá ký thật và ít nhất một bản phát hành trên GitHub (`docs/RELEASING.md`). Agent chưa từng gửi một yêu cầu mạng nào và chưa từng thay một file exe đang chạy: mọi dòng dưới đây đều chưa ai kiểm.
+Làm được từ giờ: khoá ký thật đã có trong repo và bản v0.1.0 đã được phát hành trên GitHub (2026-11-25). Agent chưa từng gửi một yêu cầu mạng nào và chưa từng thay một file exe đang chạy: mọi dòng dưới đây đều chưa ai kiểm.
 
 **Chuẩn bị một bản "cũ":** sửa tạm `version` trong `crates/triokey/Cargo.toml` xuống thấp hơn bản đã phát hành (ví dụ `0.0.9`, **không commit**), build `mise x -- cargo build -p triokey --release --target-dir target/m4`, rồi trả `Cargo.toml` và `Cargo.lock` lại như cũ (`git checkout -- crates/triokey/Cargo.toml Cargo.lock`). Chép `target\m4\release\triokey.exe` vào một thư mục thử riêng (ví dụ `D:\tmp\tk`) và chạy từ đó. Trước mỗi bước, xoá dòng `last_update_check` trong `config.txt` khi TrioKey đang tắt, để nó kiểm tra lại ngay.
 

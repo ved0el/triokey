@@ -1,10 +1,10 @@
+<p align="center"><img src="https://raw.githubusercontent.com/ved0el/triokey/main/assets/brand/icon-512.png" width="96" alt="TrioKey"></p>
+
 # TrioKey
 
 **English** · [Tiếng Việt](README.vi.md)
 
-<!-- CI badge: uncomment once the repository is pushed and the first run has finished
 [![CI](https://github.com/ved0el/triokey/actions/workflows/ci.yml/badge.svg)](https://github.com/ved0el/triokey/actions/workflows/ci.yml)
--->
 
 A Vietnamese input method for Windows, made for people who type English, Vietnamese and a CJK language (Chinese, Japanese or Korean) every day. In everyday mixed typing you do not toggle Vietnamese on or off: the only switch you touch is your CJK IME's own on/off.
 
@@ -18,7 +18,7 @@ songs␣              songs        (valid both ways: English by default)
 this␣⌫              thí          (Backspace right after the word flips the reading)
 ```
 
-Pre-release 0.1.0: no binaries yet, and much of the Windows app has not been run on a real machine. Read [Status](#status) first.
+Early version 0.1.0: a signed download exists, but much of the Windows app, including the updater that is on by default, has not been run on a real machine. Read [Status](#status) first.
 
 ## Why
 
@@ -43,15 +43,15 @@ No macros, no per-app memory, no cloud, no telemetry, no key logging. The only n
 
 ## Status
 
-**Pre-release 0.1.0. Please read this before trying it.**
+**Early version 0.1.0. Please read this before trying it.**
 
-- No binary releases yet. You build it from source.
-- The updater (signed downloads from this project's GitHub releases) is written but has never run: it needs a published release and the project's update key, and until the first release the repository holds only a placeholder key. A build made with the placeholder never connects to the network and never updates.
+- 0.1.0 is on the [releases page](https://github.com/ved0el/triokey/releases/latest), built and signed by CI. You can also build from source.
+- The updater (signed downloads from this project's GitHub releases) is in the released exe and in builds from `main`, and is on by default, but it has never been run on a real machine (AT10 in [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) is still open). If you would rather not have an untested updater replace the exe, untick `Tự động cập nhật` in Settings.
 - Tested on Windows 11 only; Windows 10 is untried.
 - Telex only. No VNI yet.
-- Japanese: an earlier build was hand-tested with Microsoft IME in Notepad and Brave. The per-step results in [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) were not written down, and the current build has not been re-run.
+- Japanese: an earlier build was hand-tested with Microsoft IME in Notepad and Brave, and passed AT1 and AT2 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) (the per-step result columns there were not filled in). The current build has not been re-run.
 - Chinese and Korean: only the decision rule (IME open and in native mode) is unit-tested, with made-up values. Whether those IMEs report their state correctly has not been tried.
-- **Never run on a real machine yet**, only compiled and unit-tested where possible: the current tray icon and menu, the hotkey presets, the settings window, start-with-Windows, admin mode, the updater, the uninstall steps and the skipping of Win32 password fields. The sections below describe them as designed.
+- **Never run on a real machine yet**, only compiled and unit-tested where possible: the current tray icon and menu, the app icon, the hotkey presets, the settings window, start-with-Windows, admin mode, the updater, the uninstall steps and the skipping of Win32 password fields. The sections below describe them as designed.
 - The interface (tray menu, tooltip, settings, messages) is in Vietnamese only.
 - English/Vietnamese auto-detection scores **92.0% (8,361 / 9,084)** on [VieLotus-IM](https://github.com/stevedat/VieLotus-IM)'s public regression suite, with every row typed without context (see [docs/COMPARISON.md](docs/COMPARISON.md) for how that differs from VieLotus-IM's own run). The known misses are described in [docs/decisions/0004-regression-baseline.md](docs/decisions/0004-regression-baseline.md) and [0005-tie-defaults.md](docs/decisions/0005-tie-defaults.md). Two you will meet: a doubled tone key (`s f r x j`) in a word outside the English word list loses one letter (`Larry` → `Lary`, `passwd` → `paswd`, `terraform` → `teraform`), and some short words that are real in both languages go the wrong way without context. Both can be fixed per word with `force_en.txt` / `force_vi.txt` (see [Usage](#usage)).
 - Terminals get no special handling.
@@ -107,18 +107,24 @@ As of November 2026. This is the short version; sources, commit ids and the thin
 | Input styles | Telex | Telex, VNI, Simple Telex, combined | Telex, Simple Telex | Telex, VNI |
 | Macros | no | yes | no | yes |
 | Platforms | Windows 11 (Windows 10 untried) | Windows 10/11 | macOS, Windows, Linux, iOS, Android | macOS, Windows, Linux, web, iOS, Android |
-| Releases | none yet | yes (winget) | numbered versions shipped (its `DECISIONS.md`); Windows download not checked | yes (Microsoft Store) |
+| Releases | 0.1.0 (GitHub, signed by CI) | yes (winget) | numbered versions shipped (its `DECISIONS.md`); Windows download not checked | yes (Microsoft Store) |
 | Licence | MIT | GPL-3.0; an optional closed-source spell-check library is outside it (the Classic edition is fully open source) | GPL-3.0 | MIT |
 
 All three are further along than TrioKey and are already distributed to users; TrioKey learned from each of them. UniKey, EVKey and OpenKey, the long-standing choices, are built around a Vietnamese/English mode with a toggle; they were not read for this comparison, so whatever else they do is not described here.
 
-## Install (build from source)
+## Install
 
-There is no installer and no download yet. Releases will be built and signed by CI from a version tag ([docs/RELEASING.md](docs/RELEASING.md)); until the first one is published, build from source.
+There is no installer. Releases are built and signed by CI from a version tag ([docs/RELEASING.md](docs/RELEASING.md)).
+
+1. **Quit every other Vietnamese input method first** (UniKey, EVKey, OpenKey, VKey, Vikey…). Two of them running together will rewrite each other's text.
+2. Download `triokey-X.Y.Z-windows-x64.zip` from the [latest release](https://github.com/ved0el/triokey/releases/latest) and unpack it into a folder of its own, or build from source (below).
+3. Run `triokey.exe`. No window opens; a `V` appears in the system tray (possibly behind the `^` overflow arrow).
+
+### Build from source
 
 1. Install Rust. Either:
    - [mise](https://mise.jdx.dev): run `mise install` in the repository (it reads `mise.toml`, which selects the stable GNU toolchain, so Visual Studio Build Tools are not needed), or
-   - [rustup](https://rustup.rs) with a stable toolchain (the default MSVC toolchain needs Visual Studio Build Tools; `stable-x86_64-pc-windows-gnu` does not).
+   - [rustup](https://rustup.rs) with the `stable-x86_64-pc-windows-gnu` toolchain. The default MSVC toolchain does not build TrioKey: its build script writes the exe's resources (icon and manifest) for the GNU toolchain only.
 2. Build:
 
    ```sh
@@ -127,10 +133,9 @@ There is no installer and no download yet. Releases will be built and signed by 
    cargo build --release -p triokey        # with mise: mise x -- cargo build --release -p triokey
    ```
 
-3. **Quit every other Vietnamese input method first** (UniKey, EVKey, OpenKey, VKey, Vikey…). Two of them running together will rewrite each other's text.
-4. Run `target\release\triokey.exe`. No window opens; a `V` appears in the system tray (possibly behind the `^` overflow arrow).
+3. The exe is `target\release\triokey.exe`. It carries the same update key as a release, so it checks for updates too.
 
-The exe is not code-signed. SmartScreen or antivirus software may warn about it, as they do for many keyboard-hook programs. Once releases exist, the `triokey.exe.minisig` published next to each exe can be checked by hand with [minisign](https://jedisct1.github.io/minisign/) and the public key in `crates/triokey/update-pubkey.txt`; that is the same check the built-in updater makes.
+The exe is not code-signed. SmartScreen or antivirus software may warn about it, as they do for many keyboard-hook programs. The `triokey.exe.minisig` published next to each released exe can be checked by hand with [minisign](https://jedisct1.github.io/minisign/) and the public key in `crates/triokey/update-pubkey.txt`; that is the same check the built-in updater makes.
 
 ## Usage
 
@@ -154,7 +159,7 @@ These steps follow the code; they have not been run on a real machine yet. If on
    1. Untick admin mode (`Chạy quyền admin (gõ được trong cửa sổ admin)`). This removes the `TrioKey` logon task and the copy in `%ProgramFiles%\TrioKey`. If you do it from the admin copy itself, Windows removes that folder at the next restart; quit that copy and start the normal one before the next step.
    2. Then untick start with Windows (`Khởi động cùng Windows`); the box is greyed out while admin mode is on. Turning admin mode off from the normal copy puts the Run value back if it was set before, so look at this box even if you did not tick it lately. Unticking it removes the `TrioKey` value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 2. Quit from the tray menu (`Thoát`).
-3. Delete the folder you built or copied TrioKey into, and `%APPDATA%\triokey` if you also want the config gone.
+3. Delete the folder you unpacked, built or copied TrioKey into, and `%APPDATA%\triokey` if you also want the config gone.
 
 If you never turned on either option, steps 2 and 3 are the whole uninstall. TrioKey registers nothing else: no keyboard layout, no language-list entry, nothing under `HKCU\Keyboard Layout`.
 
@@ -175,15 +180,15 @@ What it does:
 What it never does:
 
 - Write keys or typed text to disk. There is no typing log. The timing figure shown in Settings is kept in memory only.
-- Connect to anything but GitHub (`github.com` and the host its release downloads redirect to), or for anything but that update check. With `Tự động cập nhật` off, TrioKey uses no network at all unless you press `Kiểm tra bản mới`, which checks once and, in a normal copy, also installs what it finds. A build without an update key has both controls greyed out and never connects. There is no telemetry or crash reporting. Its direct third-party dependencies are the `vi`, `windows-sys` and `minisign-verify` crates, plus `embed-manifest` at build time only (it writes the application manifest into the exe; none of its code runs).
+- Connect to anything but GitHub (`github.com` and the host its release downloads redirect to), or for anything but that update check. With `Tự động cập nhật` off, TrioKey uses no network at all unless you press `Kiểm tra bản mới`, which checks once and, in a normal copy, also installs what it finds. A build without an update key has both controls greyed out and never connects. There is no telemetry or crash reporting. Its direct third-party dependencies are the `vi`, `windows-sys` and `minisign-verify` crates, plus `embed-manifest` at build time only (it generates the application manifest, which the build script writes into the exe with the icon; none of its code runs).
 - Register a text service, add a keyboard layout or change the input-language list.
 
 Things to know:
 
 - **Passwords.** Classic Win32 password fields (Edit/RichEdit controls with `ES_PASSWORD`) are meant to be skipped; this is not yet verified by hand. Password fields in browsers and Electron apps cannot be detected. There, a fragment of a password that is plain letters in normal case and comes before the first digit or `_` can be changed in two ways: it happens to be Telex for a Vietnamese syllable (the `mas` in `mas!x9` becomes `má`), or it contains a doubled tone key (`s f r x j`) and is not in the English word list, in which case it loses one letter (`Tess!` → `Tes!`, `passwd!` → `paswd!`). So switch TrioKey off with the hotkey while typing a password in such a field; the tray icon shows the state.
 - **Admin mode** is off by default. It has not been run on a real machine yet; what follows is the design. Turning it on shows one UAC prompt. The elevated helper copies the exe to `%ProgramFiles%\TrioKey` (writable only by administrators, so another program cannot swap the exe to gain admin rights) and registers a logon task that runs it with highest privileges. The elevated copy reads only data files with fixed names and starts no other program: its config-folder button shows the path instead of opening Explorer. It rewrites `config.txt` only when that file already exists and neither it nor its folder is a link, and it creates nothing under `%APPDATA%`. Turn admin mode on from a folder that other programs cannot write to: the UAC prompt elevates whatever `triokey.exe` is in that folder at that moment.
-- **Updates** are installed only with a valid signature from the project's update key, for the file name `triokey.exe`, and for a version newer than the running one; anything else is refused, including an older release offered again. The signature is the whole trust: someone who controls the GitHub repository but not the key cannot push an update, and someone who obtains the key can. The exe has no Authenticode signature, so SmartScreen treats a release like any other unsigned download. In admin mode the download, the check and the swap all happen inside `%ProgramFiles%\TrioKey`, and only after you click. A TrioKey started with "Run as administrator" from any other folder writes nothing there: it only reports that a new version exists. Not run on a real machine yet; design notes in [docs/decisions/0007-auto-update.md](docs/decisions/0007-auto-update.md).
-- **Keys injected by other software** (remote desktop, key remappers) as ordinary key presses are treated as real keys; text injected as Unicode characters is left alone. Not tested with specific tools. That is also why two input methods must not run together.
+- **Updates** are installed only with a valid signature from the project's update key, for the file name `triokey.exe`, and for a version newer than the running one; anything else is refused, including an older release offered again. The signature is the whole trust. The key is held by this project's release workflow, which signs and publishes a version tag pushed on `main` with no manual approval: whoever obtains the key, or can push to this repository (only its owner), can ship an update to every installed copy. Someone who can only replace the release files cannot. The exe has no Authenticode signature, so SmartScreen treats a release like any other unsigned download. In admin mode the download, the check and the swap all happen inside `%ProgramFiles%\TrioKey`, and only after you click. A TrioKey started with "Run as administrator" from any other folder writes nothing there: it only reports that a new version exists. Not run on a real machine yet; design notes in [docs/decisions/0007-auto-update.md](docs/decisions/0007-auto-update.md).
+- **Keys injected by other software** (remote desktop, key remappers) as ordinary key presses are treated as real keys; text injected as Unicode characters is left alone. Not tested with specific tools. That is also why two input methods must not run together. After 0.1.0 (in builds from `main`, not in a release yet, not run on a real machine): keys that Windows marks as injected by a lower-integrity process pass through untouched, so a program without admin rights cannot make an elevated TrioKey type. While TrioKey runs elevated (admin mode), keys sent by such tools from a normal process, for example AutoHotkey or an on-screen keyboard, therefore get no Vietnamese.
 
 ## How it works
 
@@ -200,7 +205,7 @@ Design notes: [docs/decisions/](docs/decisions/).
 
 Not in a fixed order:
 
-- Run the hands-on test list ([docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)) on the current build and record the results: Japanese, tray, settings, start-with-Windows, admin mode, the updater. Then a first binary release.
+- Run the hands-on test list ([docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)) on the current build and record the results: Japanese, tray, settings, start-with-Windows, admin mode, the updater.
 - Fields that insert suggestions (browser address bar, Excel cells).
 - Hand-test Chinese and Korean IMEs.
 - Better decisions for words that are valid in both languages.

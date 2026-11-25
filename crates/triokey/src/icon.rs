@@ -15,11 +15,9 @@ pub enum Glyph {
     E,
 }
 
-/// Glyph colours (R, G, B): white for a dark taskbar, near-black for a light one, and an
-/// accent blue for the settings window (readable on a light caption and a dark taskbar).
+/// Glyph colours (R, G, B): white for a dark taskbar, near-black for a light one.
 pub const ON_DARK: [u8; 3] = [0xFF, 0xFF, 0xFF];
 pub const ON_LIGHT: [u8; 3] = [0x1C, 0x1C, 0x1C];
-pub const ACCENT: [u8; 3] = [0x00, 0x67, 0xC0];
 
 /// `n`×`n` RGBA, straight alpha, top row first.
 pub fn render(g: Glyph, n: u32, rgb: [u8; 3]) -> Vec<u8> {

@@ -4,13 +4,35 @@ For the repository owner. Design and reasons: [decisions/0007-auto-update.md](de
 Commands are shown without the `mise x --` prefix; add it if you use mise.
 
 Every installed TrioKey accepts an update only if it is signed with the project's update key.
-Whoever holds the secret key and can publish a release can run code on every user's machine.
-Treat it accordingly.
+Whoever holds the secret key, or can push a version tag to this repository, can run code on
+every user's machine. Treat both accordingly.
 
-## Once: the update key
+## How a release is protected
 
-1. Delete the placeholder (the tool never overwrites a file), then generate the pair. The
-   secret path must be outside the repository; the tool refuses otherwise.
+There is no manual approval. A tag `vX.Y.Z` pushed on a commit that is on `main` is built,
+signed and published by itself. What stands between a push and every installed copy:
+
+- The signing key is a secret of the GitHub **environment** `release`, not a repository
+  secret. The environment has no required reviewer; its deployment policy allows only tags
+  matching `v*`, so a branch run cannot get the key.
+- The first job of `release.yml` stops unless the tagged commit is on `origin/main` ("Tag is
+  on main") and the tag is `v` plus the crate version. GitHub runs the workflow file of the
+  tagged commit, so these checks catch a tag on the wrong commit; they do not stop someone
+  with push access, who could push an edited workflow under a `v*` tag.
+- So the real protection is who can push: anyone who can push a `v*` tag pointing at `main`
+  (or, with an edited workflow under the tag, at any commit) can publish a signed update to
+  every installed copy. Keep push access to the owner only.
+  A tag ruleset restricting the creation of `v*` tags would add a second barrier; it is
+  optional and not configured.
+
+## Once: the update key (done)
+
+This was done for 0.1.0: the public key is committed in `crates/triokey/update-pubkey.txt`,
+the secret key is stored as `TRIOKEY_SIGN_KEY` in the environment `release`, and that
+environment allows `v*` tags only. The steps are kept for "Changing the key".
+
+1. Delete the old public key file (the tool never overwrites a file), then generate the pair.
+   The secret path must be outside the repository; the tool refuses otherwise.
 
    ```sh
    rm crates/triokey/update-pubkey.txt
@@ -21,19 +43,12 @@ Treat it accordingly.
    folder: a password manager entry, plus one offline copy (it is two lines of text). It is
    **not encrypted**. If it is lost, see "Changing the key". `.gitignore` lists `*.key` as a
    last line of defence only.
-3. Give it to the release workflow as a secret of a protected **environment**, not as a
+3. Give it to the release workflow as a secret of the environment `release`, not as a
    repository secret: a repository secret can be read by any workflow run that anyone with
-   push access starts, for example from a branch with an edited workflow file.
-
-   In the repository settings, before storing the key:
-   - Settings → Environments → New environment `release`.
-   - "Required reviewers": yourself. Every release then waits for your approval, and so
-     does any other run that asks for this environment.
-   - "Deployment branches and tags": selected tags only, pattern `v*`.
-   - Settings → Rules → Rulesets → new tag ruleset for `v*`: restrict creations, updates and
-     deletions to yourself (bypass list).
-
-   Then store the key. Paste nothing into a terminal history:
+   push access starts, for example from a branch with an edited workflow file. The
+   environment (Settings → Environments → `release`) has "Deployment branches and tags" set
+   to selected tags only, pattern `v*`, and no required reviewer. Paste nothing into a
+   terminal history:
 
    ```sh
    gh secret set TRIOKEY_SIGN_KEY --env release --repo ved0el/triokey < <secret-out-path>
@@ -43,34 +58,33 @@ Treat it accordingly.
    If the key was ever stored as a repository secret, delete that one
    (`gh secret delete TRIOKEY_SIGN_KEY --repo ved0el/triokey`).
 4. Commit `crates/triokey/update-pubkey.txt` (the public key). `cargo test --workspace` checks
-   that the file holds exactly one valid key. From this commit on, builds check for updates.
-5. Uncomment the CI badge at the top of `README.md` once the first CI run has finished.
+   that the file holds exactly one valid key. Builds from that commit on check for updates.
 
 ## Each release
 
 1. Set the new version in `crates/triokey/Cargo.toml` (`X.Y.Z`, numbers only), run
    `cargo build -p triokey` so that `Cargo.lock` follows (CI builds with `--locked`), and
    update `CHANGELOG.md`.
-2. Commit, push, and wait for the CI run on `main` to pass.
-3. Tag and push the tag. The tag must be `v` plus exactly the crate version.
+2. Commit, push to `main`, and wait for the CI run on `main` to pass.
+3. Check that `main` is the commit you mean to release: nothing asks again after the tag is
+   pushed. Then tag and push the tag. The tag must be `v` plus exactly the crate version.
 
    ```sh
-   git tag v0.1.0
-   git push origin v0.1.0
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
    ```
 
 4. The `Release` workflow then, in a first job without the key:
+   - stops if the tagged commit is not on `main`;
    - stops if the tag and the crate version differ;
    - runs the tests and builds `triokey.exe` (GNU toolchain, no cache).
 
-   The second job waits for your approval of the `release` environment (Actions → the run →
-   "Review deployments"). Check that the tag is the commit you mean to release, then approve.
-   It then:
+   The second job starts by itself once the first has passed. It:
    - stops if `TRIOKEY_SIGN_KEY` is not set in the environment;
    - builds the signing tool `xtask` and nothing else;
    - signs the exe from the first job: `triokey.exe.minisig` with the trusted comment `version=X.Y.Z file=triokey.exe`;
    - verifies that signature against the committed public key, which also fails if the key
-     file is still the placeholder;
+     file is the placeholder;
    - packs `triokey-X.Y.Z-windows-x64.zip` (exe, signature, licence, notices, both READMEs)
      and writes `SHA256SUMS.txt`;
    - records a build provenance attestation (best-effort; check with
@@ -82,10 +96,10 @@ Treat it accordingly.
      `.../triokey.exe`.
    - The release must be neither a draft nor a pre-release: `latest` skips both, and the
      updater does not understand pre-release ordering beyond "older than the release".
-6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) for the first release, and whenever
-   `update.rs` changed.
+6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. It has not
+   been run yet, not even for 0.1.0; it is runnable now that a release exists.
 
-To sign or check by hand (for example to test before the first tag):
+To sign or check by hand (for example to test an exe without tagging):
 
 ```sh
 cargo run -p xtask -- sign <secret-key-path> <path>/triokey.exe --version X.Y.Z
@@ -94,8 +108,8 @@ cargo run -p xtask -- verify crates/triokey/update-pubkey.txt <path>/triokey.exe
 
 ## If a release goes wrong
 
-- **The workflow failed before the release was created:** fix the cause, delete the tag
-  (`git push origin :vX.Y.Z`, `git tag -d vX.Y.Z`) and tag again.
+- **The workflow failed before the release was created:** fix the cause on `main`, delete
+  the tag (`git push origin :vX.Y.Z`, `git tag -d vX.Y.Z`) and tag again.
 - **A bad version is out:** publish a higher version. Installed copies never go back to a
   lower version, so deleting the bad release only stops new installs of it. Copies that
   already installed it wait for the next higher one.

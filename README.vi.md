@@ -1,10 +1,10 @@
+<p align="center"><img src="https://raw.githubusercontent.com/ved0el/triokey/main/assets/brand/icon-512.png" width="96" alt="TrioKey"></p>
+
 # TrioKey
 
 [English](README.md) · **Tiếng Việt**
 
-<!-- Huy hiệu CI: bỏ chú thích sau khi đã đẩy repo và lần chạy đầu tiên xong
 [![CI](https://github.com/ved0el/triokey/actions/workflows/ci.yml/badge.svg)](https://github.com/ved0el/triokey/actions/workflows/ci.yml)
--->
 
 Bộ gõ tiếng Việt cho Windows, dành cho người ngày nào cũng gõ cả tiếng Anh, tiếng Việt và một trong ba thứ tiếng Trung, Nhật, Hàn (CJK). Khi gõ trộn hằng ngày, bạn không phải bật/tắt bộ gõ tiếng Việt: nút duy nhất cần bấm là nút bật/tắt của chính IME CJK.
 
@@ -18,7 +18,7 @@ songs␣              songs        (từ hai cách đọc: mặc định là ti�
 this␣⌫              thí          (Backspace ngay sau từ sẽ đổi cách đọc)
 ```
 
-Bản thử 0.1.0: chưa có bản dựng sẵn, và nhiều phần của ứng dụng Windows chưa từng chạy trên máy thật. Xin đọc mục [Tình trạng](#tình-trạng) trước.
+Bản đầu 0.1.0: đã có bản tải về có chữ ký, nhưng nhiều phần của ứng dụng Windows, kể cả phần tự cập nhật đang bật sẵn, chưa từng chạy trên máy thật. Xin đọc mục [Tình trạng](#tình-trạng) trước.
 
 ## Vì sao có TrioKey
 
@@ -43,15 +43,15 @@ Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, khô
 
 ## Tình trạng
 
-**Bản thử 0.1.0. Xin đọc phần này trước khi dùng.**
+**Bản đầu 0.1.0. Xin đọc phần này trước khi dùng.**
 
-- Chưa có bản dựng sẵn. Bạn tự build từ mã nguồn.
-- Phần tự cập nhật (tải bản có chữ ký từ trang phát hành GitHub của dự án) đã viết nhưng chưa từng chạy: nó cần một bản phát hành và khoá cập nhật của dự án, mà trước bản phát hành đầu tiên repo chỉ có một khoá giữ chỗ. Bản build với khoá giữ chỗ không bao giờ kết nối mạng và không bao giờ cập nhật.
+- Bản 0.1.0 có trên [trang phát hành](https://github.com/ved0el/triokey/releases/latest), do CI build và ký. Bạn cũng có thể tự build từ mã nguồn.
+- Phần tự cập nhật (tải bản có chữ ký từ trang phát hành GitHub của dự án) có trong file exe đã phát hành và trong bản build từ `main`, và mặc định bật, nhưng chưa từng chạy trên máy thật (AT10 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) vẫn chưa làm). Nếu không muốn một phần tự cập nhật chưa được thử thay file exe của bạn, hãy bỏ chọn `Tự động cập nhật` trong Cài đặt.
 - Mới thử trên Windows 11; Windows 10 chưa thử.
 - Chỉ có Telex. Chưa có VNI.
-- Tiếng Nhật: một bản dựng trước đây đã được gõ thử bằng tay với Microsoft IME trong Notepad và Brave. Kết quả từng bước trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) chưa được ghi lại, và bản hiện tại chưa được gõ thử lại.
+- Tiếng Nhật: một bản dựng trước đây đã được gõ thử bằng tay với Microsoft IME trong Notepad và Brave, và đạt AT1, AT2 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) (các cột kết quả từng bước ở đó chưa được điền). Bản hiện tại chưa được gõ thử lại.
 - Tiếng Trung và tiếng Hàn: mới chỉ có unit test cho luật quyết định (IME mở và đang ở chế độ bản ngữ), với giá trị giả. Các IME đó có báo đúng trạng thái hay không thì chưa ai thử.
-- **Chưa từng chạy trên máy thật**, mới chỉ biên dịch và unit test ở chỗ làm được: biểu tượng khay và menu hiện tại, các phím tắt, cửa sổ cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật, các bước gỡ bỏ và việc bỏ qua ô mật khẩu Win32. Các mục bên dưới mô tả chúng theo thiết kế.
+- **Chưa từng chạy trên máy thật**, mới chỉ biên dịch và unit test ở chỗ làm được: biểu tượng khay và menu hiện tại, biểu tượng ứng dụng, các phím tắt, cửa sổ cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật, các bước gỡ bỏ và việc bỏ qua ô mật khẩu Win32. Các mục bên dưới mô tả chúng theo thiết kế.
 - Giao diện (menu khay, tooltip, cửa sổ cài đặt, thông báo) chỉ có tiếng Việt.
 - Phần tự nhận biết Anh/Việt đạt **92,0% (8.361 / 9.084)** trên bộ test hồi quy công khai của [VieLotus-IM](https://github.com/stevedat/VieLotus-IM), khi gõ mọi dòng mà không có ngữ cảnh (xem [docs/COMPARISON.vi.md](docs/COMPARISON.vi.md) để biết cách chạy này khác cách của chính VieLotus-IM ra sao). Các trường hợp sai đã biết được ghi ở [docs/decisions/0004-regression-baseline.md](docs/decisions/0004-regression-baseline.md) và [0005-tie-defaults.md](docs/decisions/0005-tie-defaults.md). Hai loại bạn sẽ gặp: từ nằm ngoài danh sách từ tiếng Anh mà có phím dấu gõ lặp (`s f r x j`) thì bị mất một chữ (`Larry` → `Lary`, `passwd` → `paswd`, `terraform` → `teraform`), và một số từ ngắn có nghĩa ở cả hai thứ tiếng bị đoán sai khi không có ngữ cảnh. Cả hai đều sửa được cho từng từ bằng `force_en.txt` / `force_vi.txt` (xem [Cách dùng](#cách-dùng)).
 - Terminal không có xử lý riêng.
@@ -107,18 +107,24 @@ Tính đến tháng 11 năm 2026. Đây là bản ngắn; nguồn, mã commit v�
 | Kiểu gõ | Telex | Telex, VNI, Simple Telex, gõ kết hợp | Telex, Simple Telex | Telex, VNI |
 | Gõ tắt | không | có | không | có |
 | Nền tảng | Windows 11 (Windows 10 chưa thử) | Windows 10/11 | macOS, Windows, Linux, iOS, Android | macOS, Windows, Linux, web, iOS, Android |
-| Bản phát hành | chưa có | có (winget) | đã ra các phiên bản đánh số (theo `DECISIONS.md` của dự án); bản tải cho Windows thì chưa kiểm | có (Microsoft Store) |
+| Bản phát hành | 0.1.0 (GitHub, do CI ký) | có (winget) | đã ra các phiên bản đánh số (theo `DECISIONS.md` của dự án); bản tải cho Windows thì chưa kiểm | có (Microsoft Store) |
 | Giấy phép | MIT | GPL-3.0; có một thư viện kiểm tra chính tả nguồn đóng, tuỳ chọn, nằm ngoài giấy phép này (bản Classic hoàn toàn mã nguồn mở) | GPL-3.0 | MIT |
 
 Cả ba đều hoàn thiện hơn TrioKey và đã được phát hành tới người dùng; TrioKey học được từ cả ba. UniKey, EVKey và OpenKey, những lựa chọn quen thuộc lâu nay, xoay quanh một chế độ Việt/Anh có phím chuyển; bản so sánh này không đọc ba bộ gõ đó, nên những tính năng khác của chúng không được mô tả ở đây.
 
-## Cài đặt (build từ mã nguồn)
+## Cài đặt
 
-Chưa có bộ cài và chưa có bản tải về. Các bản phát hành sẽ do CI build và ký từ một tag phiên bản ([docs/RELEASING.md](docs/RELEASING.md)); trước khi có bản đầu tiên, bạn tự build từ mã nguồn.
+Chưa có bộ cài. Các bản phát hành do CI build và ký từ một tag phiên bản ([docs/RELEASING.md](docs/RELEASING.md)).
+
+1. **Thoát mọi bộ gõ tiếng Việt khác trước** (UniKey, EVKey, OpenKey, VKey, Vikey…). Hai bộ gõ chạy cùng lúc sẽ sửa chữ của nhau.
+2. Tải `triokey-X.Y.Z-windows-x64.zip` từ [bản phát hành mới nhất](https://github.com/ved0el/triokey/releases/latest) rồi giải nén vào một thư mục riêng, hoặc tự build từ mã nguồn (bên dưới).
+3. Chạy `triokey.exe`. Không có cửa sổ nào hiện ra; ở khay hệ thống xuất hiện chữ `V` (có thể nằm sau mũi tên `^`).
+
+### Build từ mã nguồn
 
 1. Cài Rust. Chọn một trong hai:
    - [mise](https://mise.jdx.dev): chạy `mise install` trong thư mục repo (nó đọc `mise.toml`, file này chọn toolchain GNU bản stable nên không cần Visual Studio Build Tools), hoặc
-   - [rustup](https://rustup.rs) với một toolchain stable (toolchain MSVC mặc định cần Visual Studio Build Tools; `stable-x86_64-pc-windows-gnu` thì không).
+   - [rustup](https://rustup.rs) với toolchain `stable-x86_64-pc-windows-gnu`. Toolchain MSVC mặc định không build được TrioKey: script build của nó ghi tài nguyên của file exe (biểu tượng và manifest) chỉ cho toolchain GNU.
 2. Build:
 
    ```sh
@@ -127,10 +133,9 @@ Chưa có bộ cài và chưa có bản tải về. Các bản phát hành sẽ 
    cargo build --release -p triokey        # dùng mise: mise x -- cargo build --release -p triokey
    ```
 
-3. **Thoát mọi bộ gõ tiếng Việt khác trước** (UniKey, EVKey, OpenKey, VKey, Vikey…). Hai bộ gõ chạy cùng lúc sẽ sửa chữ của nhau.
-4. Chạy `target\release\triokey.exe`. Không có cửa sổ nào hiện ra; ở khay hệ thống xuất hiện chữ `V` (có thể nằm sau mũi tên `^`).
+3. File exe nằm ở `target\release\triokey.exe`. Nó mang cùng khoá cập nhật với bản phát hành, nên cũng tự kiểm tra bản mới.
 
-File exe chưa được ký số. SmartScreen hoặc phần mềm diệt virus có thể cảnh báo, như với nhiều chương trình dùng keyboard hook khác. Khi đã có bản phát hành, file `triokey.exe.minisig` đăng kèm mỗi file exe có thể kiểm bằng tay với [minisign](https://jedisct1.github.io/minisign/) và khoá công khai trong `crates/triokey/update-pubkey.txt`; phần tự cập nhật có sẵn cũng kiểm đúng như thế.
+File exe chưa được ký số. SmartScreen hoặc phần mềm diệt virus có thể cảnh báo, như với nhiều chương trình dùng keyboard hook khác. File `triokey.exe.minisig` đăng kèm mỗi file exe đã phát hành có thể kiểm bằng tay với [minisign](https://jedisct1.github.io/minisign/) và khoá công khai trong `crates/triokey/update-pubkey.txt`; phần tự cập nhật có sẵn cũng kiểm đúng như thế.
 
 ## Cách dùng
 
@@ -154,7 +159,7 @@ Các bước này viết theo mã nguồn; chưa từng được chạy trên m�
    1. Bỏ chọn chế độ admin (`Chạy quyền admin (gõ được trong cửa sổ admin)`). Việc này xoá tác vụ đăng nhập `TrioKey` và bản sao trong `%ProgramFiles%\TrioKey`. Nếu làm từ chính bản admin đang chạy thì Windows xoá thư mục đó ở lần khởi động lại kế tiếp; hãy thoát bản đó và chạy bản thường rồi mới làm bước sau.
    2. Sau đó bỏ chọn `Khởi động cùng Windows`; ô này bị mờ khi chế độ admin còn bật. Tắt chế độ admin từ bản thường sẽ ghi lại giá trị Run nếu trước đó bạn đã bật, nên hãy xem lại ô này dù lâu rồi bạn không đụng tới. Bỏ chọn sẽ xoá giá trị `TrioKey` trong `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 2. Thoát từ menu ở khay (`Thoát`).
-3. Xoá thư mục bạn đã build hoặc chép TrioKey vào, và `%APPDATA%\triokey` nếu muốn bỏ luôn cấu hình.
+3. Xoá thư mục bạn đã giải nén, build hoặc chép TrioKey vào, và `%APPDATA%\triokey` nếu muốn bỏ luôn cấu hình.
 
 Nếu chưa từng bật hai tuỳ chọn trên thì bước 2 và 3 là toàn bộ việc gỡ. TrioKey không đăng ký gì khác: không layout bàn phím, không mục nào trong danh sách bàn phím của Windows, không gì dưới `HKCU\Keyboard Layout`.
 
@@ -175,15 +180,15 @@ Những gì nó làm:
 Những gì nó không bao giờ làm:
 
 - Ghi phím hay nội dung gõ ra đĩa. Không có nhật ký gõ. Con số đo thời gian hiện trong Cài đặt chỉ nằm trong bộ nhớ.
-- Kết nối tới nơi nào khác ngoài GitHub (`github.com` và máy chủ mà đường tải bản phát hành của nó chuyển hướng tới), hay kết nối vì việc gì khác ngoài việc kiểm tra cập nhật nói trên. Khi `Tự động cập nhật` tắt, TrioKey hoàn toàn không dùng mạng, trừ khi bạn bấm `Kiểm tra bản mới`; nút này kiểm tra một lần và, ở bản thường, cài luôn bản tìm được. Ở bản build không có khoá cập nhật, cả hai ô này bị mờ đi và nó không bao giờ kết nối. Không thu thập dữ liệu, không gửi báo cáo lỗi. Thư viện bên thứ ba mà nó phụ thuộc trực tiếp chỉ có ba crate `vi`, `windows-sys` và `minisign-verify`, cộng `embed-manifest` chỉ dùng lúc build (nó ghi manifest vào file exe; không có mã nào của nó chạy).
+- Kết nối tới nơi nào khác ngoài GitHub (`github.com` và máy chủ mà đường tải bản phát hành của nó chuyển hướng tới), hay kết nối vì việc gì khác ngoài việc kiểm tra cập nhật nói trên. Khi `Tự động cập nhật` tắt, TrioKey hoàn toàn không dùng mạng, trừ khi bạn bấm `Kiểm tra bản mới`; nút này kiểm tra một lần và, ở bản thường, cài luôn bản tìm được. Ở bản build không có khoá cập nhật, cả hai ô này bị mờ đi và nó không bao giờ kết nối. Không thu thập dữ liệu, không gửi báo cáo lỗi. Thư viện bên thứ ba mà nó phụ thuộc trực tiếp chỉ có ba crate `vi`, `windows-sys` và `minisign-verify`, cộng `embed-manifest` chỉ dùng lúc build (nó tạo manifest, rồi script build ghi manifest cùng biểu tượng vào file exe; không có mã nào của nó chạy).
 - Đăng ký text service, thêm layout bàn phím hay đổi danh sách bàn phím của Windows.
 
 Điều cần biết:
 
 - **Mật khẩu.** Ô mật khẩu Win32 cổ điển (control Edit/RichEdit có `ES_PASSWORD`) được thiết kế để bỏ qua; chưa kiểm bằng tay. Ô mật khẩu trong trình duyệt và ứng dụng Electron thì không nhận ra được. Ở đó, một đoạn của mật khẩu toàn chữ cái, viết hoa/thường bình thường và đứng trước chữ số hoặc dấu `_` đầu tiên có thể bị đổi theo hai cách: nó tình cờ là Telex của một âm tiết tiếng Việt (đoạn `mas` trong `mas!x9` thành `má`), hoặc nó có phím dấu gõ lặp (`s f r x j`) và không nằm trong danh sách từ tiếng Anh, khi đó nó mất một chữ (`Tess!` → `Tes!`, `passwd!` → `paswd!`). Vì vậy hãy tắt TrioKey bằng phím tắt khi gõ mật khẩu ở những ô như thế; biểu tượng khay cho biết đang ở trạng thái nào.
 - **Chế độ admin** mặc định tắt. Nó chưa từng chạy trên máy thật; phần dưới đây là thiết kế. Bật nó sẽ hiện một hộp UAC. Phần chạy quyền cao chép file exe vào `%ProgramFiles%\TrioKey` (chỉ admin ghi được, nên chương trình khác không thể đánh tráo exe để lấy quyền admin) và đăng ký một tác vụ chạy lúc đăng nhập với quyền cao nhất. Bản chạy quyền admin chỉ đọc các file dữ liệu có tên cố định và không chạy chương trình nào khác: nút mở thư mục cấu hình của nó chỉ hiện đường dẫn, không mở Explorer. Nó chỉ ghi lại `config.txt` khi file đó đã có sẵn và cả file lẫn thư mục đều không phải là liên kết, và không tạo gì trong `%APPDATA%`. Hãy bật chế độ admin từ một thư mục mà chương trình khác không ghi được: hộp UAC nâng quyền cho đúng file `triokey.exe` đang nằm trong thư mục đó lúc ấy.
-- **Cập nhật** chỉ được cài khi có chữ ký hợp lệ từ khoá cập nhật của dự án, ký cho đúng tên file `triokey.exe` và cho một phiên bản mới hơn bản đang chạy; mọi thứ khác đều bị từ chối, kể cả một bản cũ được đưa ra lại. Mọi sự tin cậy nằm ở chữ ký: người chiếm được repo GitHub mà không có khoá thì không đẩy được bản cập nhật, còn người lấy được khoá thì đẩy được. File exe không có chữ ký Authenticode, nên SmartScreen coi bản phát hành như mọi file tải về chưa ký khác. Ở chế độ admin, việc tải, kiểm chữ ký và thay file đều diễn ra trong `%ProgramFiles%\TrioKey`, và chỉ sau khi bạn bấm. Một TrioKey được chạy bằng "Run as administrator" từ thư mục khác thì không ghi gì vào thư mục đó: nó chỉ báo là có bản mới. Chưa chạy trên máy thật; ghi chú thiết kế ở [docs/decisions/0007-auto-update.md](docs/decisions/0007-auto-update.md).
-- **Phím do phần mềm khác gửi vào** (remote desktop, phần mềm đổi phím) dưới dạng phím bấm thông thường được xử lý như phím thật; chữ được gửi vào dưới dạng ký tự Unicode thì được để nguyên. Chưa thử với công cụ cụ thể nào. Đó cũng là lý do không được chạy hai bộ gõ cùng lúc.
+- **Cập nhật** chỉ được cài khi có chữ ký hợp lệ từ khoá cập nhật của dự án, ký cho đúng tên file `triokey.exe` và cho một phiên bản mới hơn bản đang chạy; mọi thứ khác đều bị từ chối, kể cả một bản cũ được đưa ra lại. Mọi sự tin cậy nằm ở chữ ký. Khoá do quy trình phát hành của dự án giữ, và quy trình này ký rồi phát hành một tag phiên bản đẩy lên `main` mà không cần ai duyệt tay: người lấy được khoá, hoặc đẩy được lên repo này (chỉ có chủ repo), đều đẩy được bản cập nhật tới mọi bản đã cài. Người chỉ thay được các file phát hành thì không. File exe không có chữ ký Authenticode, nên SmartScreen coi bản phát hành như mọi file tải về chưa ký khác. Ở chế độ admin, việc tải, kiểm chữ ký và thay file đều diễn ra trong `%ProgramFiles%\TrioKey`, và chỉ sau khi bạn bấm. Một TrioKey được chạy bằng "Run as administrator" từ thư mục khác thì không ghi gì vào thư mục đó: nó chỉ báo là có bản mới. Chưa chạy trên máy thật; ghi chú thiết kế ở [docs/decisions/0007-auto-update.md](docs/decisions/0007-auto-update.md).
+- **Phím do phần mềm khác gửi vào** (remote desktop, phần mềm đổi phím) dưới dạng phím bấm thông thường được xử lý như phím thật; chữ được gửi vào dưới dạng ký tự Unicode thì được để nguyên. Chưa thử với công cụ cụ thể nào. Đó cũng là lý do không được chạy hai bộ gõ cùng lúc. Sau bản 0.1.0 (có trong bản build từ `main`, chưa có trong bản phát hành nào, chưa chạy trên máy thật): phím mà Windows đánh dấu là do một tiến trình có mức toàn vẹn (integrity level) thấp hơn gửi vào thì đi thẳng, không bị đụng tới, để chương trình không có quyền admin không khiến được một TrioKey quyền admin gõ chữ. Vì thế khi TrioKey chạy quyền admin (chế độ admin), phím do các công cụ như vậy gửi từ một tiến trình thường, ví dụ AutoHotkey hay bàn phím ảo, sẽ không thành tiếng Việt.
 
 ## Cách hoạt động
 
@@ -200,7 +205,7 @@ Ghi chú thiết kế: [docs/decisions/](docs/decisions/).
 
 Không theo thứ tự cố định:
 
-- Chạy danh sách gõ thử ([docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)) trên bản hiện tại và ghi lại kết quả: tiếng Nhật, khay, cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật. Sau đó ra bản dựng sẵn đầu tiên.
+- Chạy danh sách gõ thử ([docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)) trên bản hiện tại và ghi lại kết quả: tiếng Nhật, khay, cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật.
 - Các ô tự chèn gợi ý (thanh địa chỉ trình duyệt, ô Excel).
 - Gõ thử bằng tay với IME tiếng Trung và tiếng Hàn.
 - Quyết định tốt hơn cho những từ đúng ở cả hai thứ tiếng.

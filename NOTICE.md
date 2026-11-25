@@ -20,8 +20,8 @@
   others; permissive licence reproduced in `crates/triokey-engine/data/SCOWL-Copyright.txt`.
 - **embed-manifest** 1.5.1 (https://codeberg.org/carey/embed-manifest), MIT License,
   Copyright (c) 2021, 2022, 2025, 2026 Carey Evans. Build-time dependency of `crates/triokey`
-  only (`build.rs`): it writes the application manifest into `triokey.exe` as a resource; none
-  of its code is part of the exe.
+  only (`build.rs`): it generates the application manifest, which `build.rs` writes into
+  `triokey.exe` as a resource; none of its code is part of the exe.
 - **minisign-verify** 0.2.5 (https://github.com/jedisct1/rust-minisign-verify), MIT License,
   Copyright (c) 2019-2025 Frank Denis. Compiled into `triokey.exe`: verifies the signature of
   a downloaded update (`crates/triokey/src/update.rs`).

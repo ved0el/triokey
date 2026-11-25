@@ -1,10 +1,10 @@
 # Contributing to TrioKey
 
-Thanks for looking. TrioKey is a small pre-release project; reports about words that convert wrongly are the most useful contribution right now.
+Thanks for looking. TrioKey is a small, early project (0.1.0); reports about words that convert wrongly are the most useful contribution right now.
 
 ## Build and test
 
-You need a stable Rust toolchain. With [mise](https://mise.jdx.dev), `mise install` in the repository sets up the stable GNU toolchain named in `mise.toml`; prefix the commands below with `mise x --`.
+You need the stable GNU Rust toolchain (`stable-x86_64-pc-windows-gnu`); the app's build script writes its resources for that toolchain only. With [mise](https://mise.jdx.dev), `mise install` in the repository sets up the stable GNU toolchain named in `mise.toml`; prefix the commands below with `mise x --`.
 
 ```sh
 cargo build --release -p triokey      # the tray app: target\release\triokey.exe
@@ -13,7 +13,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all                       # CI runs it with --check; settings in rustfmt.toml
 ```
 
-CI (`.github/workflows/ci.yml`) runs these four on every pull request, on Windows with the same GNU toolchain. `crates/xtask` is release tooling (update-signing keys and signatures, see [docs/RELEASING.md](docs/RELEASING.md)); it is not part of the app.
+CI (`.github/workflows/ci.yml`) runs these four on every push to `main` and every pull request, on Windows with the same GNU toolchain. `crates/xtask` is release tooling (update-signing keys and signatures, see [docs/RELEASING.md](docs/RELEASING.md)); it is not part of the app.
 
 The engine (`crates/triokey-engine`) has no operating-system calls. The app crate (`crates/triokey`) is Windows only.
 
@@ -51,4 +51,4 @@ By contributing you agree that your contribution is released under the MIT licen
 
 ## Tiếng Việt
 
-Cảm ơn bạn đã ghé qua. Cách đóng góp có ích nhất lúc này là báo những từ bị chuyển sai. Khi mở issue, xin ghi đủ bốn thứ: (1) đúng các phím đã gõ, kể cả phím kết thúc từ; (2) kết quả bạn mong đợi; (3) kết quả thực tế; (4) từ đứng ngay trước đó trên màn hình, vì nó quyết định các từ có hai cách đọc. Đừng dán mật khẩu hay nội dung riêng tư; một ví dụ tự đặt là đủ. Build bằng `cargo build --release -p triokey`, chạy test bằng `cargo test --workspace`. TrioKey dùng giấy phép MIT, nên xin đừng chép mã nguồn, bảng dữ liệu hay file test từ các dự án GPL (VKey, Vikey, OpenKey, UniKey…) vào repo; đọc tài liệu của họ rồi mô tả lại hành vi thì được.
+Cảm ơn bạn đã ghé qua. Cách đóng góp có ích nhất lúc này là báo những từ bị chuyển sai. Khi mở issue, xin ghi đủ bốn thứ: (1) đúng các phím đã gõ, kể cả phím kết thúc từ; (2) kết quả bạn mong đợi; (3) kết quả thực tế; (4) từ đứng ngay trước đó trên màn hình, vì nó quyết định các từ có hai cách đọc. Đừng dán mật khẩu hay nội dung riêng tư; một ví dụ tự đặt là đủ. Build bằng `cargo build --release -p triokey` với toolchain GNU (`stable-x86_64-pc-windows-gnu`), chạy test bằng `cargo test --workspace`. TrioKey dùng giấy phép MIT, nên xin đừng chép mã nguồn, bảng dữ liệu hay file test từ các dự án GPL (VKey, Vikey, OpenKey, UniKey…) vào repo; đọc tài liệu của họ rồi mô tả lại hành vi thì được.

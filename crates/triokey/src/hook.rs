@@ -295,6 +295,13 @@ unsafe extern "system" fn kb_proc(code: i32, wp: WPARAM, lp: LPARAM) -> LRESULT 
     if k.dwExtraInfo == TRIOKEY_MARK {
         return CallNextHookEx(null_mut(), code, wp, lp);
     }
+    // keys injected by a lower-integrity process must never make an elevated TrioKey send text
+    if k.flags & LLKHF_LOWER_IL_INJECTED != 0 {
+        reset_engine();
+        // it still breaks a Ctrl+Shift tap, as an unseen key would (keeps on_key's rule)
+        HOT.set(HotState { combo: false, ..HOT.get() });
+        return CallNextHookEx(null_mut(), code, wp, lp);
+    }
     let start = Instant::now();
     let is_down = matches!(wp as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
     let (swallow, waited, sent) = on_key(k, is_down);
