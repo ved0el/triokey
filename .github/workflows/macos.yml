@@ -57,7 +57,8 @@ jobs:
       # the likeliest failure of AppKit code that has never run is a crash at start-up: this shows it. macOS has no
       # `timeout`; perl's alarm survives exec and kills the app if it hangs
       - name: Self-test
-        run: perl -e 'alarm shift; exec @ARGV or die "exec: $!"' 30 target/mac/TrioKey.app/Contents/MacOS/TrioKey --self-test
+        run: |
+          perl -e 'alarm shift; exec @ARGV or die "exec: $!"' 30 target/mac/TrioKey.app/Contents/MacOS/TrioKey --self-test
       # objc2 checks every message's argument and return types against the Objective-C runtime only in debug builds
       - name: Self-test (debug build, message types checked)
         run: |
