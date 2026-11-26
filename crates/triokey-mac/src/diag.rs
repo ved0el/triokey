@@ -69,7 +69,8 @@ impl Diagnostics {
         let _ = writeln!(t, "bundle: {} (AppTranslocation: {})", self.bundle, yes(self.bundle.contains("AppTranslocation")));
         let _ = writeln!(t, "tap: created {}, enabled {}; AXIsProcessTrusted: {}", yes(self.tap_created), yes(self.tap_enabled), yes(self.ax_trusted));
         let _ = writeln!(t, "Secure Input: {}", if self.secure { "on" } else { "off" });
-        let _ = writeln!(t, "state: {}", tooltip(self.state));
+        // always the Vietnamese tooltip, whatever the interface language: the report reads the same for every person
+        let _ = writeln!(t, "state: {}", tooltip(self.state).0);
         let _ = writeln!(t, "current input source: {}", source_line(&self.current));
         let _ = writeln!(t, "input sources seen since launch: {}", self.seen.len());
         for s in &self.seen {

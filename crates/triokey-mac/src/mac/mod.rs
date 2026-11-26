@@ -8,8 +8,8 @@ mod tis;
 mod ui;
 
 pub fn main() {
-    let self_test = std::env::args().skip(1).any(|a| a == "--self-test");
-    let code = match app::run(self_test) {
+    let arg = |name: &str| std::env::args().skip(1).any(|a| a == name);
+    let code = match app::run(arg("--self-test"), arg(triokey_mac::RESTARTED)) {
         Ok(()) => 0,
         Err(e) => {
             eprintln!("TrioKey: {e}");

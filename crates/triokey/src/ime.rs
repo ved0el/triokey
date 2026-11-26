@@ -39,12 +39,13 @@ pub fn is_cjk(lang_primary: u16) -> bool {
     matches!(lang_primary, LANG_JAPANESE | LANG_CHINESE | LANG_KOREAN)
 }
 
-/// For the tray tooltip "đang nhường IME …". Unknown (nothing read yet): the generic name.
-pub fn cjk_name(lang_primary: u16) -> &'static str {
+/// For the tray tooltip "đang nhường IME …" / "yielding to the … IME". Unknown (nothing read yet): the generic name.
+pub fn cjk_name(lang_primary: u16, english: bool) -> &'static str {
+    let pick = |vi, en| triokey_shared::pick(english, vi, en);
     match lang_primary {
-        LANG_JAPANESE => "Nhật",
-        LANG_CHINESE => "Trung",
-        LANG_KOREAN => "Hàn",
+        LANG_JAPANESE => pick("Nhật", "Japanese"),
+        LANG_CHINESE => pick("Trung", "Chinese"),
+        LANG_KOREAN => pick("Hàn", "Korean"),
         _ => "CJK",
     }
 }
@@ -102,6 +103,7 @@ mod cjk_tests {
     fn cjk_langs() {
         assert!(is_cjk(0x11) && is_cjk(0x04) && is_cjk(0x12));
         assert!(!is_cjk(0x09) && !is_cjk(0x2A));
-        assert_eq!([0x11, 0x04, 0x12, 0, 0x09].map(cjk_name), ["Nhật", "Trung", "Hàn", "CJK", "CJK"]);
+        assert_eq!([0x11, 0x04, 0x12, 0, 0x09].map(|l| cjk_name(l, false)), ["Nhật", "Trung", "Hàn", "CJK", "CJK"]);
+        assert_eq!([0x11, 0x04, 0x12, 0].map(|l| cjk_name(l, true)), ["Japanese", "Chinese", "Korean", "CJK"]);
     }
 }

@@ -1,8 +1,27 @@
-//! What the menu bar item, the menu and the guide window say, in one place so it is tested and reviewed together.
+//! What the menu bar item, the menu, the guide and settings windows say, in one place so it is tested and reviewed
+//! together. Every text is in Vietnamese and English and is read through the interface language
+//! (`triokey_shared::t`, docs/ARCHITECTURE.md, 12.13 Settings, files and the window).
 
 use triokey_shared::config::Hotkey;
+use triokey_shared::glyph::{self, Glyph};
+use triokey_shared::{english, pick};
 
 use crate::source::Decision;
+use crate::version::Answer;
+
+/// A text in (Vietnamese, English): `get` gives it in the interface language, `pick` in the one asked for (tests).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Text(pub &'static str, pub &'static str);
+
+impl Text {
+    pub fn get(self) -> &'static str {
+        self.pick(english())
+    }
+
+    pub fn pick(self, english: bool) -> &'static str {
+        pick(english, self.0, self.1)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum State {
@@ -27,96 +46,161 @@ pub fn state(failed: bool, tap: bool, secure: bool, on: bool, decision: Decision
     }
 }
 
-pub fn title(s: State) -> &'static str {
+/// The menu bar glyph: V while typing Vietnamese, E otherwise.
+pub fn glyph(s: State) -> Glyph {
     if s == State::Vietnamese {
+        Glyph::V
+    } else {
+        Glyph::E
+    }
+}
+
+/// The glyph as a letter: the menu bar item's title when its image cannot be made.
+pub fn title(s: State) -> &'static str {
+    if glyph(s) == Glyph::V {
         "V"
     } else {
         "E"
     }
 }
 
-pub fn tooltip(s: State) -> &'static str {
+/// The menu bar image's pixels, `n`×`n` RGBA top row first, premultiplied as an `NSBitmapImageRep` without a format
+/// flag holds them; `light_bar` picks the deep shades (Windows palette, `triokey_shared::glyph`).
+pub fn icon(g: Glyph, n: u32, light_bar: bool) -> Vec<u8> {
+    let mut px = glyph::render(g, n, glyph::color(g, light_bar));
+    for p in px.as_chunks_mut::<4>().0 {
+        let a = p[3] as u32;
+        for c in &mut p[..3] {
+            *c = ((*c as u32 * a + 127) / 255) as u8;
+        }
+    }
+    px
+}
+
+pub fn tooltip(s: State) -> Text {
     match s {
-        State::Vietnamese => "TrioKey: Tiếng Việt",
-        State::Off => "TrioKey: Tiếng Anh — đã tắt",
-        State::Yield => "TrioKey: Tiếng Anh — đang nhường bộ gõ khác",
-        State::NoPermission => "TrioKey: chưa có quyền Accessibility",
-        State::SecureInput => "TrioKey: bàn phím đang bị Secure Input chặn",
-        State::Error => "TrioKey: lỗi, đã ngừng bắt phím",
+        State::Vietnamese => Text("TrioKey: Tiếng Việt", "TrioKey: Vietnamese"),
+        State::Off => Text("TrioKey: Tiếng Anh — đã tắt", "TrioKey: English — off"),
+        State::Yield => Text("TrioKey: Tiếng Anh — đang nhường bộ gõ khác", "TrioKey: English — yielding to another input method"),
+        State::NoPermission => Text("TrioKey: chưa có quyền Accessibility", "TrioKey: no Accessibility permission yet"),
+        State::SecureInput => Text("TrioKey: bàn phím đang bị Secure Input chặn", "TrioKey: the keyboard is blocked by Secure Input"),
+        State::Error => Text("TrioKey: lỗi, đã ngừng bắt phím", "TrioKey: error, stopped catching keys"),
     }
 }
 
-pub const MENU_TOGGLE: &str = "Tiếng Việt";
-pub const MENU_GUIDE: &str = "Hướng dẫn cấp quyền…";
-pub const MENU_SETTINGS: &str = "Cài đặt…";
-pub const MENU_QUIT: &str = "Thoát";
-pub const DIAG_COPIED: &str = "Đã chép thông tin debug vào clipboard.";
-pub const DIAG_COPIED_DETAIL: &str = "Dán vào tin nhắn hoặc báo lỗi. Thông tin này không chứa chữ bạn đã gõ.";
+pub const MENU_TOGGLE: Text = Text("Tiếng Việt", "Vietnamese");
+pub const MENU_GUIDE: Text = Text("Hướng dẫn cấp quyền…", "Permission guide…");
+pub const MENU_SETTINGS: Text = Text("Cài đặt…", "Settings…");
+pub const MENU_RESTART: Text = Text("Khởi động lại", "Restart");
+pub const MENU_QUIT: Text = Text("Thoát", "Quit");
+pub const DIAG_COPIED: Text = Text("Đã chép thông tin debug vào clipboard.", "Debug info copied to the clipboard.");
+pub const DIAG_COPIED_DETAIL: Text = Text(
+    "Dán vào tin nhắn hoặc báo lỗi. Thông tin này không chứa chữ bạn đã gõ.",
+    "Paste it into a message or a bug report. It holds none of the text you typed.",
+);
 
 /// The menu item while a newer version waits.
-pub fn menu_waiting(version: &str) -> String {
-    format!("Có bản {version} — mở trang tải về")
+pub fn menu_waiting(version: &str, english: bool) -> String {
+    if english {
+        format!("Version {version} is available — open the download page")
+    } else {
+        format!("Có bản {version} — mở trang tải về")
+    }
 }
 
 /// The settings window, top to bottom (the same texts as crates/triokey/src/settings_ui.rs where macOS has the same thing).
-pub const SETTINGS_TITLE: &str = "TrioKey – Cài đặt";
-pub const SET_ENABLED: &str = "Bật gõ tiếng Việt";
-pub const SET_HOTKEY: &str = "Phím tắt";
-pub const SET_TYPING: &str = "Gõ";
-pub const SET_TONE: &str = "Kiểu bỏ dấu";
-pub const SET_TONE_OLD: &str = "hòa, thúy";
-pub const SET_TONE_NEW: &str = "hoà, thuý";
-pub const SET_AUTO_EN: &str = "Tự giữ nguyên từ tiếng Anh";
-pub const SET_YIELD: &str = "Nhường khi bộ gõ Nhật/Trung/Hàn đang bật";
-pub const SET_SYSTEM: &str = "Hệ thống";
-pub const SET_LOGIN: &str = "Khởi động cùng máy";
-pub const SET_LOGIN_ONLY_APPS: &str = "Chỉ dùng được khi TrioKey nằm trong Applications";
-pub const SET_DEV: &str = "Chế độ phát triển";
-pub const SET_FOLDER: &str = "Mở thư mục cấu hình…";
-pub const SET_DEBUG: &str = "Chép thông tin debug";
-pub const SET_UPDATES: &str = "Cập nhật";
+pub const SETTINGS_TITLE: Text = Text("TrioKey – Cài đặt", "TrioKey – Settings");
+pub const SET_ENABLED: Text = Text("Bật gõ tiếng Việt", "Enable Vietnamese");
+pub const SET_HOTKEY: Text = Text("Phím tắt", "Shortcut");
+pub const SET_TYPING: Text = Text("Gõ", "Typing");
+pub const SET_TONE: Text = Text("Kiểu bỏ dấu", "Tone mark placement");
+pub const SET_TONE_OLD: Text = Text("hòa, thúy", "hòa, thúy");
+pub const SET_TONE_NEW: Text = Text("hoà, thuý", "hoà, thuý");
+pub const SET_AUTO_EN: Text = Text("Tự giữ nguyên từ tiếng Anh", "Keep English words as typed");
+pub const SET_YIELD: Text = Text("Nhường khi bộ gõ Nhật/Trung/Hàn đang bật", "Step aside while a Japanese/Chinese/Korean input method is on");
+pub const SET_SYSTEM: Text = Text("Hệ thống", "System");
+pub const SET_LOGIN: Text = Text("Khởi động cùng máy", "Start at login");
+pub const SET_LOGIN_ONLY_APPS: Text = Text("Chỉ dùng được khi TrioKey nằm trong Applications", "Only works when TrioKey is in Applications");
+pub const SET_LANGUAGE: Text = Text("Ngôn ngữ", "Language");
+pub const SET_DEV: Text = Text("Chế độ phát triển", "Developer mode");
+pub const SET_FOLDER: Text = Text("Mở thư mục cấu hình…", "Open config folder…");
+pub const SET_DEBUG: Text = Text("Chép thông tin debug", "Copy debug info");
+pub const SET_UPDATES: Text = Text("Cập nhật", "Updates");
 /// Not "Tự động cập nhật" as on Windows: on macOS nothing is installed, only checked (config key `auto_update`).
-pub const SET_AUTO_CHECK: &str = "Tự động kiểm tra bản mới";
-pub const SET_CHECK: &str = "Kiểm tra bản mới";
-pub const SET_LINK: &str = "Tải tại đây";
-pub const SET_GITHUB: &str = "GitHub";
-pub const CONFIG_UNREADABLE: &str = "Không đọc được config.txt (file phải là UTF-8). TrioKey đang dùng giá trị mặc định và giữ nguyên file đó: thay đổi ở đây chỉ có hiệu lực tới khi Thoát, không được lưu.\n\nSửa hoặc xoá config.txt rồi mở lại TrioKey.";
+pub const SET_AUTO_CHECK: Text = Text("Tự động kiểm tra bản mới", "Check for new versions automatically");
+pub const SET_CHECK: Text = Text("Kiểm tra bản mới", "Check for updates");
+pub const SET_LINK: Text = Text("Tải tại đây", "Download here");
+pub const SET_GITHUB: Text = Text("GitHub", "GitHub");
+pub const CONFIG_UNREADABLE: Text = Text(
+    "Không đọc được config.txt (file phải là UTF-8). TrioKey đang dùng giá trị mặc định và giữ nguyên file đó: thay đổi ở đây chỉ có hiệu lực tới khi Thoát, không được lưu.\n\nSửa hoặc xoá config.txt rồi mở lại TrioKey.",
+    "Could not read config.txt (the file must be UTF-8). TrioKey is using the default values and leaves that file as it is: changes made here last only until you quit and are not saved.\n\nFix or delete config.txt, then open TrioKey again.",
+);
+
+/// The language pop-up, `english` false then true; each name in its own language.
+pub const LANGUAGES: [&str; 2] = ["Tiếng Việt", "English"];
 
 /// (setting, label) in pop-up order. No Control+Space: it is macOS's own input-source switch.
-pub const HOTKEYS: [(Hotkey, &str); 3] = [(Hotkey::CtrlShift, "Control+Shift"), (Hotkey::AltZ, "Option+Z"), (Hotkey::Off, "Không dùng")];
+pub const HOTKEYS: [(Hotkey, Text); 3] =
+    [(Hotkey::CtrlShift, Text("Control+Shift", "Control+Shift")), (Hotkey::AltZ, Text("Option+Z", "Option+Z")), (Hotkey::Off, Text("Không dùng", "None"))];
 
-/// Pop-up row of a stored hotkey; `ctrl_space` shows as "Không dùng".
+/// Pop-up row of a hotkey.
 pub fn hotkey_index(h: Hotkey) -> usize {
-    HOTKEYS.iter().position(|(k, _)| *k == crate::hotkey::effective(h)).unwrap_or(HOTKEYS.len() - 1)
+    HOTKEYS.iter().position(|(k, _)| *k == h).unwrap_or(0)
 }
 
-pub const UPDATE_CHECKING: &str = "Đang kiểm tra…";
-pub const UPDATE_LATEST: &str = "Đang dùng bản mới nhất.";
-pub const UPDATE_FAILED: &str = "Chưa kiểm tra được: không tải được từ GitHub.";
+pub const UPDATE_CHECKING: Text = Text("Đang kiểm tra…", "Checking…");
+pub const UPDATE_LATEST: Text = Text("Đang dùng bản mới nhất.", "You have the latest version.");
+pub const UPDATE_FAILED: Text = Text("Chưa kiểm tra được: không tải được từ GitHub.", "Could not check: GitHub could not be reached.");
 
-pub fn update_newer(version: &str) -> String {
-    format!("Có bản mới v{version}.")
-}
-
-pub fn menu_version() -> String {
-    format!("TrioKey {}", crate::VERSION)
-}
-
-pub const GUIDE_TITLE: &str = "Hướng dẫn cấp quyền";
-pub const GUIDE_WHY: &str = "TrioKey phải thấy phím bạn gõ để bỏ dấu; nó không gửi chữ bạn gõ đi đâu cả.";
-pub const GUIDE_STEPS: &str = "1. Bấm nút bên dưới để mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng (Accessibility).\n\
-2. Bật công tắc TrioKey.\n\
-3. Nếu không thấy TrioKey trong danh sách thì bấm dấu + và chọn TrioKey trong thư mục Applications.";
-pub const GUIDE_BUTTON: &str = "Mở cài đặt Accessibility";
-pub const GUIDE_RELAUNCH: &str = "Nếu đã bật mà vẫn báo chưa có quyền: Thoát TrioKey rồi mở lại.";
-pub const GUIDE_WARNING: &str = "Trước khi tắt hoặc xoá TrioKey khỏi danh sách Accessibility, hãy THOÁT TrioKey trước. Gỡ quyền khi TrioKey đang chạy có thể làm bàn phím và chuột đứng cho tới khi khởi động lại máy.\n\n\
-Sau khi cài bản mới: Thoát TrioKey, chép bản mới đè lên, rồi xoá TrioKey khỏi danh sách (nút −) và thêm lại.";
-
-pub fn guide_status(tap: bool) -> &'static str {
-    if tap {
-        "Đã có quyền, TrioKey đang chạy"
+pub fn update_newer(version: &str, english: bool) -> String {
+    if english {
+        format!("Version {version} is available.")
     } else {
-        "Chưa có quyền"
+        format!("Có bản mới v{version}.")
+    }
+}
+
+/// The reserved line of the settings window: a check in flight, the last answer, or nothing before the first check.
+pub fn update_status(checking: bool, answer: Option<&Answer>, english: bool) -> String {
+    match answer {
+        _ if checking => UPDATE_CHECKING.pick(english).into(),
+        Some(Answer::Newer(v)) => update_newer(v, english),
+        Some(Answer::Latest) => UPDATE_LATEST.pick(english).into(),
+        Some(Answer::Failed) => UPDATE_FAILED.pick(english).into(),
+        None => String::new(),
+    }
+}
+
+pub const GUIDE_TITLE: Text = Text("Hướng dẫn cấp quyền", "Permission guide");
+pub const GUIDE_WHY: Text = Text(
+    "TrioKey phải thấy phím bạn gõ để bỏ dấu; nó không gửi chữ bạn gõ đi đâu cả.",
+    "TrioKey has to see the keys you type to add the tone marks; it sends what you type nowhere.",
+);
+pub const GUIDE_STEPS: Text = Text(
+    "1. Bấm nút bên dưới để mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng (Accessibility).\n\
+2. Bật công tắc TrioKey.\n\
+3. Nếu không thấy TrioKey trong danh sách thì bấm dấu + và chọn TrioKey trong thư mục Applications.",
+    "1. Click the button below to open System Settings → Privacy & Security → Accessibility.\n\
+2. Turn on the TrioKey switch.\n\
+3. If TrioKey is not in the list, click + and choose TrioKey in the Applications folder.",
+);
+pub const GUIDE_BUTTON: Text = Text("Mở cài đặt Accessibility", "Open Accessibility settings");
+pub const GUIDE_RELAUNCH: Text = Text(
+    "Nếu đã bật mà vẫn báo chưa có quyền: Thoát TrioKey rồi mở lại.",
+    "If it is on and still says there is no permission: quit TrioKey and open it again.",
+);
+pub const GUIDE_WARNING: Text = Text(
+    "Trước khi tắt hoặc xoá TrioKey khỏi danh sách Accessibility, hãy THOÁT TrioKey trước. Gỡ quyền khi TrioKey đang chạy có thể làm bàn phím và chuột đứng cho tới khi khởi động lại máy.\n\n\
+Sau khi cài bản mới: Thoát TrioKey, chép bản mới đè lên, rồi xoá TrioKey khỏi danh sách (nút −) và thêm lại.",
+    "Before you turn TrioKey off or remove it from the Accessibility list, QUIT TrioKey first. Removing the permission while TrioKey is running can freeze the keyboard and the mouse until you restart the Mac.\n\n\
+After installing a new version: quit TrioKey, copy the new version over the old one, then remove TrioKey from the list (the − button) and add it again.",
+);
+
+pub fn guide_status(tap: bool) -> Text {
+    if tap {
+        Text("Đã có quyền, TrioKey đang chạy", "Permission granted, TrioKey is running")
+    } else {
+        Text("Chưa có quyền", "No permission yet")
     }
 }
 
@@ -139,21 +223,84 @@ mod tests {
     }
 
     #[test]
-    fn title_and_tooltip() {
-        assert_eq!(title(State::Vietnamese), "V");
+    fn glyph_and_tooltip() {
+        assert_eq!((glyph(State::Vietnamese), title(State::Vietnamese)), (Glyph::V, "V"));
         for s in [State::Off, State::Yield, State::NoPermission, State::SecureInput, State::Error] {
-            assert_eq!(title(s), "E");
-            assert!(tooltip(s).starts_with("TrioKey: "));
+            assert_eq!((glyph(s), title(s)), (Glyph::E, "E"));
+            assert!(tooltip(s).get().starts_with("TrioKey: ") && tooltip(s).pick(true).starts_with("TrioKey: "));
         }
-        assert_eq!(tooltip(State::Yield), "TrioKey: Tiếng Anh — đang nhường bộ gõ khác");
-        assert_eq!(menu_version(), format!("TrioKey {}", env!("CARGO_PKG_VERSION")));
-        assert_eq!(guide_status(false), "Chưa có quyền");
-        assert_eq!(menu_waiting("0.3.1"), "Có bản 0.3.1 — mở trang tải về");
-        assert_eq!(update_newer("0.3.1"), "Có bản mới v0.3.1.");
+        // Vietnamese is the default, and what the tests see
+        assert_eq!(tooltip(State::Yield).get(), "TrioKey: Tiếng Anh — đang nhường bộ gõ khác");
+        assert_eq!(tooltip(State::Yield).pick(true), "TrioKey: English — yielding to another input method");
+        assert_eq!(tooltip(State::Off).pick(true), "TrioKey: English — off");
+        assert_eq!(tooltip(State::Vietnamese).pick(true), "TrioKey: Vietnamese");
+        assert_eq!(guide_status(false).get(), "Chưa có quyền");
+        assert_eq!(menu_waiting("0.3.1", false), "Có bản 0.3.1 — mở trang tải về");
+        assert_eq!(update_newer("0.3.1", false), "Có bản mới v0.3.1.");
+        assert_eq!(update_newer("0.3.1", true), "Version 0.3.1 is available.");
+    }
+
+    #[test]
+    fn english_wording() {
+        let pairs = [
+            (MENU_TOGGLE, "Vietnamese"),
+            (MENU_SETTINGS, "Settings…"),
+            (MENU_GUIDE, "Permission guide…"),
+            (MENU_RESTART, "Restart"),
+            (MENU_QUIT, "Quit"),
+            (SET_ENABLED, "Enable Vietnamese"),
+            (SET_HOTKEY, "Shortcut"),
+            (HOTKEYS[2].1, "None"),
+            (SET_TYPING, "Typing"),
+            (SET_TONE, "Tone mark placement"),
+            (SET_AUTO_EN, "Keep English words as typed"),
+            (SET_YIELD, "Step aside while a Japanese/Chinese/Korean input method is on"),
+            (SET_SYSTEM, "System"),
+            (SET_LOGIN, "Start at login"),
+            (SET_LANGUAGE, "Language"),
+            (SET_DEV, "Developer mode"),
+            (SET_FOLDER, "Open config folder…"),
+            (SET_DEBUG, "Copy debug info"),
+            (SET_UPDATES, "Updates"),
+            (SET_AUTO_CHECK, "Check for new versions automatically"),
+            (SET_CHECK, "Check for updates"),
+            (UPDATE_CHECKING, "Checking…"),
+            (UPDATE_LATEST, "You have the latest version."),
+            (SET_LINK, "Download here"),
+            (UPDATE_FAILED, "Could not check: GitHub could not be reached."),
+        ];
+        for (text, en) in pairs {
+            assert_eq!(text.pick(true), en);
+            assert_eq!(text.get(), text.0);
+        }
+        assert_eq!((MENU_QUIT.get(), SET_LANGUAGE.get()), ("Thoát", "Ngôn ngữ"));
+        assert!(GUIDE_WARNING.pick(true).contains("QUIT TrioKey first") && GUIDE_WARNING.get().contains("THOÁT TrioKey trước"));
+        assert_eq!(update_status(true, Some(&Answer::Latest), true), "Checking…");
+        assert_eq!(update_status(false, Some(&Answer::Newer("9.9.9".into())), false), "Có bản mới v9.9.9.");
+        assert_eq!(update_status(false, Some(&Answer::Failed), true), UPDATE_FAILED.1);
+        assert_eq!(update_status(false, None, false), "");
     }
 
     #[test]
     fn hotkey_rows() {
-        assert_eq!([Hotkey::CtrlShift, Hotkey::AltZ, Hotkey::Off, Hotkey::CtrlSpace].map(hotkey_index), [0, 1, 2, 2]);
+        assert_eq!([Hotkey::CtrlShift, Hotkey::AltZ, Hotkey::Off].map(hotkey_index), [0, 1, 2]);
+        assert_eq!(HOTKEYS.map(|(_, t)| t.get()), ["Control+Shift", "Option+Z", "Không dùng"]);
+    }
+
+    #[test]
+    fn icon_is_premultiplied() {
+        for (g, light) in [(Glyph::V, true), (Glyph::E, false)] {
+            let straight = glyph::render(g, 36, glyph::color(g, light));
+            let pre = icon(g, 36, light);
+            assert_eq!(pre.len(), straight.len());
+            for (p, s) in pre.as_chunks::<4>().0.iter().zip(straight.as_chunks::<4>().0) {
+                assert_eq!(p[3], s[3]);
+                match s[3] {
+                    0 => assert_eq!(&p[..3], &[0, 0, 0]),
+                    255 => assert_eq!(p[..3], s[..3]),
+                    a => assert!(p[..3].iter().all(|&c| c <= a)),
+                }
+            }
+        }
     }
 }

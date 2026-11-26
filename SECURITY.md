@@ -18,8 +18,7 @@ A proof of concept helps but is not required.
 ## The macOS build
 
 The macOS build is experimental. From 0.3.0 on it is part of each release (`TrioKey-X.Y.Z-macos.dmg`,
-listed in `SHA256SUMS.txt`). Its first build was installed, granted the permission and typed with on a
-real Mac; what was added since has not run on one. What to know before running it:
+listed in `SHA256SUMS.txt`), and much of it has not been tested by hand yet. What to know before running it:
 
 - **Not signed with a Developer ID and not notarized.** The app carries only an ad-hoc signature,
   which proves nothing about who built it. Apple has not scanned it, macOS blocks the first open,

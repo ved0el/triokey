@@ -1,22 +1,25 @@
 //! Menu bar item, its menu, the permission guide window, the timer and the input source notification. One Objective-C
 //! class receives every action, the settings window's too (`settings.rs`); the state it acts on lives in `app.rs`.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::ptr::null_mut;
 
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, ProtocolObject};
-use objc2::{define_class, msg_send, sel, MainThreadMarker, MainThreadOnly};
+use objc2::{define_class, msg_send, sel, AnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSAlert, NSApplication, NSButton, NSColor, NSControlStateValueOff, NSControlStateValueOn, NSFont, NSLayoutAttribute, NSMenu, NSMenuDelegate, NSMenuItem,
-    NSPasteboard, NSPasteboardTypeString, NSStackView, NSStatusBar, NSStatusItem, NSTextField, NSUserInterfaceLayoutOrientation, NSVariableStatusItemLength,
-    NSView, NSWindow, NSWindowStyleMask, NSWorkspace,
+    NSAlert, NSAppearanceCustomization, NSAppearanceNameAqua, NSAppearanceNameDarkAqua, NSApplication, NSBitmapImageRep, NSButton, NSColor,
+    NSControlStateValueOff, NSControlStateValueOn, NSDeviceRGBColorSpace, NSFont, NSImage, NSLayoutAttribute, NSMenu, NSMenuDelegate, NSMenuItem, NSPasteboard,
+    NSPasteboardTypeString, NSStackView, NSStatusBar, NSStatusBarButton, NSStatusItem, NSTextField, NSUserInterfaceLayoutOrientation,
+    NSVariableStatusItemLength, NSView, NSWindow, NSWindowStyleMask, NSWorkspace,
 };
 use objc2_foundation::{
     ns_string, NSArray, NSDistributedNotificationCenter, NSEdgeInsets, NSNotification, NSNotificationSuspensionBehavior, NSObject, NSObjectProtocol, NSPoint,
     NSRect, NSSize, NSString, NSTimer, NSURL,
 };
-use triokey_mac::text::{self, State};
+use triokey_mac::text::{self, State, Text};
+use triokey_shared::glyph::Glyph;
 
 use super::{app, settings, tis};
 
@@ -24,11 +27,22 @@ struct Ui {
     target: Retained<Target>,
     item: Retained<NSStatusItem>,
     toggle: Retained<NSMenuItem>,
+    /// Every menu item with a fixed text, retitled when the language changes; Quit last.
+    titled: Vec<(Retained<NSMenuItem>, Text)>,
     /// "Có bản … — mở trang tải về", hidden while no newer version waits.
     waiting: Retained<NSMenuItem>,
     guide: Retained<NSWindow>,
+    /// The guide's fixed texts, retitled when the language changes.
+    guide_texts: Vec<(Retained<NSTextField>, Text)>,
+    guide_button: Retained<NSButton>,
     guide_status: Retained<NSTextField>,
+    /// What the menu bar image shows (glyph, dark bar); `None` while there is no image. Rebuilt only on a change: this
+    /// runs inside the tap callback when the hotkey toggles.
+    icon: Cell<Option<(Glyph, bool)>>,
 }
+
+/// SF Symbols of the menu items (macOS 11): Settings, guide, new version, Restart, Quit.
+const SYMBOLS: [&str; 5] = ["gearshape", "lock.shield", "arrow.down.circle", "arrow.clockwise", "power"];
 
 thread_local! {
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
@@ -123,6 +137,11 @@ define_class!(
             guarded(|| app::quit(self.mtm()));
         }
 
+        #[unsafe(method(restart:))]
+        fn restart(&self, _sender: Option<&AnyObject>) {
+            guarded(|| app::restart(self.mtm()));
+        }
+
         #[unsafe(method(tick:))]
         fn tick(&self, _timer: Option<&AnyObject>) {
             guarded(app::tick);
@@ -155,18 +174,71 @@ impl Target {
     }
 }
 
-fn item(mtm: MainThreadMarker, title: &str, action: Option<objc2::runtime::Sel>, target: &Target) -> Retained<NSMenuItem> {
+fn ns(s: &str) -> Retained<NSString> {
+    NSString::from_str(s)
+}
+
+fn item(mtm: MainThreadMarker, title: &str, action: objc2::runtime::Sel, target: &Target) -> Retained<NSMenuItem> {
     // SAFETY: every action is a method of Target, which is the item's target
-    let i = unsafe { NSMenuItem::initWithTitle_action_keyEquivalent(NSMenuItem::alloc(mtm), &NSString::from_str(title), action, ns_string!("")) };
-    if action.is_some() {
-        // SAFETY: Target outlives the menu: both are kept in UI until the process ends
-        unsafe { i.setTarget(Some(target)) };
-    }
+    let i = unsafe { NSMenuItem::initWithTitle_action_keyEquivalent(NSMenuItem::alloc(mtm), &ns(title), Some(action), ns_string!("")) };
+    // SAFETY: Target outlives the menu: both are kept in UI until the process ends
+    unsafe { i.setTarget(Some(target)) };
     i
 }
 
-fn label(mtm: MainThreadMarker, s: &str) -> Retained<NSTextField> {
-    let l = NSTextField::wrappingLabelWithString(&NSString::from_str(s), mtm);
+/// An SF Symbol, `None` when this macOS lacks it (then the item has no image).
+fn symbol(name: &str) -> Option<Retained<NSImage>> {
+    NSImage::imageWithSystemSymbolName_accessibilityDescription(&ns(name), None)
+}
+
+/// The menu bar image: 18×18 pt with bitmaps of 18 and 36 px, in colour (not a template). `dark`: a dark menu bar, which
+/// takes the light shades. `None` when AppKit refuses a bitmap; the caller then shows the letter.
+fn glyph_image(g: Glyph, dark: bool) -> Option<Retained<NSImage>> {
+    let pt = NSSize::new(18.0, 18.0);
+    let image = NSImage::initWithSize(NSImage::alloc(), pt);
+    for n in [18usize, 36] {
+        let px = text::icon(g, n as u32, !dark);
+        // SAFETY: null planes: the rep allocates its own buffer for this layout (8-bit RGBA, interleaved); the colour space
+        // name is a constant AppKit exports
+        let rep = unsafe {
+            NSBitmapImageRep::initWithBitmapDataPlanes_pixelsWide_pixelsHigh_bitsPerSample_samplesPerPixel_hasAlpha_isPlanar_colorSpaceName_bytesPerRow_bitsPerPixel(
+                NSBitmapImageRep::alloc(),
+                null_mut(),
+                n as isize,
+                n as isize,
+                8,
+                4,
+                true,
+                false,
+                NSDeviceRGBColorSpace,
+                (n * 4) as isize,
+                32,
+            )
+        }?;
+        let (data, row) = (rep.bitmapData(), usize::try_from(rep.bytesPerRow()).unwrap_or(0));
+        if data.is_null() || row < n * 4 {
+            return None;
+        }
+        for (y, line) in px.chunks_exact(n * 4).enumerate() {
+            // SAFETY: the rep's buffer holds `n` rows of `row` >= n * 4 bytes
+            unsafe { std::ptr::copy_nonoverlapping(line.as_ptr(), data.add(y * row), line.len()) };
+        }
+        rep.setSize(pt);
+        image.addRepresentation(&rep);
+    }
+    image.setTemplate(false);
+    Some(image)
+}
+
+/// Whether the menu bar behind `b` is dark: the best match among light and dark, so a vibrant variant counts too.
+fn dark_bar(b: &NSStatusBarButton) -> bool {
+    // SAFETY: constants AppKit exports
+    let (aqua, dark) = unsafe { (NSAppearanceNameAqua, NSAppearanceNameDarkAqua) };
+    b.effectiveAppearance().bestMatchFromAppearancesWithNames(&NSArray::from_slice(&[aqua, dark])).is_some_and(|n| *n == *dark)
+}
+
+fn label(mtm: MainThreadMarker, s: Text) -> Retained<NSTextField> {
+    let l = NSTextField::wrappingLabelWithString(&ns(s.get()), mtm);
     l.setPreferredMaxLayoutWidth(440.0);
     l.setSelectable(true);
     l
@@ -177,32 +249,47 @@ pub fn build(mtm: MainThreadMarker) -> Result<(), String> {
     let target = Target::new(mtm);
     let item_ = NSStatusBar::systemStatusBar().statusItemWithLength(NSVariableStatusItemLength);
     let menu = NSMenu::new(mtm);
-    let toggle = item(mtm, text::MENU_TOGGLE, Some(sel!(toggle:)), &target);
-    menu.addItem(&toggle);
-    menu.addItem(&item(mtm, text::MENU_SETTINGS, Some(sel!(showSettings:)), &target));
-    menu.addItem(&item(mtm, text::MENU_GUIDE, Some(sel!(showGuide:)), &target));
-    let waiting = item(mtm, &text::menu_waiting(""), Some(sel!(openDownload:)), &target);
+    let titled: Vec<(Retained<NSMenuItem>, Text)> = [
+        (text::MENU_TOGGLE, sel!(toggle:), None),
+        (text::MENU_SETTINGS, sel!(showSettings:), Some(SYMBOLS[0])),
+        (text::MENU_GUIDE, sel!(showGuide:), Some(SYMBOLS[1])),
+        (text::MENU_RESTART, sel!(restart:), Some(SYMBOLS[3])),
+        (text::MENU_QUIT, sel!(quit:), Some(SYMBOLS[4])),
+    ]
+    .into_iter()
+    .map(|(t, action, image)| {
+        let i = item(mtm, t.get(), action, &target);
+        // the toggle keeps its check mark and has no image
+        i.setImage(image.and_then(symbol).as_deref());
+        (i, t)
+    })
+    .collect();
+    let toggle = titled[0].0.clone();
+    let waiting = item(mtm, &text::menu_waiting("", false), sel!(openDownload:), &target);
+    waiting.setImage(symbol(SYMBOLS[2]).as_deref());
     waiting.setHidden(true);
+    for (i, _) in &titled[..3] {
+        menu.addItem(i);
+    }
     menu.addItem(&waiting);
     menu.addItem(&NSMenuItem::separatorItem(mtm));
-    // no action: the menu shows it disabled
-    menu.addItem(&item(mtm, &text::menu_version(), None, &target));
-    menu.addItem(&item(mtm, text::MENU_QUIT, Some(sel!(quit:)), &target));
+    for (i, _) in &titled[3..] {
+        menu.addItem(i);
+    }
     menu.setDelegate(Some(ProtocolObject::from_ref(&*target)));
     item_.setMenu(Some(&menu));
     item_.button(mtm).ok_or("the status item has no button")?;
 
-    let why = label(mtm, text::GUIDE_WHY);
-    let steps = label(mtm, text::GUIDE_STEPS);
+    let guide_texts: Vec<(Retained<NSTextField>, Text)> =
+        [text::GUIDE_WHY, text::GUIDE_STEPS, text::GUIDE_RELAUNCH, text::GUIDE_WARNING].into_iter().map(|t| (label(mtm, t), t)).collect();
+    let [why, steps, relaunch, warning] = [0, 1, 2, 3].map(|i| &guide_texts[i].0);
     // SAFETY: openSettings: is a method of Target
-    let button = unsafe { NSButton::buttonWithTitle_target_action(&NSString::from_str(text::GUIDE_BUTTON), Some(&target), Some(sel!(openSettings:)), mtm) };
+    let button = unsafe { NSButton::buttonWithTitle_target_action(&ns(text::GUIDE_BUTTON.get()), Some(&target), Some(sel!(openSettings:)), mtm) };
     let guide_status = label(mtm, text::guide_status(false));
     guide_status.setFont(Some(&NSFont::boldSystemFontOfSize(13.0)));
-    let relaunch = label(mtm, text::GUIDE_RELAUNCH);
-    let warning = label(mtm, text::GUIDE_WARNING);
     // a system colour: readable in light and dark
     warning.setTextColor(Some(&NSColor::systemRedColor()));
-    let views: [&NSView; 6] = [&why, &steps, &button, &guide_status, &relaunch, &warning];
+    let views: [&NSView; 6] = [why, steps, &button, &guide_status, relaunch, warning];
     let stack = NSStackView::stackViewWithViews(&NSArray::from_slice(&views), mtm);
     stack.setOrientation(NSUserInterfaceLayoutOrientation::Vertical);
     stack.setAlignment(NSLayoutAttribute::Leading);
@@ -221,13 +308,62 @@ pub fn build(mtm: MainThreadMarker) -> Result<(), String> {
     };
     // SAFETY: closing must only hide it; the Retained keeps ownership
     unsafe { guide.setReleasedWhenClosed(false) };
-    guide.setTitle(&NSString::from_str(text::GUIDE_TITLE));
+    guide.setTitle(&ns(text::GUIDE_TITLE.get()));
     guide.setContentView(Some(&stack));
     guide.setContentSize(stack.fittingSize());
     guide.center();
     settings::build(mtm, &target);
-    UI.set(Some(Ui { target, item: item_, toggle, waiting, guide, guide_status }));
+    UI.set(Some(Ui { target, item: item_, toggle, titled, waiting, guide, guide_texts, guide_button: button, guide_status, icon: Cell::new(None) }));
     Ok(())
+}
+
+/// The interface language changed: every menu title, the guide window (refitted) and the settings window (rebuilt). The
+/// tooltip and the guide's status line follow at the next `show_state`.
+pub fn relabel(mtm: MainThreadMarker) {
+    let target = UI.with_borrow(|u| {
+        let u = u.as_ref()?;
+        for (i, t) in &u.titled {
+            i.setTitle(&ns(t.get()));
+        }
+        for (l, t) in &u.guide_texts {
+            l.setStringValue(&ns(t.get()));
+        }
+        u.guide_button.setTitle(&ns(text::GUIDE_BUTTON.get()));
+        u.guide.setTitle(&ns(text::GUIDE_TITLE.get()));
+        if let Some(v) = u.guide.contentView() {
+            u.guide.setContentSize(v.fittingSize());
+        }
+        Some(u.target.clone())
+    });
+    if let Some(target) = target {
+        settings::rebuild(mtm, &target);
+    }
+}
+
+/// The self-test: the menu bar image for both glyphs in both shades, what the item shows, and every menu symbol.
+pub fn self_test() -> Result<(), String> {
+    for g in [Glyph::V, Glyph::E] {
+        for dark in [false, true] {
+            let reps = glyph_image(g, dark).map(|i| i.representations().count());
+            if reps != Some(2) {
+                return Err(format!("the menu bar image for {g:?} (dark {dark}) has {reps:?} bitmaps"));
+            }
+        }
+    }
+    if let Some(missing) = SYMBOLS.iter().find(|s| symbol(s).is_none()) {
+        return Err(format!("no SF Symbol {missing}"));
+    }
+    let shown = UI.with_borrow(|u| u.as_ref().and_then(|u| u.item.button(u.target.mtm())).map(|b| (b.image().is_some(), b.title().to_string())));
+    if shown != Some((true, String::new())) {
+        return Err(format!("the menu bar item shows {shown:?}, not its image"));
+    }
+    println!("TrioKey self-test: menu bar images and menu symbols OK");
+    Ok(())
+}
+
+/// The Quit item's title, for the self-test's language switch.
+pub fn quit_title() -> Option<String> {
+    UI.with_borrow(|u| u.as_ref().and_then(|u| u.titled.last()).map(|(i, _)| i.title().to_string()))
 }
 
 /// The 2-second timer and the input source notification. Registered in the self-test too, where neither fires: it never runs the loop.
@@ -259,11 +395,23 @@ pub fn show_state(s: State, on: bool, has_permission: bool) {
         let Some(u) = u else { return };
         let mtm = u.target.mtm();
         if let Some(b) = u.item.button(mtm) {
-            b.setTitle(&NSString::from_str(text::title(s)));
-            b.setToolTip(Some(&NSString::from_str(text::tooltip(s))));
+            // the shade is re-read on every refresh (the 2-second timer too), so a switch between light and dark is seen
+            let want = (text::glyph(s), dark_bar(&b));
+            if u.icon.get() != Some(want) {
+                let image = glyph_image(want.0, want.1);
+                b.setImage(image.as_deref());
+                // without an image the letter stays: an empty item could not be found to quit
+                b.setTitle(&ns(if image.is_some() { "" } else { text::title(s) }));
+                u.icon.set(image.is_some().then_some(want));
+            }
+            let tip = ns(text::tooltip(s).get());
+            b.setToolTip(Some(&tip));
+            if let Some(i) = b.image() {
+                i.setAccessibilityDescription(Some(&tip));
+            }
         }
         u.toggle.setState(if on { NSControlStateValueOn } else { NSControlStateValueOff });
-        u.guide_status.setStringValue(&NSString::from_str(text::guide_status(has_permission)));
+        u.guide_status.setStringValue(&ns(text::guide_status(has_permission).get()));
     });
 }
 
@@ -272,7 +420,7 @@ pub fn show_waiting(version: Option<&str>) {
         let Some(u) = u else { return };
         u.waiting.setHidden(version.is_none());
         if let Some(v) = version {
-            u.waiting.setTitle(&NSString::from_str(&text::menu_waiting(v)));
+            u.waiting.setTitle(&ns(&text::menu_waiting(v, triokey_shared::english())));
         }
     });
 }
@@ -308,8 +456,8 @@ fn copy_debug(mtm: MainThreadMarker) {
     // SAFETY: a constant AppKit exports
     pb.setString_forType(&NSString::from_str(&d), unsafe { NSPasteboardTypeString });
     let alert = NSAlert::new(mtm);
-    alert.setMessageText(&NSString::from_str(text::DIAG_COPIED));
-    alert.setInformativeText(&NSString::from_str(text::DIAG_COPIED_DETAIL));
+    alert.setMessageText(&ns(text::DIAG_COPIED.get()));
+    alert.setInformativeText(&ns(text::DIAG_COPIED_DETAIL.get()));
     activate(mtm);
     // no borrow of the app state is held here: the tap may run while the alert spins the run loop
     alert.runModal();

@@ -23,15 +23,6 @@ pub enum Hot {
     Swallow,
 }
 
-/// The hotkey as macOS uses it: Control+Space is the system's input-source switch, so a stored `ctrl_space` acts as none.
-pub fn effective(h: Hotkey) -> Hotkey {
-    if h == Hotkey::CtrlSpace {
-        Hotkey::Off
-    } else {
-        h
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct HotState {
     /// Exactly Control and Shift are held.
@@ -54,7 +45,7 @@ impl HotState {
         if m == 0 {
             self.spoiled = false;
         }
-        if fire && effective(hk) == Hotkey::CtrlShift {
+        if fire && hk == Hotkey::CtrlShift {
             Hot::Toggle
         } else {
             Hot::None
@@ -64,7 +55,7 @@ impl HotState {
     /// A key-down; Option+Z (exactly Option among the four modifiers) toggles and is swallowed.
     pub fn key_down(&mut self, hk: Hotkey, keycode: u16, flags: u64, autorepeat: bool) -> Hot {
         self.mouse_down(flags);
-        match effective(hk) {
+        match hk {
             Hotkey::AltZ if keycode == VK_Z && flags & MODS == FLAG_OPTION => {
                 if autorepeat {
                     Hot::Swallow
@@ -137,7 +128,7 @@ mod tests {
 
     #[test]
     fn other_settings_ignore_control_shift() {
-        for hk in [AltZ, CtrlSpace, Off] {
+        for hk in [AltZ, Off] {
             let mut s = HotState::default();
             s.flags_changed(hk, FLAG_CONTROL | FLAG_SHIFT);
             assert_eq!(s.flags_changed(hk, 0), Hot::None);
@@ -153,10 +144,8 @@ mod tests {
         assert_eq!(s.key_down(AltZ, VK_Z, FLAG_OPTION | FLAG_SHIFT, false), Hot::None);
         assert_eq!(s.key_down(AltZ, VK_Z, FLAG_OPTION | FLAG_COMMAND, false), Hot::None);
         assert_eq!(s.key_down(AltZ, 7, FLAG_OPTION, false), Hot::None);
-        for hk in [CtrlShift, CtrlSpace, Off] {
+        for hk in [CtrlShift, Off] {
             assert_eq!(s.key_down(hk, VK_Z, FLAG_OPTION, false), Hot::None);
         }
-        assert_eq!(effective(CtrlSpace), Off);
-        assert_eq!(effective(AltZ), AltZ);
     }
 }

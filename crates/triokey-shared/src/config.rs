@@ -4,8 +4,8 @@
 pub enum Hotkey {
     #[default]
     CtrlShift,
+    /// Option+Z on macOS.
     AltZ,
-    CtrlSpace,
     /// No hotkey: toggle from the tray only.
     Off,
 }
@@ -24,8 +24,10 @@ pub struct Settings {
     pub auto_update: bool,
     /// Unix seconds of the last check that got an answer; written by the updater.
     pub last_update_check: u64,
-    /// Settings window shows the config folder button and the hook timing line (display only).
+    /// Settings window shows the config folder and debug buttons (display only).
     pub dev_mode: bool,
+    /// Menus and windows in English instead of Vietnamese (config `language = en`).
+    pub english: bool,
 }
 
 impl Settings {
@@ -41,6 +43,7 @@ impl Settings {
         auto_update: true,
         last_update_check: 0,
         dev_mode: false,
+        english: false,
     };
 }
 
@@ -50,13 +53,9 @@ impl Default for Settings {
     }
 }
 
-/// (preset, config value, label in the settings window), in dropdown order.
-pub const HOTKEYS: [(Hotkey, &str, &str); 4] = [
-    (Hotkey::CtrlShift, "ctrl_shift", "Ctrl+Shift"),
-    (Hotkey::AltZ, "alt_z", "Alt+Z"),
-    (Hotkey::CtrlSpace, "ctrl_space", "Ctrl+Space"),
-    (Hotkey::Off, "none", "Không dùng"),
-];
+/// (preset, config value), in dropdown order; each app labels them (Alt+Z is Option+Z on macOS). The `ctrl_space` of
+/// 0.3.0 and earlier is no longer a value: it reads as the default.
+pub const HOTKEYS: [(Hotkey, &str); 3] = [(Hotkey::CtrlShift, "ctrl_shift"), (Hotkey::AltZ, "alt_z"), (Hotkey::Off, "none")];
 
 /// Unknown keys, malformed lines and bad values are ignored; missing keys keep their default.
 pub fn parse(text: &str) -> Settings {
@@ -66,9 +65,13 @@ pub fn parse(text: &str) -> Settings {
         let Some((k, v)) = line.split_once('=') else { continue };
         let (k, v) = (k.trim(), v.trim());
         if k == "hotkey" {
-            if let Some(&(h, _, _)) = HOTKEYS.iter().find(|(_, n, _)| *n == v) {
+            if let Some(&(h, _)) = HOTKEYS.iter().find(|(_, n)| *n == v) {
                 s.hotkey = h;
             }
+            continue;
+        }
+        if k == "language" {
+            s.english = v == "en";
             continue;
         }
         if k == "last_update_check" {
@@ -92,10 +95,20 @@ pub fn parse(text: &str) -> Settings {
 }
 
 pub fn render(s: &Settings) -> String {
-    let hotkey = HOTKEYS.iter().find(|(h, _, _)| *h == s.hotkey).map_or("ctrl_shift", |(_, n, _)| n);
+    let hotkey = HOTKEYS.iter().find(|(h, _)| *h == s.hotkey).map_or("ctrl_shift", |(_, n)| n);
     format!(
-        "enabled = {}\ntone_new = {}\nauto_english = {}\nyield_cjk = {}\nhotkey = {}\nrun_at_startup = {}\nrun_as_admin = {}\nauto_update = {}\nlast_update_check = {}\ndev_mode = {}\n",
-        s.enabled, s.tone_new, s.auto_english, s.yield_cjk, hotkey, s.run_at_startup, s.run_as_admin, s.auto_update, s.last_update_check, s.dev_mode
+        "enabled = {}\ntone_new = {}\nauto_english = {}\nyield_cjk = {}\nhotkey = {}\nrun_at_startup = {}\nrun_as_admin = {}\nauto_update = {}\nlast_update_check = {}\ndev_mode = {}\nlanguage = {}\n",
+        s.enabled,
+        s.tone_new,
+        s.auto_english,
+        s.yield_cjk,
+        hotkey,
+        s.run_at_startup,
+        s.run_as_admin,
+        s.auto_update,
+        s.last_update_check,
+        s.dev_mode,
+        if s.english { "en" } else { "vi" }
     )
 }
 
@@ -118,12 +131,13 @@ mod tests {
             tone_new: true,
             auto_english: false,
             yield_cjk: false,
-            hotkey: Hotkey::CtrlSpace,
+            hotkey: Hotkey::AltZ,
             run_at_startup: false,
             run_as_admin: true,
             auto_update: false,
             last_update_check: 1_795_000_000,
             dev_mode: true,
+            english: true,
         };
         assert_eq!(parse(&render(&s)), s);
         assert_eq!(
@@ -134,7 +148,7 @@ auto_update = false"
             .last_update_check,
             0
         );
-        for (h, name, _) in HOTKEYS {
+        for (h, name) in HOTKEYS {
             let a = Settings { hotkey: h, ..d };
             assert!(render(&a).contains(&format!(
                 "hotkey = {name}
@@ -144,6 +158,11 @@ auto_update = false"
         }
         assert_eq!(parse("hotkey = none").hotkey, Hotkey::Off);
         assert_eq!(parse("hotkey = ctrl+alt+v").hotkey, Hotkey::CtrlShift);
+        // 0.3.0 offered Control+Space; it falls back to the default
+        assert_eq!(parse("hotkey = alt_z\nhotkey = ctrl_space").hotkey, Hotkey::AltZ);
+        assert_eq!(parse("hotkey = ctrl_space").hotkey, Hotkey::CtrlShift);
+        assert!(parse("language = en").english && !parse("language = fr").english && !parse("").english);
+        assert!(render(&d).contains("language = vi\n"));
     }
 
     #[test]
@@ -153,7 +172,7 @@ auto_update = false"
 
     #[test]
     fn junk_lines_ignored() {
-        let s = parse("garbage\n# comment\nfoo = bar\n  tone_new =  true \r\nenabled = maybe\nhotkey = ctrl_space\n=\n");
-        assert_eq!(s, Settings { tone_new: true, hotkey: Hotkey::CtrlSpace, ..Settings::default() });
+        let s = parse("garbage\n# comment\nfoo = bar\n  tone_new =  true \r\nenabled = maybe\nhotkey = alt_z\n=\n");
+        assert_eq!(s, Settings { tone_new: true, hotkey: Hotkey::AltZ, ..Settings::default() });
     }
 }

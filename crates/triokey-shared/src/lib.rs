@@ -1,19 +1,46 @@
 //! What the Windows and the macOS app share and no OS call is needed for: the settings format
-//! (`config`), the credit and addresses both windows show, and masking the home folder in the
-//! debug information both apps copy to the clipboard.
+//! (`config`), the state glyphs (`glyph`), the interface language (`t`), the addresses both
+//! windows show, and masking the home folder in the debug information both apps copy to the
+//! clipboard.
+
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 
 pub mod config;
+pub mod glyph;
 
-/// The author's public handle and the year in the credit line.
-pub const AUTHOR: &str = "ved0el";
-pub const YEAR: u16 = 2026;
 /// The crates' `repository` field, and the page of the latest release.
 pub const REPOSITORY: &str = "https://github.com/ved0el/triokey";
 pub const RELEASES: &str = "https://github.com/ved0el/triokey/releases/latest";
 
-/// The footer credit, `TrioKey v<version> · © 2026 ved0el`; `version` is the app crate's own.
-pub fn credit(version: &str) -> String {
-    format!("TrioKey v{version} · © {YEAR} {AUTHOR}")
+/// The footer line, `TrioKey v<version>`; `version` is the app crate's own.
+pub fn footer(version: &str) -> String {
+    format!("TrioKey v{version}")
+}
+
+/// The interface language (`Settings::english`), set by the app when it reads or changes the settings. Never set in
+/// tests: they run in parallel and expect Vietnamese; test `pick` instead.
+static ENGLISH: AtomicBool = AtomicBool::new(false);
+
+pub fn set_english(on: bool) {
+    ENGLISH.store(on, Relaxed);
+}
+
+pub fn english() -> bool {
+    ENGLISH.load(Relaxed)
+}
+
+/// `vi` or `en` for the current interface language: every text a person sees goes through this (or `english()` for a
+/// formatted one), so switching the language takes effect at the next redraw.
+pub fn t(vi: &'static str, en: &'static str) -> &'static str {
+    pick(english(), vi, en)
+}
+
+pub fn pick<T>(english: bool, vi: T, en: T) -> T {
+    if english {
+        en
+    } else {
+        vi
+    }
 }
 
 /// `text` with every path inside `home` (the user's profile or home folder) starting with `~`
@@ -70,8 +97,11 @@ mod tests {
     }
 
     #[test]
-    fn credit_and_addresses() {
-        assert_eq!(credit("1.2.3"), "TrioKey v1.2.3 · © 2026 ved0el");
+    fn footer_language_and_addresses() {
+        assert_eq!(footer("1.2.3"), "TrioKey v1.2.3");
+        assert_eq!((pick(false, "Thoát", "Quit"), pick(true, "Thoát", "Quit")), ("Thoát", "Quit"));
+        // the default the tests rely on
+        assert!(!english() && t("Thoát", "Quit") == "Thoát");
         assert_eq!(REPOSITORY, env!("CARGO_PKG_REPOSITORY"));
         assert_eq!(RELEASES, format!("{REPOSITORY}/releases/latest"));
     }

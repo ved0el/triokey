@@ -47,7 +47,7 @@ const DAY: u64 = 24 * 3600;
 /// One whole request, on top of WinHTTP's per-step timeouts.
 const TOTAL: Duration = Duration::from_secs(600);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     Net,
     /// The signature file or its trusted comment is not what a TrioKey release carries.
@@ -61,14 +61,18 @@ pub enum Error {
 }
 
 impl Error {
-    fn text(&self) -> &'static str {
-        match self {
-            Error::Net => "không tải được từ GitHub",
-            Error::Format => "không đọc được chữ ký của bản phát hành",
-            Error::Signature => "chữ ký không hợp lệ, không cài",
-            Error::File | Error::NotWritable => "không ghi được vào thư mục chứa triokey.exe",
-            Error::Stranded => "đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe",
-        }
+    fn text(&self, en: bool) -> &'static str {
+        let (vi, english) = match self {
+            Error::Net => ("không tải được từ GitHub", "GitHub could not be reached"),
+            Error::Format => ("không đọc được chữ ký của bản phát hành", "the release's signature could not be read"),
+            Error::Signature => ("chữ ký không hợp lệ, không cài", "the signature is not valid, nothing installed"),
+            Error::File | Error::NotWritable => ("không ghi được vào thư mục chứa triokey.exe", "the folder of triokey.exe is not writable"),
+            Error::Stranded => (
+                "đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe",
+                "the file swap stopped half-way: Quit, then rename triokey.old.exe to triokey.exe",
+            ),
+        };
+        triokey_shared::pick(en, vi, english)
     }
 }
 
@@ -345,13 +349,13 @@ struct State {
     /// Installed in this run; active from the next start. One install per run: the running
     /// image now is `triokey.old.exe` and stays locked until exit.
     installed: Option<String>,
-    /// Shown in the settings window.
-    status: String,
+    /// Shown in the settings window, as data: worded at display time, in the language of that moment.
+    status: Status,
     /// (title, text) for the tray to show once.
     balloon: Option<(String, String)>,
 }
 
-static STATE: Mutex<State> = Mutex::new(State { pending: None, installed: None, status: String::new(), balloon: None });
+static STATE: Mutex<State> = Mutex::new(State { pending: None, installed: None, status: Status::None, balloon: None });
 static TX: OnceLock<Sender<bool>> = OnceLock::new();
 
 fn state() -> std::sync::MutexGuard<'static, State> {
@@ -363,12 +367,53 @@ fn set(f: impl FnOnce(&mut State)) {
     tray::notify_update();
 }
 
-/// The line under the update controls in the settings window.
-pub fn status() -> String {
-    if !available() {
-        return "Bản build này không có khoá cập nhật nên không tự cập nhật.".into();
+/// What the updater last said, for the line under the update controls.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum Status {
+    #[default]
+    None,
+    Checking,
+    Downloading,
+    Latest,
+    CheckFailed(Error),
+    /// A newer release exists but its files did not pass.
+    Unusable(Error),
+    /// This version waits for a click: short, the window adds the link and `click` knows the way.
+    Waiting(String),
+    InstallFailed(String, Error),
+    Installed(String),
+}
+
+impl Status {
+    pub fn text(&self, en: bool) -> String {
+        let p = |vi: &str, english: &str| triokey_shared::pick(en, vi, english).to_string();
+        match self {
+            Status::None => String::new(),
+            Status::Checking => p("Đang kiểm tra…", "Checking…"),
+            Status::Downloading => p("Đang tải bản mới…", "Downloading the new version…"),
+            Status::Latest => p("Đang dùng bản mới nhất.", "You have the latest version."),
+            Status::CheckFailed(e) => p("Chưa kiểm tra được: ", "Could not check: ") + e.text(en) + ".",
+            Status::Unusable(e) => p("Có bản phát hành mới nhưng chưa dùng được: ", "A new release exists but cannot be used: ") + e.text(en) + ".",
+            Status::Waiting(v) => p(&format!("Có bản mới v{v}."), &format!("Version {v} is available.")),
+            Status::InstallFailed(v, e) => p(&format!("Có bản {v} nhưng chưa cài được: "), &format!("Version {v} could not be installed: ")) + e.text(en) + ".",
+            Status::Installed(v) => {
+                p(&format!("Đã cập nhật lên {v}, có hiệu lực lần chạy sau."), &format!("Updated to {v}; it takes effect at the next start."))
+            }
+        }
     }
-    state().status.clone()
+}
+
+/// The line under the update controls in the settings window, in English (`en`) or Vietnamese.
+pub fn status(en: bool) -> String {
+    if !available() {
+        return triokey_shared::pick(
+            en,
+            "Bản build này không có khoá cập nhật nên không tự cập nhật.",
+            "This build has no update key, so it does not update itself.",
+        )
+        .into();
+    }
+    state().status.text(en)
 }
 
 /// The newer version waiting for a click (installs it, or opens the download page), if any: the
@@ -377,24 +422,18 @@ pub fn waiting() -> Option<String> {
     state().pending.as_ref().map(|(v, _)| v.clone())
 }
 
-/// The status while a version waits: short, the window adds the link and `click` knows the way.
-fn notice(version: &str) -> String {
-    format!("Có bản mới v{version}.")
-}
-
 /// Tray thread: the notification to show, once.
 pub fn take_balloon() -> Option<(String, String)> {
     state().balloon.take()
 }
 
 /// Tray menu item, only while a newer version waits.
-pub fn menu_label() -> Option<String> {
-    state().pending.as_ref().map(|(v, click)| {
-        if *click {
-            format!("Có bản {v} — bấm để cập nhật")
-        } else {
-            format!("Có bản {v} — mở trang tải về")
-        }
+pub fn menu_label(en: bool) -> Option<String> {
+    state().pending.as_ref().map(|(v, click)| match (*click, en) {
+        (true, false) => format!("Có bản {v} — bấm để cập nhật"),
+        (false, false) => format!("Có bản {v} — mở trang tải về"),
+        (true, true) => format!("Version {v} — click to update"),
+        (false, true) => format!("Version {v} — open the download page"),
     })
 }
 
@@ -414,7 +453,11 @@ pub fn click() {
         }
     } else if admin::is_elevated() {
         // never ShellExecute while elevated (an unelevated program can redirect it): the address as text
-        let t = format!("TrioKey đang chạy quyền admin nên không tự mở trình duyệt. Tải bản mới tại:\n\n{RELEASES_URL}");
+        let t = triokey_shared::t(
+            "TrioKey đang chạy quyền admin nên không tự mở trình duyệt. Tải bản mới tại:",
+            "TrioKey runs as administrator, so it does not open the browser itself. Download the new version at:",
+        );
+        let t = format!("{t}\n\n{RELEASES_URL}");
         unsafe { MessageBoxW(null_mut(), wide(&t).as_ptr(), wide("TrioKey").as_ptr(), MB_OK | MB_ICONINFORMATION) };
     } else {
         unsafe { ShellExecuteW(null_mut(), wide("open").as_ptr(), wide(RELEASES_URL).as_ptr(), null(), null(), SW_SHOWNORMAL) };
@@ -430,11 +473,11 @@ fn now() -> u64 {
 /// shown, stored or acted on beyond starting the download.
 fn run(key: &PublicKey, clicked: bool, manual: bool) {
     if let Some(v) = state().installed.clone() {
-        set(|s| s.status = format!("Đã cập nhật lên {v}, có hiệu lực lần chạy sau."));
+        set(|s| s.status = Status::Installed(v));
         return;
     }
     if manual {
-        set(|s| s.status = if clicked { "Đang tải bản mới…".into() } else { "Đang kiểm tra…".into() });
+        set(|s| s.status = if clicked { Status::Downloading } else { Status::Checking });
     }
     let found = find(Some(key), VERSION, &mut http_get);
     if found.is_ok() {
@@ -443,8 +486,8 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
     }
     let (claimed, sig) = match found {
         Ok(Some(found)) => found,
-        Ok(None) => return set(|s| (s.pending, s.status) = (None, "Đang dùng bản mới nhất.".into())),
-        Err(e) => return set(|s| s.status = format!("Chưa kiểm tra được: {}.", e.text())),
+        Ok(None) => return set(|s| (s.pending, s.status) = (None, Status::Latest)),
+        Err(e) => return set(|s| s.status = Status::CheckFailed(e)),
     };
     let known = state().pending.as_ref().is_some_and(|(v, _)| *v == claimed);
     if known && !manual {
@@ -453,7 +496,7 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
     }
     let (version, bytes) = match verified(key, VERSION, &sig, &mut http_get) {
         Ok(release) => release,
-        Err(e) => return set(|s| s.status = format!("Có bản phát hành mới nhưng chưa dùng được: {}.", e.text())),
+        Err(e) => return set(|s| s.status = Status::Unusable(e)),
     };
     let dir = std::env::current_exe().ok().as_deref().and_then(own_dir).map(Path::to_path_buf);
     let result = match (mode(), dir) {
@@ -461,10 +504,14 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
         (Mode::Click, Some(dir)) if clicked => install(&dir, &bytes),
         (Mode::Click, _) => {
             return set(|s| {
-                s.status = notice(&version);
-                // announce a version once, not at every daily check
+                s.status = Status::Waiting(version.clone());
+                // announce a version once, not at every daily check; shown at once, so worded now
                 if !known || manual {
-                    s.balloon = Some((format!("Có bản {version} — bấm để cập nhật"), "TrioKey chạy quyền admin chỉ cập nhật khi bạn bấm.".into()));
+                    s.balloon = Some(if triokey_shared::english() {
+                        (format!("Version {version} — click to update"), "TrioKey runs as administrator and updates only when you click.".into())
+                    } else {
+                        (format!("Có bản {version} — bấm để cập nhật"), "TrioKey chạy quyền admin chỉ cập nhật khi bạn bấm.".into())
+                    });
                 }
                 s.pending = Some((version, true));
             });
@@ -473,18 +520,22 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
     };
     match result {
         Ok(()) => set(|s| {
-            let t = format!("Đã cập nhật lên {version}, có hiệu lực lần chạy sau");
-            (s.pending, s.status, s.balloon) = (None, format!("{t}."), Some(("TrioKey".into(), t)));
+            let t = Status::Installed(version.clone()).text(triokey_shared::english());
+            (s.pending, s.status, s.balloon) = (None, Status::Installed(version.clone()), Some(("TrioKey".into(), t)));
             s.installed = Some(version);
         }),
         Err(Error::NotWritable) => set(|s| {
-            s.status = notice(&version);
+            s.status = Status::Waiting(version.clone());
             if !known || manual {
-                s.balloon = Some((format!("Có bản mới {version}"), "Bấm để mở trang tải về.".into()));
+                s.balloon = Some(if triokey_shared::english() {
+                    (format!("Version {version} is available"), "Click to open the download page.".into())
+                } else {
+                    (format!("Có bản mới {version}"), "Bấm để mở trang tải về.".into())
+                });
             }
             s.pending = Some((version, false));
         }),
-        Err(e) => set(|s| s.status = format!("Có bản {version} nhưng chưa cài được: {}.", e.text())),
+        Err(e) => set(|s| s.status = Status::InstallFailed(version, e)),
     }
 }
 
@@ -562,18 +613,33 @@ pub(crate) mod tests {
     }
 
     /// What the settings preview shows, set directly: nothing is checked, fetched or announced.
-    pub(crate) fn pretend(pending: Option<(&str, bool)>, status: &str) {
+    pub(crate) fn pretend(pending: Option<(&str, bool)>, status: Status) {
         let mut s = state();
-        (s.pending, s.status) = (pending.map(|(v, click)| (v.to_string(), click)), status.to_string());
+        (s.pending, s.status) = (pending.map(|(v, click)| (v.to_string(), click)), status);
     }
 
     #[test]
     fn a_waiting_version_is_short_and_named_once() {
-        assert_eq!(notice("0.3.0"), "Có bản mới v0.3.0.");
-        pretend(Some(("0.3.0", false)), &notice("0.3.0"));
-        assert_eq!((waiting(), menu_label()), (Some("0.3.0".into()), Some("Có bản 0.3.0 — mở trang tải về".into())));
-        pretend(None, "Đang dùng bản mới nhất.");
-        assert_eq!((waiting(), menu_label()), (None, None));
+        let w = Status::Waiting("0.3.0".into());
+        assert_eq!((w.text(false), w.text(true)), ("Có bản mới v0.3.0.".into(), "Version 0.3.0 is available.".into()));
+        pretend(Some(("0.3.0", false)), w);
+        assert_eq!((waiting(), menu_label(false)), (Some("0.3.0".into()), Some("Có bản 0.3.0 — mở trang tải về".into())));
+        assert_eq!(menu_label(true), Some("Version 0.3.0 — open the download page".into()));
+        pretend(None, Status::Latest);
+        assert_eq!((waiting(), menu_label(false)), (None, None));
+    }
+
+    #[test]
+    fn status_is_data_worded_at_display_time() {
+        assert_eq!(Status::None.text(true), "");
+        assert_eq!(Status::Latest.text(true), "You have the latest version.");
+        assert_eq!(Status::CheckFailed(Error::Net).text(false), "Chưa kiểm tra được: không tải được từ GitHub.");
+        assert_eq!(Status::CheckFailed(Error::Net).text(true), "Could not check: GitHub could not be reached.");
+        assert_eq!(
+            Status::InstallFailed("9.9.9".into(), Error::Stranded).text(false),
+            "Có bản 9.9.9 nhưng chưa cài được: đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe."
+        );
+        assert_eq!(Status::Installed("1.0.0".into()).text(false), "Đã cập nhật lên 1.0.0, có hiệu lực lần chạy sau.");
     }
 
     #[test]

@@ -26,11 +26,11 @@ signed and published by itself. What stands between a push and every installed c
   A tag ruleset restricting the creation of `v*` tags would add a second barrier; it is
   optional and not configured.
 
-## Once: the update key (done)
+## Once: the update key
 
-This was done for 0.1.0: the public key is committed in `crates/triokey/update-pubkey.txt`,
+The key pair exists: the public key is committed in `crates/triokey/update-pubkey.txt`,
 the secret key is stored as `TRIOKEY_SIGN_KEY` in the environment `release`, and that
-environment allows `v*` tags only. The steps are kept for "Changing the key".
+environment allows `v*` tags only. The steps below are for "Changing the key".
 
 1. Delete the old public key file (the tool never overwrites a file), then generate the pair.
    The secret path must be outside the repository; the tool refuses otherwise.
@@ -108,9 +108,7 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
      `vX.Y.Z` is what they compare.
    - No draft left over from an earlier failed run (see step 4).
 6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed, and the
-   macOS rows (M1 to M32) on a Mac with the released dmg whenever `triokey-mac` changed. Its rows
-   have not been run for any release so far. One automatic update was seen to work: the owner's
-   normal copy of 0.2.0 installed 0.2.1 by itself, leaving `triokey.old.exe` next to it.
+   macOS rows (M1 to M32) on a Mac with the released dmg whenever `triokey-mac` changed.
 
 To sign or check by hand (for example to test an exe without tagging):
 

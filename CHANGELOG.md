@@ -1,8 +1,28 @@
 # Changelog
 
+## Unreleased
+
+### Both apps
+
+- **Interface language:** a `Ngôn ngữ` / `Language` setting under `Hệ thống` switches menus, tooltips and windows between Vietnamese and English at once (config `language = vi|en`, Vietnamese by default).
+- **Same hotkeys on both:** Ctrl+Shift (default), Alt+Z (Option+Z on macOS) or none. Ctrl+Space is no longer offered on Windows; a stored `ctrl_space` now reads as Ctrl+Shift.
+- **Restart** (`Khởi động lại`) in the tray / menu bar menu, above `Thoát`. If the new copy cannot be started, TrioKey keeps running.
+- **Menu icons** next to Settings, the update item, Restart and Quit (Segoe Fluent Icons / MDL2 glyphs on Windows, SF Symbols on macOS; a menu without them if the font or symbol is missing).
+- **Settings footer** shows only `TrioKey vX.Y.Z` and the GitHub link.
+
+### Windows app (`triokey`)
+
+- The update status line is reworded when the language changes. A "Run as administrator" copy started from a user folder has no Restart item; the admin-mode copy restarts its own exe.
+
+### macOS app (`triokey-mac`, experimental)
+
+- **Fixed: letters lost while typing fast.** Text was posted on the key code of `A`; while the real `A` was still held (`maw`, `tawts`, `suawr`), apps dropped it, so `mă` showed `m` and `sửa tắt` showed `ửa ắt`. Text now rides on a key code no keyboard has.
+- **Menu bar icon** is the bold red `V` / blue `E` of the Windows tray, in the shade for a light or dark menu bar, instead of thin letters.
+- The menu no longer shows the version (it is in the settings footer).
+
 ## 0.3.0 (2026-11-26)
 
-First release for Windows and macOS together. The Windows changes below were seen only as images rendered by a test; the macOS app is experimental (see its section).
+First release for Windows and macOS together. The macOS app is experimental.
 
 ### Windows app (`triokey`)
 
@@ -11,7 +31,7 @@ First release for Windows and macOS together. The Windows changes below were see
 
 ### macOS app (`triokey-mac`, experimental)
 
-Written and type-checked on Windows. The owner installed the first macOS build on a Mac, granted the permission and typed with it; everything added since (settings window, files, hotkey, start at login, version check, debug information) has not run on a real Mac yet. The engine is unchanged; the Windows app changes are listed above.
+Written and type-checked on Windows; most of it (settings window, files, hotkey, start at login, version check, debug information) has not run on a real Mac yet. The engine is unchanged; the Windows app changes are listed above.
 
 - **Same engine, macOS front-end.** A session event tap reads key-downs, modifier changes (for the hotkey only) and mouse-downs; for an edit the key is swallowed and TrioKey posts Deletes, the text as Unicode key events (at most 20 UTF-16 units each) and, after a word ended with Return or Tab, the real key with the original Shift and Option. No input source or keyboard layout is registered. A panic or an internal error in the tap turns the tap off for the rest of the run and lets the key through.
 - **Menu bar item** `V`/`E` with a menu: `Tiếng Việt` (on/off), `Cài đặt…`, `Hướng dẫn cấp quyền…`, `Có bản … — mở trang tải về` while a newer version waits, `TrioKey <version>`, `Thoát`. No Dock icon.
@@ -27,8 +47,6 @@ Written and type-checked on Windows. The owner installed the first macOS build o
 
 ## 0.2.1 (2026-11-26)
 
-The owner reviewed images of the window rendered by a test at 96 DPI (hidden or cloaked, never on screen) and asked for the footer and the notice as they are now. The window itself has not been checked on a desktop (rows 2n to 2x in `docs/HANDS_ON_TEST.md`).
-
 ### Windows app (`triokey`)
 
 - **Settings window look.** Light and dark colours that follow the Windows app mode (Settings > Personalization > Colors), switched while the window is open. On Windows 11 the title bar has the same colour as the rest of the window, and the window border is a thin line that stays visible on a desktop of the same colour. The options are grouped under the headings `Gõ`, `Hệ thống` and `Cập nhật`, without frames. Below a thin line, the footer is one line of credit, `TrioKey vX.Y.Z · © 2026 ved0el`, and a `GitHub` link to the repository page. With high contrast on, the window keeps the plain system look and colours, and links take the system's hyperlink colour.
@@ -37,8 +55,6 @@ The owner reviewed images of the window rendered by a test at 96 DPI (hidden or 
 - **Links** (`Cập nhật tại đây`, `GitHub`) are reached with Tab and activated with Space, Enter or a click. The admin-mode copy opens no browser: the `GitHub` link shows the address in a message box, as the folder button shows the path. Enter presses the focused button (`Kiểm tra bản mới`, `Mở thư mục cấu hình…`) too.
 
 ## 0.2.0 (2026-11-26)
-
-The owner typed ordinary mixed English and Vietnamese text with this build on one Windows 11 machine and found it good enough to release; a few words still came out wrong. One hook timing reading was taken there (AT7 in `docs/HANDS_ON_TEST.md`): p99 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys. Everything else is covered by the automated tests only: no swap was remembered in that session, and admin mode, the icon checks and the updater (AT10) have not been run on a real machine.
 
 ### Engine (`triokey-engine`)
 
@@ -79,8 +95,8 @@ Behaviour that may surprise (each fixed with one Backspace unless noted):
 
 ### Windows app (`triokey`)
 
-- Keys that Windows flags as injected by a lower-integrity process (`LLKHF_LOWER_IL_INJECTED`) pass through untouched and drop the word being typed, so an elevated TrioKey never turns such keys into text. Effect: while TrioKey runs elevated (admin mode), tools that inject keys from a normal process (AutoHotkey, on-screen keyboards) get no Vietnamese. Not yet run on a real machine.
-- App icon for the exe (Explorer, taskbar, settings window). `build.rs` writes one COFF `.rsrc` object holding the icon group and the manifest, so no `windres` is needed; building now needs the `x86_64-pc-windows-gnu` toolchain. The settings window uses this icon instead of the V drawn at run time. The generated images are committed in `assets/brand/` (`triokey.ico`, `icon-512.png`, `social-preview.png`). The tray icons (monochrome `V` / `E`) are unchanged. Not yet run on a real machine.
+- Keys that Windows flags as injected by a lower-integrity process (`LLKHF_LOWER_IL_INJECTED`) pass through untouched and drop the word being typed, so an elevated TrioKey never turns such keys into text. Effect: while TrioKey runs elevated (admin mode), tools that inject keys from a normal process (AutoHotkey, on-screen keyboards) get no Vietnamese.
+- App icon for the exe (Explorer, taskbar, settings window). `build.rs` writes one COFF `.rsrc` object holding the icon group and the manifest, so no `windres` is needed; building now needs the `x86_64-pc-windows-gnu` toolchain. The settings window uses this icon instead of the V drawn at run time. The generated images are committed in `assets/brand/` (`triokey.ico`, `icon-512.png`, `social-preview.png`). The tray icons (monochrome `V` / `E`) are unchanged.
 
 ### Project
 
@@ -88,7 +104,7 @@ Behaviour that may surprise (each fixed with one Backspace unless noted):
 
 ## 0.1.0 (2026-11-25)
 
-First public version. Released on GitHub (`triokey.exe`, `triokey.exe.minisig`, a zip and `SHA256SUMS.txt`), built and signed by the release workflow; tried on Windows 11 only. See the Status section of the README for what has and has not been verified.
+First public version. Released on GitHub (`triokey.exe`, `triokey.exe.minisig`, a zip and `SHA256SUMS.txt`), built and signed by the release workflow.
 
 ### Engine (`triokey-engine`)
 
@@ -104,12 +120,9 @@ First public version. Released on GitHub (`triokey.exe`, `triokey.exe.minisig`, 
 ### Windows app (`triokey`)
 
 - Tray app built on a low-level keyboard hook, a low-level mouse hook (clicks only) and `SendInput`; no keyboard layout, text service or language-list change.
-- Steps aside for a CJK IME by reading its open/closed state per window; types Vietnamese in direct input under a CJK layout. An earlier build was hand-tested with Japanese (Microsoft IME) and passed AT1 and AT2 of `docs/HANDS_ON_TEST.md`; the current build has not been re-run. For Chinese and Korean only the decision rule is unit-tested.
+- Steps aside for a CJK IME by reading its open/closed state per window; types Vietnamese in direct input under a CJK layout.
 - Plain-text config in `%APPDATA%\triokey`.
 - Interface in Vietnamese only.
-
-Implemented, not yet run on a real machine:
-
 - Tray icon `V` / `E`, left click to switch on or off, hotkey presets (Ctrl+Shift, Alt+Z, Ctrl+Space, none).
 - Skipping of classic Win32 password fields (Edit/RichEdit controls with `ES_PASSWORD`).
 - Settings window, start with Windows and optional admin mode.

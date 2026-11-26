@@ -24,6 +24,9 @@ pub mod vk {
     pub const RIGHT: u16 = 124;
     pub const DOWN: u16 = 125;
     pub const UP: u16 = 126;
+    /// The key code the posted text rides on: one no keyboard has (Events.h defines no kVK_* 0x46). Never 0 (`A`): while
+    /// the real A is still down from fast typing (`ma` then `w`), apps dropped text posted on A's code, so `mă` showed `m`.
+    pub const TEXT: u16 = 0x46;
     /// F1..F20, Help: type nothing a word can hold.
     pub const FUNCTION: [u16; 21] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111, 105, 107, 113, 106, 64, 79, 80, 90, 114];
     /// Command, Shift, Caps Lock, Option, Control (left and right), Fn: normally flags-changed events, never typing.

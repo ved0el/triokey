@@ -193,7 +193,7 @@ fn key(code: u16, down: bool, flags: CGEventFlags) -> Result<CFRetained<CGEvent>
     Ok(e)
 }
 
-/// Backspaces, the text in chunks (key code 0 carrying the Unicode string), then the real Return or Tab. The person may
+/// Backspaces, the text in chunks (key code `vk::TEXT` carrying the Unicode string), then the real Return or Tab. The person may
 /// still hold Shift or Option: backspaces and text carry no flags, while the real key keeps the original event's Shift
 /// and Option (`flags`; Shift+Return is a new line in chat apps where Return sends).
 fn build(p: &Plan, flags: CGEventFlags) -> Result<Vec<CFRetained<CGEvent>>, String> {
@@ -204,7 +204,7 @@ fn build(p: &Plan, flags: CGEventFlags) -> Result<Vec<CFRetained<CGEvent>>, Stri
     }
     for c in chunks(&p.text) {
         for down in [true, false] {
-            let e = key(0, down, none)?;
+            let e = key(vk::TEXT, down, none)?;
             // SAFETY: `c` holds `c.len()` UTF-16 units
             unsafe { CGEvent::keyboard_set_unicode_string(Some(&e), c.len() as _, c.as_ptr()) };
             v.push(e);

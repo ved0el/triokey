@@ -52,7 +52,8 @@ Five crates under `crates/`:
   one event and return `Pass` or one `Edit` (delete N characters, insert text) that touches only
   the word being typed. After every key the whole word is recomputed from its raw keys.
 - **`triokey-shared`**: no OS calls, used by the apps: the `config.txt` format (`config`), the
-  credit and addresses, `mask_home` for the debug information.
+  `V`/`E` icon drawing and colours (`glyph`), the interface-language helper `t`, the footer line
+  and addresses, `mask_home` for the debug information.
 - **`triokey`**: the Windows tray app that feeds the engine and sends its edits.
 - **`triokey-mac`**: the macOS menu bar app (experimental, ARCHITECTURE 12). The platform-free
   parts (`keymap`, `plan`, `source`, `text`, `diag`, `hotkey`, `store`, `login`, `version`) are tested on every system; `src/mac/` is built

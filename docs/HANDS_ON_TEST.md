@@ -1,19 +1,17 @@
 # TrioKey — gõ thử trên máy thật
 
-Những gì kiểm được bằng `cargo test` đều đã chạy; các mục dưới đây chỉ kiểm được trên máy thật và, trừ AT1, AT2 (xem Phạm vi) và một lần đọc AT7, chưa ai chạy (phần macOS: xem đầu mục đó). Giao diện cửa sổ cài đặt (2a, 2n–2x) mới chỉ được xem qua ảnh do test `settings_preview` vẽ ra ở 96 DPI (cửa sổ ẩn hoặc bị che, không bao giờ hiện lên màn hình), chưa ai nhìn trên màn hình thật. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`.
+Những gì kiểm được bằng `cargo test` thì CI đã chạy; các mục dưới đây chỉ kiểm được trên máy thật. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`.
 
-**Phạm vi:** TrioKey nhường cho IME CJK (Chinese, Japanese, Korean). Tiếng Nhật (Microsoft IME, layout `0411`) đã được gõ thử tay trên một bản dựng trước đây: AT1 và AT2 dưới đây đạt (chưa điền vào các ô kết quả); bản hiện tại chưa gõ thử lại. Tiếng Trung và tiếng Hàn mới có luật được kiểm bằng unit test (`crates/triokey/src/ime.rs`), chưa ai gõ thử tay; các bước ở mục AT2-CK, làm khi có máy cài hai layout đó.
-
-Tên tạm trước đây là EVJ. Nếu từng chạy bản thử tên cũ: **thoát `evj.exe` trước** (bản mới dùng mutex tên khác nên không nhận ra bản cũ đang chạy; hai bản sẽ sửa chữ của nhau). Lần chạy đầu, TrioKey chép `config.txt`, `force_vi.txt`, `force_en.txt` từ `%APPDATA%\evj` sang `%APPDATA%\triokey` nếu thư mục mới chưa có (không chép khi đang chạy quyền admin; `run_as_admin` về `false`, phải bật lại chế độ admin và `Khởi động cùng Windows` trong `Cài đặt…`). Thư mục cũ được để nguyên; cách dọn ở mục "Gỡ hẳn".
+**Phạm vi:** TrioKey nhường cho IME CJK (Chinese, Japanese, Korean). Tiếng Nhật dùng Microsoft IME, layout `0411`. Với tiếng Trung và tiếng Hàn, luật được kiểm bằng unit test (`crates/triokey/src/ime.rs`); các bước gõ tay ở mục AT2-CK, làm khi có máy cài hai layout đó.
 
 ## Trước khi bắt đầu
 
-1. **Thoát VKey** và mọi bộ gõ tiếng Việt khác (kể cả biểu tượng ở khay). Hai bộ gõ chạy cùng lúc sẽ sửa chữ của nhau.
+1. **Thoát mọi bộ gõ tiếng Việt khác** (kể cả biểu tượng ở khay). Hai bộ gõ chạy cùng lúc sẽ sửa chữ của nhau.
 2. Build (nếu chưa có): ở gốc repo chạy `mise x -- cargo build -p triokey --release --target-dir target/m4`.
 3. Chạy: nhấp đúp `target\m4\release\triokey.exe` (cùng một file cho mọi mục dưới đây: mục tự khởi động và bản admin lấy đường dẫn của file đang chạy). Không có cửa sổ nào hiện ra; ở khay hệ thống xuất hiện chữ `V` màu đỏ, nền trong suốt (đỏ nhạt trên taskbar tối, đỏ đậm trên taskbar sáng; có thể nằm trong nhóm biểu tượng ẩn `^`).
    - Lần chạy đầu TrioKey tạo `%APPDATA%\triokey\config.txt` với giá trị mặc định và `learned.txt` (chỉ có hai dòng chú thích `#`; nơi lưu các từ đã đổi bằng Backspace, xem AT12). Có thể tự tạo thêm `force_vi.txt` / `force_en.txt` cùng thư mục (mỗi dòng một từ, viết theo phím gõ, `#` là chú thích); TrioKey đọc chúng lúc khởi động.
 4. Biểu tượng khay: `V` = gõ tiếng Việt, `E` = phím đi thẳng (đã tắt, hoặc đang nhường IME CJK; tooltip ghi tên IME: `IME Nhật`, `IME Trung` hoặc `IME Hàn`). Di chuột lên biểu tượng để xem lý do.
-   - Nhấp trái: bật/tắt. Nhấp phải: menu `Tiếng Việt` (có dấu tick khi bật) · `Cài đặt…` · `Thoát`.
+   - Nhấp trái: bật/tắt. Nhấp phải: menu `Tiếng Việt` (có dấu tick khi bật) · `Cài đặt…` · `Khởi động lại` · `Thoát`.
    - Phím tắt bật/tắt mặc định: bấm Ctrl+Shift rồi nhả, không kèm phím nào khác.
 
 **Thoát:** nhấp phải biểu tượng khay → `Thoát`. Nếu bàn phím loạn và không với tới khay: Ctrl+Shift+Esc → Task Manager → kết thúc `triokey.exe`. Windows tự gỡ hook khi tiến trình dừng.
@@ -60,9 +58,9 @@ Notepad, layout `0411`. Mỗi lần: bấm phím bật/tắt hiragana rồi gõ 
 
 Đạt khi 20/20. Trượt dù đã có thời gian chờ 30 ms thì dừng và báo lại (`docs/ARCHITECTURE.md`, 3.3).
 
-## AT2-CK — Lặp lại AT2/AT3 với tiếng Trung và tiếng Hàn (CHƯA CHẠY)
+## AT2-CK — Lặp lại AT2/AT3 với tiếng Trung và tiếng Hàn
 
-Chưa ai làm mục này: máy thử chỉ có layout `0409` và `0411`. Làm khi có máy cài **Chinese (Simplified) – Microsoft Pinyin** (layout `0804`) và **Korean – Microsoft IME** (layout `0412`). Không chặn mốc nào; ghi lại kết quả.
+Làm khi có máy cài **Chinese (Simplified) – Microsoft Pinyin** (layout `0804`) và **Korean – Microsoft IME** (layout `0412`). Không chặn mốc nào; ghi lại kết quả.
 
 Luật trong code (khác tiếng Nhật): với Trung/Hàn, TrioKey nhường khi IME mở **và** conversion mode có cờ NATIVE (đang gõ 中 / 한); ở chế độ chữ Latin (英 / A) thì gõ Telex. Khay khi nhường là `E`, tooltip `TrioKey: Tiếng Anh — đang nhường IME Trung` (layout `0804`) hoặc `… IME Hàn` (layout `0412`). Phím chuyển chế độ mặc định: Pinyin là Shift, Korean là phím Han/Eng hoặc Alt phải.
 
@@ -110,8 +108,6 @@ Gõ liên tục ít nhất 500 phím (văn bản bình thường, không bật/t
 | --- | --- | --- | --- |
 | | | | |
 
-Một lần đọc đã có, với bản 0.2.0 trên máy của tác giả: không gửi 314 µs, gửi 5600 µs, 502 phím (đạt).
-
 ## AT8 — Ô mật khẩu Win32
 
 Cần một ô mật khẩu Win32 cổ điển: control lớp `Edit` (hoặc `RichEdit…`) có style `ES_PASSWORD`, thường gặp ở hộp đăng nhập của ứng dụng desktop cũ. Nếu không chắc ô đó có phải loại này, ghi tên ứng dụng vào ô kết quả. Gõ `tieesng`, bấm hiện mật khẩu nếu có.
@@ -124,7 +120,7 @@ Cần một ô mật khẩu Win32 cổ điển: control lớp `Edit` (hoặc `Ri
 
 ## AT11 — Engine mới: gõ lẫn tiếng Anh và tiếng Việt
 
-Engine mới quyết định từng từ theo tần suất dùng của hai cách đọc và theo "chế độ dòng": dòng mới hơi nghiêng về tiếng Việt, mỗi từ đã gõ kéo dòng về một phía, Enter bắt đầu dòng mới. Bảng dưới đây chưa ai chạy trên máy thật (bản 0.2.0 mới được gõ thử tự do, không theo bảng); mọi kết quả mong đợi dưới đây đã được kiểm bằng cách cho engine gõ đúng các phím đó.
+Engine mới quyết định từng từ theo tần suất dùng của hai cách đọc và theo "chế độ dòng": dòng mới hơi nghiêng về tiếng Việt, mỗi từ đã gõ kéo dòng về một phía, Enter bắt đầu dòng mới. Mọi kết quả mong đợi dưới đây đã được kiểm bằng cách cho engine gõ đúng các phím đó.
 
 Notepad, layout `0409`. **Mỗi bước bắt đầu ở một dòng mới** (bấm Enter trước). Sau một lần Backspace đổi từ (⌫ ra cách đọc khác), **đừng** gõ phím cách hay Enter: nhấp chuột ra chỗ khác rồi xoá dòng, nếu không TrioKey sẽ nhớ lần đổi đó (xem AT12). ⌫ dưới đây là bấm Backspace một lần ngay sau phím cách.
 
@@ -159,22 +155,26 @@ Dùng cùng file `target\m4\release\triokey.exe` như ở đầu trang. Nếu v�
 | 1b | Settings → Personalization → Colors: đổi chế độ Windows (taskbar) giữa Dark và Light | đổi màu ngay, không cần chạy lại: `V` đỏ nhạt (Dark) ↔ đỏ đậm (Light); nhấp trái để tắt (khay `E`) rồi làm lại: `E` xanh nhạt ↔ xanh đậm | |
 | 1c | Nhấp trái biểu tượng | `V` ↔ `E`; tooltip `TrioKey: Tiếng Việt` / `TrioKey: Tiếng Anh — đã tắt` | |
 | 1d | Layout `0411`, bật hiragana | `E`, tooltip `TrioKey: Tiếng Anh — đang nhường IME Nhật` | |
-| 1e | Nhấp phải | menu `Tiếng Việt` (tick khi bật) · `Cài đặt…` · gạch ngang · `Thoát`; không còn dòng `Hook p99` | |
+| 1e | Nhấp phải | menu `Tiếng Việt` (tick khi bật) · `Cài đặt…` · gạch ngang · `Khởi động lại` · `Thoát`; không còn dòng `Hook p99` | |
+| 1e2 | Nhìn menu ở 100% và 150%, ở Light và Dark (app mode), và ở tương phản cao | `Cài đặt…` có biểu tượng bánh răng, `Khởi động lại` mũi tên vòng, `Thoát` nút nguồn (và dòng cập nhật ở 10g/10h có mũi tên tải xuống); biểu tượng cùng màu chữ của menu, sắc nét, không có nền vuông đen hay trắng, cỡ bằng dấu tick, chữ các dòng thẳng hàng; `Tiếng Việt` chỉ có dấu tick, không có biểu tượng. (Windows 10 không có Segoe Fluent Icons thì dùng Segoe MDL2 Assets; máy không có font nào trong hai font đó: menu không có biểu tượng, vẫn dùng được) | |
+| 1e3 | Nếu có hai màn hình khác tỉ lệ: mở menu trên taskbar của từng màn hình | biểu tượng cỡ bằng dấu tick ở cả hai | |
 | 1f | Task Manager → Processes → `Windows Explorer` → Restart | thanh taskbar hiện lại, biểu tượng TrioKey trở lại trong vài giây, nhấp trái/phải vẫn được | |
 | 1g | `Thoát` | biểu tượng mất ngay, không để lại biểu tượng "ma" phải rê chuột mới mất | |
+| 1h | Chạy lại, gõ thử, rồi nhấp phải → `Khởi động lại`; ngay sau đó gõ `tieesng ` trong Notepad | biểu tượng biến mất rồi hiện lại trong ≤ 3 s; Task Manager → Details chỉ có **một** `triokey.exe` (PID mới); `tiếng ` gõ đúng một lần, không bị sửa hai lần; các lựa chọn trong `Cài đặt…` giữ nguyên | |
+| 1h2 | Đổi tên hoặc chuyển chỗ `triokey.exe` khi đang chạy (Explorer cho phép đổi tên file đang chạy), rồi `Khởi động lại` | hộp thoại "Không khởi động lại được…"; TrioKey **vẫn chạy** (biểu tượng còn, gõ được). Trả tên file lại như cũ | |
 
 ## Cửa sổ cài đặt
 
 | Bước | Thao tác | Mong đợi | Kết quả |
 | --- | --- | --- | --- |
-| 2a | Nhấp phải → `Cài đặt…` | cửa sổ `TrioKey – Cài đặt` giữa màn hình, chữ tiếng Việt đủ dấu, không mờ ở 150%, không chữ nào bị cắt; có ô `Tự động cập nhật`, nút `Kiểm tra bản mới` và (khi có kết quả) một dòng kết quả bên dưới, không bị cắt; ô cuối của mục `Hệ thống` là `Chế độ phát triển` (chưa chọn); **không** có nút `Mở thư mục cấu hình…` và dòng `Hook p99`. Một đường kẻ mảnh, rồi dòng cuối: bên trái chữ xám `TrioKey v` + phiên bản trong `crates/triokey/Cargo.toml` + ` · © 2026 ved0el`, bên phải liên kết `GitHub` (chữ xanh gạch dưới), cùng một đường chân chữ. Ba tiêu đề đậm `Gõ`, `Hệ thống`, `Cập nhật`, không khung, không viền nhóm. Ô chọn, nút và hộp chọn có kiểu hiện hành của Windows 11 (không phải kiểu xám cổ điển), chữ Segoe UI, khoảng cách đều | |
+| 2a | Nhấp phải → `Cài đặt…` | cửa sổ `TrioKey – Cài đặt` giữa màn hình, chữ tiếng Việt đủ dấu, không mờ ở 150%, không chữ nào bị cắt; có ô `Tự động cập nhật`, nút `Kiểm tra bản mới` và (khi có kết quả) một dòng kết quả bên dưới, không bị cắt; dòng đầu của mục `Hệ thống` là `Ngôn ngữ` với hộp chọn `Tiếng Việt`, ô cuối là `Chế độ phát triển` (chưa chọn); **không** có nút `Mở thư mục cấu hình…` và dòng `Hook p99`. Một đường kẻ mảnh, rồi dòng cuối: bên trái chữ xám `TrioKey v` + phiên bản trong `crates/triokey/Cargo.toml` (không có tên tác giả, không có ©), bên phải liên kết `GitHub` (chữ xanh gạch dưới), cùng một đường chân chữ. Ba tiêu đề đậm `Gõ`, `Hệ thống`, `Cập nhật`, không khung, không viền nhóm. Ô chọn, nút và hộp chọn có kiểu hiện hành của Windows 11 (không phải kiểu xám cổ điển), chữ Segoe UI, khoảng cách đều | |
 | 2b | Mở `Cài đặt…` lần nữa khi cửa sổ đang mở | không mở cửa sổ thứ hai, cửa sổ cũ nổi lên | |
 | 2c | Vừa mở cửa sổ, bấm phím cách ngay; rồi Tab / Shift+Tab / phím cách; Tab tới một ô khác, Alt+Tab đi rồi về | phím cách đầu tiên bật/tắt `Bật gõ tiếng Việt` (ô này có focus sẵn; chọn lại cho bật); Tab đi qua lần lượt các ô; sau Alt+Tab focus vẫn ở ô cũ | |
 | 2d | Bỏ chọn `Bật gõ tiếng Việt` | khay thành `E` ngay; `config.txt` có `enabled = false`; chọn lại → `V` | |
 | 2d2 | Để cửa sổ mở, nhấp trái biểu tượng khay (hoặc bấm phím tắt) | ô `Bật gõ tiếng Việt` đổi theo ngay; `config.txt` không đổi | |
 | 2e | Phím tắt `Alt+Z`: bấm Alt+Z trong Notepad, nhả cả hai, rồi gõ `a` | bật/tắt (khay đổi), Notepad không nhận `z`; chữ `a` vào văn bản (thanh menu của Notepad **không** được kích hoạt); Ctrl+Shift không còn bật/tắt | |
 | 2e2 | Giữ Alt+Z 2 giây rồi nhả; lần nữa nhưng nhả Alt trước, Z sau | khay đổi đúng **một** lần mỗi lần giữ, không nhấp nháy; không có chữ `z` nào lọt vào Notepad | |
-| 2e3 | Phím tắt `Ctrl+Space`: bấm Ctrl+Space trong Notepad; giữ 2 giây; rồi bấm Ctrl+Shift+Space | bật/tắt một lần mỗi lần bấm, không có dấu cách nào vào Notepad; Ctrl+Shift+Space không bật/tắt | |
+| 2e3 | Mở hộp `Phím tắt`; rồi Thoát, sửa `config.txt` thành `hotkey = ctrl_space` (giá trị của 0.3.0), chạy lại, mở `Cài đặt…`; bấm Ctrl+Space trong Notepad | danh sách có đúng ba dòng `Ctrl+Shift` · `Alt+Z` · `Không dùng` (như bản macOS); sau khi sửa file: hộp hiện `Ctrl+Shift`, Ctrl+Shift bật/tắt, Ctrl+Space **không** bật/tắt và vào Notepad như thường | |
 | 2e4 | Chọn `Không dùng` | không phím nào bật/tắt, nhấp khay vẫn được. Trả về `Ctrl+Shift` | |
 | 2f | Chọn `hoà, thuý`, gõ ngay (không chạy lại) `hoaf thuys ` | `hoà thuý `; chọn lại `hòa, thúy` → `hòa thúy ` | |
 | 2g | Bỏ `Tự giữ nguyên từ tiếng Anh`, gõ `windows ` | `uindows ` (Telex thuần); chọn lại → `windows ` | |
@@ -197,6 +197,11 @@ Dùng cùng file `target\m4\release\triokey.exe` như ở đầu trang. Nếu v�
 | 2v | Bản admin (đã bật ở AT9, như 9j3): như 2u | **không** mở trình duyệt; mỗi lần một hộp thoại ghi địa chỉ `https://github.com/ved0el/triokey` | |
 | 2w | Ở Light, Dark và tương phản cao, nhìn liên kết `GitHub` (và `Cập nhật tại đây` ở 10g/10h) | chữ gạch dưới, đọc rõ trên nền: xanh đậm ở Light, xanh nhạt ở Dark, màu liên kết của chủ đề ở tương phản cao; dấu nặng của `ạ`, `ậ` không bị đường gạch che | |
 | 2x | Nhìn dòng kết quả cập nhật lúc mới mở (chưa kiểm tra), rồi bấm `Kiểm tra bản mới`, rồi (nếu có thể, ví dụ rút mạng) để có lỗi `Chưa kiểm tra được: không tải được từ GitHub.` | chưa có kết quả: một dòng trống được giữ sẵn dưới nút; `Đang kiểm tra…`, `Đang dùng bản mới nhất.` và lỗi không có mạng hiện trên đúng dòng đó, cửa sổ **không** đổi kích thước lần nào (cả khi bật `Chế độ phát triển`); chỉ một thông báo dài hai dòng (ví dụ lỗi khi cài dở) mới làm cửa sổ cao thêm; góc trên bên trái đứng yên, không chữ nào bị cắt | |
+| 2y | Bấm `Kiểm tra bản mới` (đợi kết quả), rồi ở `Ngôn ngữ` chọn `English` bằng chuột | cửa sổ dựng lại ngay bằng tiếng Anh, góc trên bên trái đứng yên: tiêu đề `TrioKey – Settings`, `Enable Vietnamese`, `Shortcut` (`None` thay cho `Không dùng`), `Typing`, `Tone mark placement` (không đè lên `hòa, thúy`), `Keep English words as typed`, `Step aside while a Japanese/Chinese/Korean IME is on`, `System`, `Language` (hộp vẫn có `Tiếng Việt` và `English`), `Start with Windows`, `Run as administrator (types in admin windows too)`, `Developer mode`, `Updates`, `Update automatically`, `Check for updates`; dòng kết quả cập nhật cũng đổi sang tiếng Anh (ví dụ `You have the latest version.`); không chữ nào bị cắt, ở cả 100% và 150%; con trỏ bàn phím vẫn ở hộp `Language`; `config.txt` có `language = en` | |
+| 2y2 | Rê chuột lên biểu tượng khay, nhấp phải, bật hiragana (layout `0411`) | tooltip `TrioKey: Vietnamese` / `TrioKey: English — off` / `TrioKey: English — yielding to the Japanese IME`; menu `Vietnamese` · `Settings…` · `Restart` · `Quit` (biểu tượng như 1e2) | |
+| 2y3 | Bật `Developer mode`, bấm `Copy debug info`; ở bản admin: `Open config folder…` và liên kết `GitHub` | hộp thoại bằng tiếng Anh (`The debug information is on the clipboard.`, `TrioKey runs as administrator, so it does not open …`); nội dung đã chép vẫn như 2i2 (tiếng Anh, dòng `update:` vẫn bằng tiếng Việt) | |
+| 2y4 | `Restart` (hoặc Thoát rồi chạy lại) | menu, tooltip và cửa sổ vẫn bằng tiếng Anh | |
+| 2y5 | Focus ở hộp `Language`, bấm mũi tên lên/xuống vài lần (hộp đang đóng); rồi Alt+↓ mở danh sách, bấm mũi tên lên/xuống (danh sách vẫn mở), Esc; mở lại, chọn `Tiếng Việt` bằng Enter; lần sau chọn bằng chuột | hộp đóng: mỗi lần đổi, cửa sổ dựng lại đúng ngôn ngữ đang chọn, không treo, focus vẫn ở hộp đó nên mũi tên bấm tiếp được; danh sách mở: mũi tên chỉ đổi dòng tô, danh sách **không** đóng, cửa sổ chưa đổi; Esc: không đổi gì; Enter hoặc nhấp chuột: danh sách đóng rồi cửa sổ dựng lại; cuối cùng mọi chữ trở lại tiếng Việt (như 2a) và `config.txt` có `language = vi` | |
 
 ## Tự khởi động (chế độ thường) và AT6
 
@@ -228,6 +233,9 @@ Dùng cùng file `target\m4\release\triokey.exe` như ở đầu trang. Nếu v�
 | 9j3 | Từ bản admin: `Cài đặt…` → chọn `Chế độ phát triển` → `Mở thư mục cấu hình…` | **không** mở Explorer; một hộp thoại ghi đường dẫn `%APPDATA%\triokey` | |
 | 9j3b | Từ bản admin: `Chép thông tin debug`, dán vào Notepad | dòng `copy: elevated; admin-mode copy yes`; không có tên người dùng | |
 | 9j4 | Từ bản admin: đổi `Kiểu bỏ dấu`, xem `config.txt` | `tone_new` đổi theo (bản admin vẫn ghi được file đã có sẵn). Trả lại như cũ | |
+| 9j5 | Từ bản admin: nhấp phải → `Khởi động lại` | không hỏi UAC; sau ≤ 3 s biểu tượng hiện lại; Task Manager → Details: **một** `triokey.exe` ở `C:\Program Files\TrioKey`, Elevated = Yes, PID mới; 9h vẫn đạt | |
+| 9j6 | Thoát bản admin; chạy `target\m4\release\triokey.exe` bằng "Run as administrator"; nhấp phải biểu tượng | menu **không** có `Khởi động lại` (bản quyền cao nằm ở thư mục người dùng ghi được); `Thoát` vẫn có. Thoát, chạy lại bản admin hoặc bản thường | |
+
 | 9k | Từ bản admin: `Cài đặt…` → bỏ chọn `Chạy quyền admin…` | không hỏi UAC và không có tiến trình `triokey.exe` thứ hai (phần admin chạy ngay trong bản này); thông báo đã tắt, thư mục xoá sau khi khởi động lại máy, nhắc Thoát và chạy lại bản thường | |
 | 9k2 | Ngay sau 9k, vẫn trong bản admin đó: chọn lại `Chạy quyền admin…` | báo "Không bật được chế độ admin: không chép được triokey.exe vào Program Files (mã 3)", ô trở lại trống, không có tác vụ nào được tạo (file của bản admin đã được đổi tên chờ xoá; phải bật lại từ bản thường) | |
 | 9l | `schtasks /Query /TN TrioKey` | báo không tìm thấy | |
@@ -236,25 +244,25 @@ Dùng cùng file `target\m4\release\triokey.exe` như ở đầu trang. Nếu v�
 | 9m3 | Chỉ khi có sẵn một máy không tách token: Windows Sandbox (có lẽ, chưa kiểm), tài khoản `Administrator` dựng sẵn, hoặc UAC tắt hẳn (`EnableLUA = 0`; kéo thanh trượt UAC xuống thấp nhất **không** đủ, token vẫn bị tách). Đừng tắt UAC trên máy chính chỉ để thử. Chạy TrioKey lần đầu ở đó, mở `Cài đặt…`, đổi một ô, chọn `Chế độ phát triển`, bấm `Mở thư mục cấu hình…` | `%APPDATA%\triokey\config.txt` được tạo và đổi theo; **không** có cảnh báo "Không lưu được config.txt…"; Explorer mở thư mục (ở đó không có phía quyền thường nào nên TrioKey xử sự như bản thường) | |
 | 9n | (Từ bản thường) bật chế độ admin, bấm **No** ở câu "chạy ngay"; xem ô `Khởi động cùng Windows`; rồi bỏ chọn `Chạy quyền admin…` ngay trong bản thường | sau khi bấm No: `Khởi động cùng Windows` được chọn và mờ đi. Khi bỏ chọn: một UAC; thông báo đã tắt và xoá `C:\Program Files\TrioKey`; thư mục mất ngay; nếu `Khởi động cùng Windows` đã bật trước đó thì giá trị Run `TrioKey` trở lại | |
 
-Chưa ai kiểm trên máy thật: `schtasks /Run` từ bản thường có chạy được tác vụ quyền cao nhất không (9g), schtasks có nhận file XML UTF-16 không (9c), phím "che" sau Alt+Z có chặn được thanh menu không (2e), biểu tượng có trở lại sau khi Explorer khởi động lại không (1f, 9j2), cửa sổ cài đặt trông ra sao với manifest mới (2a, 2k), và biểu tượng của cửa sổ ở từng tỉ lệ (2m). Nếu 9c báo "Không bật được chế độ admin", ghi lại. Chế độ admin giả định bạn là admin của máy và đồng ý UAC bằng chính tài khoản mình.
+Chưa ai kiểm trên máy thật: `schtasks /Run` từ bản thường có chạy được tác vụ quyền cao nhất không (9g), schtasks có nhận file XML UTF-16 không (9c), phím "che" sau Alt+Z có chặn được thanh menu không (2e), biểu tượng có trở lại sau khi Explorer khởi động lại không (1f, 9j2), cửa sổ cài đặt trông ra sao với manifest mới (2a, 2k), biểu tượng của cửa sổ ở từng tỉ lệ (2m), biểu tượng trong menu khay (1e2, 1e3), `Khởi động lại` ở bản thường và bản admin (1h, 9j5) và giao diện tiếng Anh (2y đến 2y5). Nếu 9c báo "Không bật được chế độ admin", ghi lại. Chế độ admin giả định bạn là admin của máy và đồng ý UAC bằng chính tài khoản mình.
 
 # Tự cập nhật (AT10)
 
-Làm được từ giờ: khoá ký thật đã có trong repo và các bản v0.1.0, v0.1.1 đã được phát hành trên GitHub (2026-11-25). Một lần tự cập nhật đã chạy thật: bản thường 0.2.0 trên máy của tác giả tự lên 0.2.1 (2026-11-26), `triokey.old.exe` còn nằm bên cạnh. Các dòng dưới đây thì chưa ai chạy riêng.
+Cần khoá ký thật trong repo (đã có) và ít nhất một bản đã phát hành trên GitHub.
 
 **Chuẩn bị một bản "cũ":** sửa tạm `version` trong `crates/triokey/Cargo.toml` xuống thấp hơn bản đã phát hành (ví dụ `0.0.9`, **không commit**), build `mise x -- cargo build -p triokey --release --target-dir target/m4`, rồi trả `Cargo.toml` và `Cargo.lock` lại như cũ (`git checkout -- crates/triokey/Cargo.toml Cargo.lock`). Chép `target\m4\release\triokey.exe` vào một thư mục thử riêng (ví dụ `D:\tmp\tk`) và chạy từ đó. Trước mỗi bước, xoá dòng `last_update_check` trong `config.txt` khi TrioKey đang tắt, để nó kiểm tra lại ngay.
 
 | Bước | Thao tác | Mong đợi | Kết quả |
 | --- | --- | --- | --- |
 | 10a | Bản build bình thường (cùng phiên bản với bản phát hành mới nhất), mở `Cài đặt…`, bấm `Kiểm tra bản mới` | dòng kết quả: `Đang kiểm tra…` rồi `Đang dùng bản mới nhất.`; cửa sổ không đơ trong lúc chờ và không đổi kích thước; `config.txt` có `last_update_check` khác 0 | |
-| 10b | Chạy bản "cũ" từ thư mục thử, chờ khoảng một phút (không bấm gì) | thông báo `Đã cập nhật lên X.Y.Z, có hiệu lực lần chạy sau`; trong thư mục có `triokey.exe` (mới: SHA-256 khớp `SHA256SUMS.txt` của bản phát hành) và `triokey.old.exe`, không còn `triokey.new.exe`; gõ tiếng Việt vẫn bình thường trong lúc tải và sau đó | |
+| 10b | Chạy bản "cũ" từ thư mục thử, chờ khoảng một phút (không bấm gì) | thông báo `Đã cập nhật lên X.Y.Z, có hiệu lực lần chạy sau.`; trong thư mục có `triokey.exe` (mới: SHA-256 khớp `SHA256SUMS.txt` của bản phát hành) và `triokey.old.exe`, không còn `triokey.new.exe`; gõ tiếng Việt vẫn bình thường trong lúc tải và sau đó | |
 | 10c | Ngay sau 10b: mở `Cài đặt…`, bấm `Kiểm tra bản mới`; nhấp phải khay | dòng kết quả `Đã cập nhật lên X.Y.Z, có hiệu lực lần chạy sau.`; menu khay **không** có dòng cập nhật | |
 | 10d | `Thoát`, chạy lại `triokey.exe` trong thư mục thử, mở `Cài đặt…` | góc dưới ghi phiên bản mới; `triokey.old.exe` đã mất; nếu `Khởi động cùng Windows` đang bật thì vẫn bật | |
 | 10e | Bản "cũ" lần nữa (chép lại), bỏ chọn `Tự động cập nhật`, `Thoát`, xoá dòng `last_update_check`, chạy lại và để 3 phút. Mở Resource Monitor → Network, lọc `triokey.exe` | không có kết nối mạng nào, không có thông báo, exe không đổi; `config.txt` có `auto_update = false`. Bấm `Kiểm tra bản mới` thì vẫn kiểm tra (và ở bản thường thì cài) | |
 | 10f | Ngắt mạng (tắt Wi-Fi), bấm `Kiểm tra bản mới` | sau tối đa vài chục giây: `Chưa kiểm tra được: không tải được từ GitHub.` trên một dòng, cửa sổ không đổi cỡ (cả lúc hiện `Đang kiểm tra…`); gõ tiếng Việt không bị ảnh hưởng; `last_update_check` không đổi | |
 | 10g | Chép bản "cũ" vào một thư mục tài khoản thường không ghi được (tạo bằng quyền admin, ví dụ `C:\Program Files\tk-test`), chạy **không** nâng quyền | thông báo `Có bản mới X.Y.Z`; menu khay có `Có bản X.Y.Z — mở trang tải về`; bấm thì trình duyệt mở trang phát hành; trong `Cài đặt…` dòng kết quả ghi `Có bản mới vX.Y.Z.` rồi liên kết `Cập nhật tại đây` trên cùng dòng, không có địa chỉ viết ra; bấm liên kết (hoặc Tab tới rồi phím cách / Enter) cũng mở trang phát hành; thư mục không có file mới nào. Dọn: xoá thư mục thử bằng quyền admin | |
 | 10h | Từ bản "cũ" trong thư mục thử: bật `Chạy quyền admin…`, chọn chạy bản admin ngay, chờ khoảng một phút | thông báo `Có bản X.Y.Z — bấm để cập nhật`; `C:\Program Files\TrioKey\triokey.exe` **chưa** đổi và thư mục đó không có file mới nào (bản admin không tự cài; nó tải file exe vào bộ nhớ để kiểm chữ ký trước khi báo); `last_update_check` trong `config.txt` **không** đổi (bản admin không tự ghi file này); menu khay có dòng `Có bản X.Y.Z — bấm để cập nhật`; dòng kết quả trong `Cài đặt…` ghi `Có bản mới vX.Y.Z.` rồi liên kết `Cập nhật tại đây` | |
-| 10i | Bấm vào dòng đó trong menu khay (hoặc vào thông báo, hoặc liên kết `Cập nhật tại đây` trong `Cài đặt…`) | không có hộp UAC; thông báo `Đã cập nhật lên X.Y.Z, có hiệu lực lần chạy sau`; trong `C:\Program Files\TrioKey` có exe mới và `triokey.old.exe`; `triokey.exe` trong thư mục thử (bản thường) **không** bị đụng tới. Đăng xuất/vào lại: bản admin là phiên bản mới, `triokey.old.exe` đã mất | |
+| 10i | Bấm vào dòng đó trong menu khay (hoặc vào thông báo, hoặc liên kết `Cập nhật tại đây` trong `Cài đặt…`) | không có hộp UAC; thông báo `Đã cập nhật lên X.Y.Z, có hiệu lực lần chạy sau.`; trong `C:\Program Files\TrioKey` có exe mới và `triokey.old.exe`; `triokey.exe` trong thư mục thử (bản thường) **không** bị đụng tới. Đăng xuất/vào lại: bản admin là phiên bản mới, `triokey.old.exe` đã mất | |
 | 10j | Tắt chế độ admin. Nhấp phải bản "cũ" trong thư mục thử → Run as administrator | thông báo `Có bản mới X.Y.Z`; bấm vào, hoặc bấm liên kết `Cập nhật tại đây` trong `Cài đặt…`, thì hiện hộp thoại ghi địa chỉ trang phát hành (trình duyệt **không** tự mở); thư mục thử không có `triokey.new.exe` hay `triokey.old.exe`, exe không đổi | |
 | 10k | Trong lúc 10b đang tải (hoặc ngay sau), bấm `Chép thông tin debug` trong `Cài đặt…` (chọn `Chế độ phát triển` trước) và đọc dòng `hook:` | p99 "không gửi" vẫn dưới 1000 µs | |
 
@@ -262,7 +270,7 @@ Chưa ai kiểm trên máy thật: WinHTTP có đi qua được hai lần chuy�
 
 # Ghi nhớ từ đã đổi (AT12)
 
-Đổi một từ bằng một lần Backspace rồi gõ phím cách, Tab hoặc Enter thì TrioKey nhớ lần đổi đó trong `%APPDATA%\triokey\learned.txt` (mỗi dòng `phím gõ<TAB>chữ hiện ra`) và dùng lại từ lần sau. File được ghi khoảng 2 giây sau thay đổi cuối, khi Thoát và khi đăng xuất/tắt máy. Chưa chạy trên máy thật; phần engine đã được kiểm bằng test, việc ghi file trong bản admin chỉ được kiểm trên thư mục tạm.
+Đổi một từ bằng một lần Backspace rồi gõ phím cách, Tab hoặc Enter thì TrioKey nhớ lần đổi đó trong `%APPDATA%\triokey\learned.txt` (mỗi dòng `phím gõ<TAB>chữ hiện ra`) và dùng lại từ lần sau. File được ghi khoảng 2 giây sau thay đổi cuối, khi Thoát và khi đăng xuất/tắt máy. Phần engine đã được kiểm bằng test; việc ghi file trong bản admin mới chỉ được kiểm trên thư mục tạm.
 
 Notepad, bản thường (chưa bật chế độ admin), mỗi bước ở một dòng mới. Xem `learned.txt` bằng một cửa sổ Notepad khác, **không lưu** file đó khi TrioKey đang chạy (TrioKey sẽ ghi đè).
 
@@ -279,15 +287,15 @@ Notepad, bản thường (chưa bật chế độ admin), mỗi bước ở mộ
 | 12i | Bật lại chế độ admin và chạy bản admin (AT9, bước 9c và 9g): làm 12c trong Notepad thường | `thí `; `learned.txt` có dòng `this` + `thí` (bản admin ghi được file có sẵn). Dọn: làm 12e | |
 | 12j | Bản admin đang chạy: đổi tên `learned.txt` thành tên khác; đăng xuất, đăng nhập lại (bản admin tự chạy); làm 12c rồi chờ 3 giây; `Thoát` | trong phiên đó vẫn ra `thí ` lần sau (nhớ trong bộ nhớ); **không** có `learned.txt` nào được tạo, kể cả sau khi Thoát. Đổi tên file cũ lại | |
 
-# macOS (bản thử nghiệm, M1–M32)
+# macOS (bản thử nghiệm, M1–M37)
 
-Bản macOS được viết trên Windows. Chủ dự án đã cài bản dựng macOS đầu tiên trên máy Mac, cấp quyền và gõ bằng nó: mở, cấp quyền và gõ chạy được (ghi ở M3, M6, M8; chi tiết của từng dòng như chữ trong hộp thoại hay thời gian 2 giây không được ghi lại). Ngoài ba việc đó chưa dòng nào được chạy; M21–M32 (cửa sổ cài đặt, file, phím tắt, khởi động cùng máy, kiểm tra bản mới, thông tin debug) được thêm sau bản dựng đó và chưa từng chạy trên máy Mac thật. Mọi cột `Mong đợi` còn trống là điều mã nguồn định làm, không phải điều đã thấy. Thiết kế: `docs/ARCHITECTURE.md`, mục 12. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`, và ghi phiên bản macOS (menu Apple → Giới thiệu về máy Mac này) cùng loại máy (Apple silicon hay Intel).
+Bản macOS được viết trên Windows. M21–M32 kiểm cửa sổ cài đặt, file, phím tắt, khởi động cùng máy, kiểm tra bản mới và thông tin debug; M33–M37 kiểm biểu tượng màu trên menu bar, biểu tượng trong menu, khởi động lại, ngôn ngữ giao diện và gõ nhanh `maw`. Cột `Mong đợi` là điều mã nguồn định làm, không phải điều đã thấy. Thiết kế: `docs/ARCHITECTURE.md`, mục 12. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`, và ghi phiên bản macOS (menu Apple → Giới thiệu về máy Mac này) cùng loại máy (Apple silicon hay Intel).
 
 **Trước khi bắt đầu**
 
 1. Tải `TrioKey-X.Y.Z-macos.dmg` ở trang Releases của repo (bản phát hành mới nhất, từ 0.3.0). Kiểm tra: `shasum -a 256 TrioKey-X.Y.Z-macos.dmg` phải khớp dòng của nó trong `SHA256SUMS.txt` cùng bản phát hành. (Bản dựng giữa hai lần phát hành: trang Actions, workflow `macOS`, artifact `TrioKey-macos-dmg`, cần đăng nhập GitHub; ghi lại lần chạy đó có bước `Self-test` xanh hay đỏ, vì dmg vẫn được tải lên cả khi self-test trượt.)
 2. Thoát mọi bộ gõ tiếng Việt khác. Nếu đang dùng nguồn nhập tiếng Việt có sẵn của macOS thì chuyển sang ABC hoặc U.S.: TrioKey chỉ gõ khi nguồn nhập là một bàn phím Latin thường (ABC, U.S.…); với mọi bộ gõ khác (kể cả tiếng Nhật ở chế độ Latin) nó nhường.
-3. Menu bar: `V` = đang gõ tiếng Việt, `E` = mọi trường hợp khác. Di chuột lên chữ để xem lý do (tooltip có thể không hiện với mục menu bar; khi đó dùng `Chép thông tin debug` (M7), dòng `state:` cho biết).
+3. Menu bar: chữ `V` đỏ = đang gõ tiếng Việt, chữ `E` xanh = mọi trường hợp khác. Di chuột lên chữ để xem lý do (tooltip có thể không hiện với mục menu bar; khi đó dùng `Chép thông tin debug` (M7), dòng `state:` cho biết).
 
 **Thoát:** bấm chữ `V`/`E` trên menu bar → `Thoát`. Nếu bàn phím loạn mà không bấm được menu: Activity Monitor → chọn TrioKey → nút ⓧ → Buộc thoát. **Không** tắt hay xoá TrioKey trong Trợ năng (Accessibility) khi nó đang chạy: theo các báo cáo của lập trình viên, việc đó có thể làm bàn phím và chuột đứng tới khi khởi động lại máy.
 
@@ -295,12 +303,12 @@ Bản macOS được viết trên Windows. Chủ dự án đã cài bản dựng
 | --- | --- | --- | --- |
 | M1 | Mở dmg, kéo `TrioKey` vào lối tắt `Applications` bên cạnh. Mở file `DOC TRUOC - READ FIRST.txt` | TrioKey nằm trong thư mục Applications; file đọc trước có hai phần tiếng Việt và tiếng Anh | |
 | M2 | Mở TrioKey **từ Applications** (không phải từ dmg) | macOS báo không mở được vì chưa kiểm được nhà phát triển; bấm Xong. Ghi lại đúng chữ trong hộp thoại | |
-| M3 | Cài đặt hệ thống → Quyền riêng tư & Bảo mật, kéo xuống, bấm `Vẫn mở` (Open Anyway), rồi `Mở` ở hộp thoại sau. Ghi lại nếu các bước khác đi (macOS 14 và 26 chưa ai xem) | TrioKey chạy: không có biểu tượng ở Dock, chữ `E` hiện trên menu bar | bản dựng đầu (chủ dự án): mở được |
+| M3 | Cài đặt hệ thống → Quyền riêng tư & Bảo mật, kéo xuống, bấm `Vẫn mở` (Open Anyway), rồi `Mở` ở hộp thoại sau. Ghi lại nếu các bước khác đi | TrioKey chạy: không có biểu tượng ở Dock, chữ `E` hiện trên menu bar | |
 | M4 | Ngay sau M3 | Cửa sổ `Hướng dẫn cấp quyền` hiện ra phía trước, dòng trạng thái in đậm `Chưa có quyền`; có thể kèm hộp thoại của macOS mời mở cài đặt Trợ năng. Menu bar `E`, tooltip `TrioKey: chưa có quyền Accessibility` | |
 | M5 | Bấm nút `Mở cài đặt Accessibility` | Cài đặt hệ thống mở đúng trang Quyền riêng tư & Bảo mật → Trợ năng. Nếu mở trang khác hoặc không mở: ghi lại rồi tự vào trang đó | |
-| M6 | Bật công tắc TrioKey (không thấy trong danh sách thì bấm `+` và chọn TrioKey trong Applications). Nhìn cửa sổ hướng dẫn, không khởi động lại TrioKey | Trong vòng khoảng 2 giây: dòng trạng thái đổi thành `Đã có quyền, TrioKey đang chạy`, menu bar thành `V` (nguồn nhập ABC/U.S.). Nếu sau 10 giây vẫn `Chưa có quyền`: Thoát, mở lại TrioKey từ Applications, ghi lại là phải mở lại | bản dựng đầu (chủ dự án): cấp quyền được |
+| M6 | Bật công tắc TrioKey (không thấy trong danh sách thì bấm `+` và chọn TrioKey trong Applications). Nhìn cửa sổ hướng dẫn, không khởi động lại TrioKey | Trong vòng khoảng 2 giây: dòng trạng thái đổi thành `Đã có quyền, TrioKey đang chạy`, menu bar thành `V` (nguồn nhập ABC/U.S.). Nếu sau 10 giây vẫn `Chưa có quyền`: Thoát, mở lại TrioKey từ Applications, ghi lại là phải mở lại | |
 | M7 | Menu → `Cài đặt…` → tích `Chế độ phát triển` → `Chép thông tin debug`, dán vào ô Kết quả hoặc gửi lại | Một hộp thoại báo đã chép; đoạn chữ có `tap: created yes, enabled yes`, `bundle: /Applications/TrioKey.app (AppTranslocation: no)`, `state: TrioKey: Tiếng Việt`, và không chứa chữ nào bạn đã gõ | |
-| M8 | TextEdit (một văn bản mới), mỗi bước một dòng: `tieesng vieejt ` · `DDuowngf ` · `windows terrible ` | `tiếng việt ` · `Đường ` · `windows terrible ` | bản dựng đầu (chủ dự án): gõ được; từng dòng ở đây không được ghi lại |
+| M8 | TextEdit (một văn bản mới), mỗi bước một dòng: `tieesng vieejt ` · `DDuowngf ` · `windows terrible ` | `tiếng việt ` · `Đường ` · `windows terrible ` | |
 | M9 | TextEdit, dòng trộn: `tooi caanf test laij ` · `OS naof cungx dduwowcj ` | `tôi cần test lại ` · `OS nào cũng được ` | |
 | M10 | TextEdit, Backspace: `this ` rồi ⌫ · dòng mới `this ` rồi ⌫ ⌫ · dòng mới `tooi ` rồi ⌫ | `thí` · `th` · `tôi` (chỉ xoá dấu cách) | |
 | M11 | TextEdit: gõ `w` (thấy `ư`) rồi Enter · dòng mới `w` rồi Tab | `w` rồi xuống dòng thật · `w` rồi một ký tự Tab. Trong một ứng dụng chat mà Enter là gửi (Messages, Slack…): `w` rồi Shift+Enter thì xuống dòng, không gửi | |
@@ -313,7 +321,7 @@ Bản macOS được viết trên Windows. Chủ dự án đã cài bản dựng
 | M18 | Menu → bỏ dấu tick `Tiếng Việt`, gõ `tieesng `; bấm lại | đã tắt: `E`, tooltip `TrioKey: Tiếng Anh — đã tắt`, ra `tieesng `; bật lại: `V`, ra `tiếng ` | |
 | M19 | Khi TrioKey đang chạy, trong Terminal: `open -n /Applications/TrioKey.app` (mở thêm một bản; chưa chắc `open -n` là cách đúng để thử, Finder thường chỉ đưa bản đang chạy lên trước). Sau đó menu → `Thoát` | bản thứ hai tự thoát ngay: menu bar chỉ có một chữ `V`/`E`, Activity Monitor chỉ có một TrioKey. Sau Thoát: chữ trên menu bar biến mất, bàn phím và chuột vẫn bình thường, gõ `tieesng ` ra `tieesng ` | |
 | M20 | Cài bản mới (khi có bản dựng sau), đúng thứ tự: (1) `Thoát` TrioKey; (2) kéo TrioKey mới vào Applications, chọn Thay thế; (3) Cài đặt → Quyền riêng tư & Bảo mật → Trợ năng: chọn TrioKey, bấm `−`, rồi `+` và chọn lại TrioKey trong Applications; (4) mở TrioKey (có thể phải làm lại M2–M3). **Không bao giờ làm bước (3) khi TrioKey đang chạy** | `V`; thông tin debug (M7) có số phiên bản mới. Mỗi bản dựng được ký ad hoc nên quyền cũ không dùng được cho bản mới; ghi lại nếu bỏ bước (3) thì có còn quyền hay không | |
-| M21 | Menu → `Cài đặt…`; bấm lại `Cài đặt…` khi cửa sổ đang mở; đổi Giao diện của macOS giữa Sáng và Tối | một cửa sổ `TrioKey – Cài đặt` (lần hai chỉ đưa nó lên trước), không kéo giãn được; thứ tự: `Bật gõ tiếng Việt` … `Phím tắt`, `Gõ`, `Hệ thống`, `Cập nhật`, đường kẻ, `TrioKey v0.3.0 · © 2026 ved0el` bên trái và `GitHub` bên phải; đọc rõ ở cả Sáng lẫn Tối, không chữ nào bị cắt. Chụp ảnh cả hai | |
+| M21 | Menu → `Cài đặt…`; bấm lại `Cài đặt…` khi cửa sổ đang mở; đổi Giao diện của macOS giữa Sáng và Tối | một cửa sổ `TrioKey – Cài đặt` (lần hai chỉ đưa nó lên trước), không kéo giãn được; thứ tự: `Bật gõ tiếng Việt` … `Phím tắt`, `Gõ`, `Hệ thống`, `Cập nhật`, đường kẻ, `TrioKey v<phiên bản>` bên trái và `GitHub` bên phải; đọc rõ ở cả Sáng lẫn Tối, không chữ nào bị cắt. Chụp ảnh cả hai | |
 | M22 | Tích / bỏ `Chế độ phát triển` | chỉ lúc này cửa sổ đổi chiều cao; khi bật có hai nút `Mở thư mục cấu hình…` (mở Finder ở `~/Library/Application Support/triokey`, có `config.txt` và `learned.txt`) và `Chép thông tin debug` | |
 | M23 | `Kiểm tra bản mới` (có mạng), rồi tắt Wi-Fi và bấm lại | dòng dưới lần lượt `Đang kiểm tra…` rồi `Đang dùng bản mới nhất.` (hoặc `Có bản mới v….` kèm link `Tải tại đây` mở trang Releases); không mạng: `Chưa kiểm tra được: không tải được từ GitHub.`. Cửa sổ không đổi kích thước lần nào | |
 | M24 | Đổi kiểu bỏ dấu sang `hoà, thuý`, gõ `hoaf `; bỏ `Tự giữ nguyên từ tiếng Anh`, gõ `windows `; Thoát, mở lại, mở `Cài đặt…` | `hoà ` ngay (không cần mở lại); `windows` thành chữ Telex; sau khi mở lại các ô giữ nguyên lựa chọn. Bật lại hai ô như cũ | |
@@ -324,7 +332,12 @@ Bản macOS được viết trên Windows. Chủ dự án đã cài bản dựng
 | M29 | Chạy từ Applications, tích `Khởi động cùng máy`, đăng xuất rồi đăng nhập lại; rồi khởi động lại máy; sau đó bỏ tích. (Chưa ai biết bản do launchd chạy lúc đăng nhập có giữ được quyền Trợ năng không: dòng này kiểm đúng điều đó) | có file `~/Library/LaunchAgents/io.github.ved0el.triokey.plist`; macOS có thể báo "Background Items Added"; sau khi đăng nhập lại và sau khi khởi động lại máy, TrioKey tự chạy và vẫn gõ được (quyền Trợ năng còn dùng được). Ghi lại thông báo của macOS. Bỏ tích: file biến mất. Menu → `Thoát` vẫn thoát hẳn (không tự chạy lại) | |
 | M30 | Gõ `this ` rồi ⌫ (giữ `thí`), đợi 3 giây, Thoát, mở lại, gõ `this ` | `learned.txt` có dòng `this` `thí`; sau khi mở lại `this ` ra `thí ` | |
 | M31 | Thoát. Lưu `config.txt` thành UTF-16 (TextEdit → Lưu dưới dạng, Mã hoá văn bản UTF-16), mở TrioKey, mở `Cài đặt…`, đổi một ô, Thoát. Rồi xoá `config.txt` | một hộp thoại `Không đọc được config.txt…` lúc mở cửa sổ (một lần); file UTF-16 không bị ghi đè. Sau khi xoá, lần chạy sau tạo lại file mặc định | |
-| M32 | Thông tin debug (M7) sau M23–M30 | có `config folder: ~/Library/Application Support/triokey`, dòng `settings:` với mọi khoá, `remembered words:` là một con số, `start at login:`, `update:`; không có tên người dùng, không có chữ đã gõ | |
+| M32 | Thông tin debug (M7) sau M23–M30 | có `config folder: ~/Library/Application Support/triokey`, dòng `settings:` với mọi khoá (có `language = vi`), `remembered words:` là một con số, `start at login:`, `update:`; không có tên người dùng, không có chữ đã gõ | |
+| M33 | Biểu tượng menu bar: Cài đặt hệ thống → Giao diện → Sáng, nhìn biểu tượng khi đang `V` và khi tắt (`E`); đổi sang Tối khi TrioKey đang chạy, nhìn lại; thử thêm với một hình nền sẫm màu khi đang ở Sáng. Chụp ảnh menu bar mỗi lần | chữ `V`/`E` đậm, có màu như khay Windows (V đỏ, E xanh), không phải chữ mảnh; Sáng: màu đậm, Tối: màu nhạt, đọc rõ trên nền thanh menu; đổi Sáng/Tối thì màu đổi theo trong vòng khoảng 2 giây, không cần mở lại. Nét sắc trên màn hình Retina và màn hình thường (nếu có). Ghi lại nếu màu không hợp với nền (vd. hình nền sẫm ở chế độ Sáng) | |
+| M34 | Bấm biểu tượng menu bar, nhìn menu; khi có bản mới (M23) nhìn lại | `Tiếng Việt` có dấu tick, không có hình; `Cài đặt…` (bánh răng), `Hướng dẫn cấp quyền…` (khiên có khoá), đường kẻ, `Khởi động lại` (mũi tên vòng), `Thoát` (nút nguồn); không còn dòng số phiên bản. Khi có bản mới: `Có bản … — mở trang tải về` có hình mũi tên xuống trong vòng tròn | |
+| M35 | Chạy từ Applications, menu → `Khởi động lại`; đợi tới khi biểu tượng hiện lại, mở Activity Monitor, gõ `tieesng ` trong TextEdit. Làm lại 3 lần | biểu tượng biến mất rồi hiện lại trong vòng vài giây; Activity Monitor chỉ có một TrioKey; gõ ra `tiếng ` (quyền Trợ năng vẫn dùng được, không phải cấp lại); các lựa chọn trong `Cài đặt…` giữ nguyên. Lần nào TrioKey không tự mở lại: ghi lại và mở lại bằng tay | |
+| M36 | `Cài đặt…` → `Ngôn ngữ` → `English`, nhìn cửa sổ ngay lúc đó; mở menu, di chuột lên biểu tượng, mở `Permission guide…`; `Copy debug info` (developer mode); Thoát, mở lại; rồi chọn lại `Tiếng Việt` | ngay khi chọn: cửa sổ cài đặt toàn tiếng Anh (`TrioKey – Settings`, `Enable Vietnamese`, `Shortcut`, `None`, `Typing`, `System`, `Language`, `Updates`…), đứng nguyên chỗ cũ, rộng ra nếu cần, không chữ nào bị cắt; menu `Vietnamese`, `Settings…`, `Permission guide…`, `Restart`, `Quit`; tooltip `TrioKey: Vietnamese`; cửa sổ hướng dẫn tiếng Anh, lời cảnh báo (QUIT TrioKey first) vẫn đỏ và đủ chữ; hộp thoại chép debug tiếng Anh (đoạn chữ debug giữ như cũ). Sau khi mở lại vẫn tiếng Anh. Chọn `Tiếng Việt`: mọi thứ trở lại tiếng Việt ngay. Chụp ảnh cửa sổ cài đặt tiếng Anh ở Sáng và Tối | |
+| M37 | TextEdit, gõ thật nhanh (không thả phím trước khi bấm phím sau), mỗi từ 5 lần: `maw ` · `tawts ` · `suawr ` | `mă ` · `tắt ` · `sửa ` lần nào cũng đủ chữ (lỗi cũ: ra `m`, `ắt`, `ửa`); làm lại trong Safari/Chrome và một ứng dụng Electron nếu có | / 15 |
 
 **Gỡ:** bỏ tích `Khởi động cùng máy` (hoặc xoá `~/Library/LaunchAgents/io.github.ved0el.triokey.plist`); `Thoát`; trong Trợ năng xoá TrioKey (`−`) sau khi đã thoát; xoá `TrioKey` khỏi Applications; xoá `~/Library/Application Support/triokey` nếu muốn bỏ cấu hình và các từ đã nhớ. TrioKey không ghi file nào khác.
 
@@ -337,10 +350,3 @@ Bản macOS được viết trên Windows. Chủ dự án đã cài bản dựng
 5. Xoá thư mục chứa `triokey.exe`. Sau một lần tự cập nhật, trong đó có thể còn `triokey.old.exe` (bản trước); xoá cùng luôn.
 
 TrioKey không ghi gì khác: không layout bàn phím, không danh sách ngôn ngữ, không mục nào trong `HKCU\Keyboard Layout`.
-
-**Đồ thừa của bản thử tên cũ (EVJ).** TrioKey không tự xoá hay đổi các mục này; xoá tay nếu từng chạy bản tên cũ (lệnh nào báo không tìm thấy cũng được):
-
-1. Thoát `evj.exe` nếu còn chạy.
-2. Giá trị Run: `reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v EVJ /f`.
-3. Nếu bản cũ từng bật chế độ admin, PowerShell **quyền admin**: `schtasks /Delete /TN EVJ /F` rồi `Remove-Item -Recurse "C:\Program Files\EVJ"`.
-4. Thư mục cấu hình cũ `%APPDATA%\evj` (TrioKey đã chép ba file sang `%APPDATA%\triokey` ở lần chạy đầu).

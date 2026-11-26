@@ -12,7 +12,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSRunningApplication};
 use objc2_application_services::{kAXTrustedCheckOptionPrompt, AXIsProcessTrusted, AXIsProcessTrustedWithOptions};
-use objc2_core_foundation::{CFBoolean, CFDictionary, CFString};
+use objc2_core_foundation::{kCFRunLoopDefaultMode, CFBoolean, CFDictionary, CFRunLoop, CFString};
 use objc2_foundation::{NSBundle, NSProcessInfo, NSString};
 use triokey_engine::lexicon::{Learned, Lexicon};
 use triokey_engine::{Config, Engine, ToneStyle};
@@ -22,7 +22,7 @@ use triokey_mac::source::{remember, Decision, Source};
 use triokey_mac::store::{self, Saver};
 use triokey_mac::text::{self, State};
 use triokey_mac::version::{self, Answer};
-use triokey_mac::{login, BUNDLE_ID, VERSION};
+use triokey_mac::{login, restart_command, BUNDLE_ID, VERSION};
 use triokey_shared::config::{parse, render, Settings};
 
 use super::{settings, tap, tis, ui};
@@ -35,8 +35,8 @@ pub struct Files {
 
 #[derive(Default)]
 pub struct Update {
-    /// The reserved line of the settings window; empty before the first check.
-    pub status: String,
+    /// The last check's answer, `None` before the first; kept as an answer so the line follows the interface language.
+    answer: Option<Answer>,
     pub waiting: Option<String>,
     /// The check in flight.
     rx: Option<Receiver<Answer>>,
@@ -64,6 +64,13 @@ pub struct App {
     force: (usize, usize),
     pub update: Update,
     started: Instant,
+}
+
+impl Update {
+    /// The reserved line of the settings window; empty before the first check.
+    pub fn status(&self, english: bool) -> String {
+        text::update_status(self.rx.is_some(), self.answer.as_ref(), english)
+    }
 }
 
 impl App {
@@ -112,18 +119,30 @@ fn home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from).filter(|h| h.is_absolute())
 }
 
-pub fn run(self_test: bool) -> Result<(), String> {
+/// `restarted`: started by "Khởi động lại" (`RESTARTED`).
+pub fn run(self_test: bool, restarted: bool) -> Result<(), String> {
     panic_hook(self_test);
     let mtm = MainThreadMarker::new().ok_or("not started on the main thread")?;
     let app = NSApplication::sharedApplication(mtm);
-    if another_instance() {
-        return if self_test { Err("another TrioKey is running".into()) } else { Ok(()) };
+    // after a restart the old copy is still quitting: wait for it (up to 5 s) rather than exit as a second copy. Nothing
+    // exists yet, so the old copy's tap is gone before this one can create its own (docs/ARCHITECTURE.md, 12.8)
+    let mut waits = if restarted && !self_test { 50 } else { 0 };
+    while another_instance() {
+        if waits == 0 {
+            return if self_test { Err("another TrioKey is running".into()) } else { Ok(()) };
+        }
+        waits -= 1;
+        std::thread::sleep(Duration::from_millis(100));
+        // lets AppKit take the news that the old copy ended, in case the running list is only updated from the run loop
+        // SAFETY: a constant CoreFoundation exports
+        let _ = CFRunLoop::run_in_mode(unsafe { kCFRunLoopDefaultMode }, 0.0, false);
     }
     app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
     // the self-test never touches the real ~/Library: its files go to a temporary folder, removed at the end
     let root = if self_test { Some(std::env::temp_dir().join(format!("triokey-self-test-{}", std::process::id()))) } else { home() };
     let files = root.as_deref().map(store::paths).map(|(dir, agent)| Files { dir, agent });
     let (settings, readable) = files.as_ref().map_or((Settings::default(), true), |f| store::load_config(&f.dir));
+    triokey_shared::set_english(settings.english);
     let (learned, saver) = files.as_ref().map_or((Learned::default(), None), |f| store::load_learned(&f.dir));
     let (vi, en) = files.as_ref().map_or_else(Default::default, |f| store::load_force(&f.dir));
     // build every table before the tap exists: a throwaway word for the syllable tables, one rate lookup for the
@@ -181,9 +200,11 @@ pub fn run(self_test: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// What the self-test checks beyond building: the settings window in both developer modes and every status (one height
-/// each), the config format, the login item text and the version rule. Nothing here touches the network.
+/// What the self-test checks beyond building: the menu bar images and menu symbols, the settings window in both developer
+/// modes and every status (one height each), a language switch and back, the config format, the login item text and the
+/// version rule. Nothing here touches the network or starts a process.
 fn self_test_checks() -> Result<(), String> {
+    ui::self_test()?;
     settings::self_test()?;
     let s = Settings { tone_new: true, auto_english: false, dev_mode: true, last_update_check: 1_800_000_000, ..Settings::default() };
     if parse(&render(&s)) != s {
@@ -283,11 +304,18 @@ pub fn change(f: impl FnOnce(&mut Settings)) {
         if s.yield_cjk != old.yield_cjk {
             a.engine.reset();
         }
-        a.files.as_ref().filter(|_| a.config_readable).map(|f| (f.dir.clone(), render(&s)))
+        (s.english != old.english, a.files.as_ref().filter(|_| a.config_readable).map(|f| (f.dir.clone(), render(&s))))
     });
     // a failed write is ignored: the change still applies to this run
-    if let Some((dir, text)) = write {
-        let _ = store::write(&dir, store::CONFIG, &text);
+    if let (_, Some((dir, text))) = &write {
+        let _ = store::write(dir, store::CONFIG, text);
+    }
+    if write.0 {
+        let english = with(|a| a.settings.english);
+        triokey_shared::set_english(english);
+        if let Some(mtm) = MainThreadMarker::new() {
+            ui::relabel(mtm);
+        }
     }
     refresh();
 }
@@ -366,9 +394,8 @@ pub fn check_now() {
         });
         if spawned.is_ok() {
             u.rx = Some(rx);
-            u.status = text::UPDATE_CHECKING.into();
         } else {
-            u.status = text::UPDATE_FAILED.into();
+            u.answer = Some(Answer::Failed);
         }
     });
     refresh();
@@ -388,11 +415,7 @@ fn update_answer() {
             Err(_) => Answer::Failed,
         };
         u.rx = None;
-        u.status = match &answer {
-            Answer::Newer(v) => text::update_newer(v),
-            Answer::Latest => text::UPDATE_LATEST.into(),
-            Answer::Failed => text::UPDATE_FAILED.into(),
-        };
+        u.answer = Some(answer.clone());
         match answer {
             Answer::Newer(v) => u.waiting = Some(v),
             Answer::Latest => u.waiting = None,
@@ -438,6 +461,19 @@ pub fn quit(mtm: MainThreadMarker) {
     NSApplication::sharedApplication(mtm).terminate(None);
 }
 
+/// "Khởi động lại": starts a new copy, then quits through `quit` (the tap is disabled, learned.txt saved). The new copy
+/// waits for this one to end before it builds anything (`run`), so the two taps never overlap. If the new copy cannot be
+/// started, this one keeps running. Never called by the self-test.
+pub fn restart(mtm: MainThreadMarker) {
+    let Some(exe) = exe() else { return };
+    let (program, args) = restart_command(&exe);
+    // not waited for: `open` ends by itself, a bare executable outlives this process
+    let started = Command::new(program).args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn();
+    if started.is_ok() {
+        quit(mtm);
+    }
+}
+
 pub fn diagnostics() -> Diagnostics {
     let (tap_created, tap_enabled) = tap::status();
     let st = state();
@@ -467,7 +503,8 @@ pub fn diagnostics() -> Diagnostics {
         config_readable: a.config_readable,
         counts: (store::learned_count(a.lexicon.learned()), a.force.0, a.force.1),
         login,
-        update: a.update.status.clone(),
+        // the debug information stays in Vietnamese
+        update: a.update.status(false),
         waiting: a.update.waiting.clone(),
     })
 }

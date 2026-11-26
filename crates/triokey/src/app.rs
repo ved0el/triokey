@@ -221,6 +221,8 @@ pub fn update(f: impl FnOnce(&mut Settings)) {
         SAVE_FAILED.store(write_config(&dir, &render(&s), admin::is_elevated()).is_err(), Relaxed);
     }
     drop(saving);
+    // the interface language: menus, tooltip and balloons read it when they are drawn; the settings window rebuilds
+    triokey_shared::set_english(s.english);
     hook::reconfigure();
     // yield_cjk is read by the watcher on its next pass
     ime_watch::request_recheck();
@@ -249,11 +251,14 @@ pub fn run() {
     let lexicon = Lexicon::builtin().with_user(&vi, &en).with_learned(learned);
     *SAVER.lock().unwrap_or_else(|e| e.into_inner()) = saver;
     ENABLED.store(s.enabled, Relaxed);
+    triokey_shared::set_english(s.english);
     *SETTINGS.write().unwrap_or_else(|e| e.into_inner()) = s;
     ime_watch::spawn();
     hook::spawn(lexicon);
     update::spawn();
-    // returns on "Thoát"; leaving main ends the process, which removes both hooks
+    // returns on "Thoát" (also after "Khởi động lại" started the next copy); leaving main ends the process, which
+    // removes both hooks
+
     tray::run();
     save_learned(true);
 }

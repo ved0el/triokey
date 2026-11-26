@@ -93,7 +93,7 @@ pub enum Hot {
 pub struct HotState {
     /// Ctrl+Shift pressed together with nothing else so far.
     combo: bool,
-    /// The key of a swallowed hotkey press (Z, Space) that has not been released yet, else 0.
+    /// The key of a swallowed hotkey press (the Z of Alt+Z) that has not been released yet, else 0.
     swallowed: u16,
 }
 
@@ -127,13 +127,8 @@ pub fn hotkey_step(st: &mut HotState, hk: Hotkey, vk: u16, down: bool, m: Mods) 
             st.swallowed = 0;
         }
     }
-    // Shift excluded: Ctrl+Shift+Space and Alt+Shift+Z are other apps' shortcuts
-    let only = |a: bool, b: bool| a && !b && !m.shift && !m.win;
-    let hit = match hk {
-        Hotkey::AltZ => down && vk == 0x5A && only(m.alt, m.ctrl),
-        Hotkey::CtrlSpace => down && vk == VK_SPACE && only(m.ctrl, m.alt),
-        _ => false,
-    };
+    // Shift excluded: Alt+Shift+Z is other apps' shortcut
+    let hit = hk == Hotkey::AltZ && down && vk == 0x5A && m.alt && !m.ctrl && !m.shift && !m.win;
     if hit {
         st.swallowed = vk;
         return Hot::ToggleSwallow;
@@ -477,19 +472,19 @@ mod tests {
     }
 
     #[test]
-    fn alt_z_and_ctrl_space_swallow_keydown() {
+    fn alt_z_swallows_keydown() {
         let mut c = HotState::default();
         let alt = Mods { alt: true, ..Mods::default() };
-        let ctrl = Mods { ctrl: true, ..Mods::default() };
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, alt), Hot::ToggleSwallow);
         let mut c = HotState::default();
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, Mods::default()), Hot::None);
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, Mods { ctrl: true, alt: true, ..Mods::default() }), Hot::None);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, ctrl), Hot::ToggleSwallow);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, false, ctrl), Hot::Swallow);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, false, ctrl), Hot::None);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, alt), Hot::None);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlShift, VK_SPACE, true, ctrl), Hot::None);
+        assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, Mods { alt: true, win: true, ..Mods::default() }), Hot::None);
+        // no hotkey: Alt+Z and Ctrl+Shift are ordinary keys
+        let ctrl = Mods { ctrl: true, ..Mods::default() };
+        assert_eq!(hotkey_step(&mut c, Hotkey::Off, 0x5A, true, alt), Hot::None);
+        assert_eq!(hotkey_step(&mut c, Hotkey::Off, VK_LSHIFT, true, ctrl), Hot::None);
+        assert_eq!(hotkey_step(&mut c, Hotkey::Off, VK_LSHIFT, false, ctrl), Hot::None);
     }
 
     #[test]
@@ -510,20 +505,11 @@ mod tests {
         // another key pressed while held: a lost Z release cannot eat a later z
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x41, true, alt), Hot::None);
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, none), Hot::None);
-
-        let ctrl = Mods { ctrl: true, ..Mods::default() };
-        let mut c = HotState::default();
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, ctrl), Hot::ToggleSwallow);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, ctrl), Hot::Swallow);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, false, ctrl), Hot::Swallow);
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, ctrl), Hot::ToggleSwallow);
     }
 
     #[test]
-    fn swallowing_presets_leave_shift_shortcuts_alone() {
+    fn swallowing_preset_leaves_shift_shortcuts_alone() {
         let mut c = HotState::default();
-        let m = Mods { ctrl: true, shift: true, ..Mods::default() };
-        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlSpace, VK_SPACE, true, m), Hot::None);
         let m = Mods { alt: true, shift: true, ..Mods::default() };
         assert_eq!(hotkey_step(&mut c, Hotkey::AltZ, 0x5A, true, m), Hot::None);
     }
