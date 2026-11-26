@@ -35,7 +35,7 @@ const RING: usize = 1024;
 static LAST_EVENT: AtomicU32 = AtomicU32::new(0);
 static HOOK_TID: AtomicU32 = AtomicU32::new(0);
 static HOOK_THREAD: OnceLock<Thread> = OnceLock::new();
-/// Callback durations in µs for AT7, shown at the bottom of the settings window. Memory only. Keys that called
+/// Callback durations in µs for AT7, shown in the settings window in developer mode. Memory only. Keys that called
 /// `SendInput` (time includes the call) and keys that did not are kept apart.
 static SENT: Ring = Ring::new();
 static PASSED: Ring = Ring::new();

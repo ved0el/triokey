@@ -24,6 +24,8 @@ pub struct Settings {
     pub auto_update: bool,
     /// Unix seconds of the last check that got an answer; written by the updater.
     pub last_update_check: u64,
+    /// Settings window shows the config folder button and the hook timing line (display only).
+    pub dev_mode: bool,
 }
 
 impl Settings {
@@ -38,6 +40,7 @@ impl Settings {
         run_as_admin: false,
         auto_update: true,
         last_update_check: 0,
+        dev_mode: false,
     };
 }
 
@@ -81,6 +84,7 @@ pub fn parse(text: &str) -> Settings {
             "run_at_startup" => s.run_at_startup = b,
             "run_as_admin" => s.run_as_admin = b,
             "auto_update" => s.auto_update = b,
+            "dev_mode" => s.dev_mode = b,
             _ => {}
         }
     }
@@ -90,8 +94,8 @@ pub fn parse(text: &str) -> Settings {
 pub fn render(s: &Settings) -> String {
     let hotkey = HOTKEYS.iter().find(|(h, _, _)| *h == s.hotkey).map_or("ctrl_shift", |(_, n, _)| n);
     format!(
-        "enabled = {}\ntone_new = {}\nauto_english = {}\nyield_cjk = {}\nhotkey = {}\nrun_at_startup = {}\nrun_as_admin = {}\nauto_update = {}\nlast_update_check = {}\n",
-        s.enabled, s.tone_new, s.auto_english, s.yield_cjk, hotkey, s.run_at_startup, s.run_as_admin, s.auto_update, s.last_update_check
+        "enabled = {}\ntone_new = {}\nauto_english = {}\nyield_cjk = {}\nhotkey = {}\nrun_at_startup = {}\nrun_as_admin = {}\nauto_update = {}\nlast_update_check = {}\ndev_mode = {}\n",
+        s.enabled, s.tone_new, s.auto_english, s.yield_cjk, hotkey, s.run_at_startup, s.run_as_admin, s.auto_update, s.last_update_check, s.dev_mode
     )
 }
 
@@ -102,6 +106,7 @@ mod tests {
     #[test]
     fn empty_is_default() {
         assert_eq!(parse(""), Settings::default());
+        assert!(!Settings::default().dev_mode && render(&Settings::default()).contains("dev_mode = false\n"));
     }
 
     #[test]
@@ -118,6 +123,7 @@ mod tests {
             run_as_admin: true,
             auto_update: false,
             last_update_check: 1_795_000_000,
+            dev_mode: true,
         };
         assert_eq!(parse(&render(&s)), s);
         assert_eq!(

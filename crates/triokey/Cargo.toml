@@ -1,6 +1,6 @@
 [package]
 name = "triokey"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ved0el/triokey"
@@ -29,6 +29,9 @@ windows-sys = { version = "0.59", features = [
     # with the manifest: per-monitor DPI calls, InitCommonControlsEx
     "Win32_UI_HiDpi",
     "Win32_UI_Controls",
+    # settings window: caption colours matching the client area, the high contrast check
+    "Win32_Graphics_Dwm",
+    "Win32_UI_Accessibility",
     # update check: system TLS and proxy, no HTTP crate
     "Win32_Networking_WinHttp",
 ] }

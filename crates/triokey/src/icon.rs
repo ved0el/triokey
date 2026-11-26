@@ -18,9 +18,9 @@ pub enum Glyph {
 
 /// Glyph colours (R, G, B). DEEP for a light taskbar, LIGHT for a dark one; BLUE_DEEP is also
 /// the app icon's tile.
-const BLUE_DEEP: [u8; 3] = [0x35, 0x65, 0xB8];
+pub(crate) const BLUE_DEEP: [u8; 3] = [0x35, 0x65, 0xB8];
 const RED_DEEP: [u8; 3] = [0xB2, 0x3B, 0x33];
-const BLUE_LIGHT: [u8; 3] = [0x8A, 0xB4, 0xF8];
+pub(crate) const BLUE_LIGHT: [u8; 3] = [0x8A, 0xB4, 0xF8];
 const RED_LIGHT: [u8; 3] = [0xF2, 0x8B, 0x82];
 
 /// V is red, E is blue, in the shade that reads on the taskbar.
@@ -125,7 +125,7 @@ pub unsafe fn hicon(g: Glyph, n: i32, rgb: [u8; 3]) -> HICON {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     const SIZES: [u32; 7] = [16, 20, 24, 32, 40, 48, 64];
@@ -171,7 +171,7 @@ mod tests {
     }
 
     /// WCAG 2 contrast ratio of two sRGB colours.
-    fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    pub(crate) fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
         let lin = |v: u8| {
             let s = v as f64 / 255.0;
             if s <= 0.04045 {
@@ -261,7 +261,7 @@ mod tests {
 
     /// Minimal PNG: one IDAT deflated with the fixed Huffman code and only distance-3 matches
     /// (runs of one RGB colour), which is most of this picture.
-    fn png_rgb(w: u32, h: u32, rgb: &[u8]) -> Vec<u8> {
+    pub(crate) fn png_rgb(w: u32, h: u32, rgb: &[u8]) -> Vec<u8> {
         fn crc(data: &[u8]) -> u32 {
             let mut c = !0u32;
             for &b in data {

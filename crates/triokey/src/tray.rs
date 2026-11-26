@@ -277,7 +277,7 @@ unsafe fn menu(hwnd: HWND) {
 }
 
 /// The NUL-terminated wide string at `p` equals `s`.
-unsafe fn wide_eq(p: *const u16, s: &str) -> bool {
+pub(crate) unsafe fn wide_eq(p: *const u16, s: &str) -> bool {
     let mut i = 0;
     for c in s.encode_utf16() {
         if *p.add(i) != c {

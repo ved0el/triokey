@@ -1,24 +1,32 @@
 //! Settings window, plain Win32 controls on the tray thread. Every change is saved
-//! to config.txt and applied at once. One window at a time.
+//! to config.txt and applied at once. One window at a time. Look, layout and the rebuild path:
+//! docs/ARCHITECTURE.md, 2.6 Settings window.
 //!
 //! The embedded manifest (build.rs) gives the controls the current visual style and makes the
 //! process per-monitor DPI aware: sizes come from the window's own DPI, never the system's.
 
 use std::ptr::{null, null_mut};
-use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering::Relaxed};
+use std::sync::atomic::{AtomicI32, AtomicPtr, AtomicU32, AtomicUsize, Ordering::Relaxed};
 
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
+use windows_sys::Win32::Graphics::Dwm::*;
 use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX};
-use windows_sys::Win32::UI::HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow, GetSystemMetricsForDpi, SystemParametersInfoForDpi};
+use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+use windows_sys::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
+use windows_sys::Win32::UI::Controls::{
+    CloseThemeData, DrawThemeBackground, DrawThemeTextEx, GetThemePartSize, InitCommonControlsEx, SetWindowTheme, BP_CHECKBOX, BP_PUSHBUTTON, BP_RADIOBUTTON,
+    CDDS_PREPAINT, CDIS_FOCUS, CDIS_HOT, CDIS_SELECTED, CDRF_DODEFAULT, CDRF_SKIPDEFAULT, DTTOPTS, DTT_TEXTCOLOR, ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX,
+    NMCUSTOMDRAW, NMHDR, NM_CUSTOMDRAW, PBS_DISABLED, TS_DRAW,
+};
+use windows_sys::Win32::UI::HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow, GetSystemMetricsForDpi, OpenThemeDataForDpi, SystemParametersInfoForDpi};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{EnableWindow, GetActiveWindow, GetFocus, IsWindowEnabled, SetFocus};
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 use crate::admin::{self, Elevated};
 use crate::config::HOTKEYS;
-use crate::tray::wide;
+use crate::tray::{wide, wide_eq};
 use crate::{app, autostart, hook, tray, update};
 
 const CLASS: &str = "triokey-settings";
@@ -35,22 +43,92 @@ const ID_LATENCY: i32 = 110;
 const ID_AUTO_UPDATE: i32 = 111;
 const ID_CHECK: i32 = 112;
 const ID_UPDATE_STATUS: i32 = 113;
+const ID_DEV: i32 = 114;
+const ID_CREDIT: i32 = 115;
+const ID_UPDATE_LINK: i32 = 116;
+const ID_GITHUB: i32 = 117;
+/// The footer: the author's credit, and the GitHub link to the crate's `repository`.
+const CREDIT: &str = concat!("TrioKey v", env!("CARGO_PKG_VERSION"), " · © 2026 ved0el");
+const REPO: &str = env!("CARGO_PKG_REPOSITORY");
+const UPDATE_LINK: &str = "Cập nhật tại đây";
+/// Posted by the developer-mode check box (its own click handler must not destroy it), by `sync_update` and, with
+/// wParam 1, by a theme change, which can arrive inside a click handler's message box.
+const WM_APP_REBUILD: u32 = WM_APP + 1;
 const SS_RIGHT: u32 = 0x2;
+const SS_NOPREFIX: u32 = 0x80;
 const BST_CHECKED: isize = 1;
 const STYLE: u32 = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-/// Client area in 96-DPI pixels. The layout in `build` follows the Windows dialog metrics for
-/// Segoe UI 9 pt: 11 px margins, 17 px check boxes, 23 px buttons and combo boxes, 7 px between
-/// related rows, 11 px between groups.
+/// Client width in 96-DPI pixels; the height follows the content (`build`).
 const WIDTH: i32 = 400;
-const HEIGHT: i32 = 296;
+
+/// Colours as COLORREF (0x00BBGGRR), the only source of colour while a palette is in use. `bg`
+/// is the client area and the caption alike, so header and body match by construction.
+struct Palette {
+    bg: u32,
+    text: u32,
+    /// secondary text: version, timing line
+    dim: u32,
+    /// disabled check boxes and radio buttons
+    off: u32,
+    /// the hairline and the window border
+    line: u32,
+    /// link text: the tray icon's deep blue (light) or light blue (dark)
+    link: u32,
+    dark: bool,
+}
+const fn colorref(c: [u8; 3]) -> u32 {
+    c[0] as u32 | (c[1] as u32) << 8 | (c[2] as u32) << 16
+}
+static LIGHT: Palette =
+    Palette { bg: 0xF3F3F3, text: 0x1A1A1A, dim: 0x5C5C5C, off: 0xA0A0A0, line: 0xD0D0D0, link: colorref(crate::icon::BLUE_DEEP), dark: false };
+static DARK: Palette =
+    Palette { bg: 0x202020, text: 0xF2F2F2, dim: 0xABABAB, off: 0x6E6E6E, line: 0x3D3D3D, link: colorref(crate::icon::BLUE_LIGHT), dark: true };
+/// The palette in use; null is the system look (high contrast).
+static PALETTE: AtomicPtr<Palette> = AtomicPtr::new(null_mut());
+/// Solid brush of the palette's `bg`, handed to the controls in WM_CTLCOLOR*; 0 in the system look.
+static BRUSH: AtomicUsize = AtomicUsize::new(0);
 
 static HWND_SETTINGS: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(null_mut());
+/// The message font and its semibold variant (section headings).
 static FONT: AtomicUsize = AtomicUsize::new(0);
-/// The control that had the keyboard focus when the window was last deactivated.
-static FOCUS: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(null_mut());
+static BOLD: AtomicUsize = AtomicUsize::new(0);
+/// `Status::key` of the update status the window was built for.
+static SHAPE: AtomicU32 = AtomicU32::new(0);
+/// The DPI the content was laid out for, and the hairline's top in client pixels.
+static DPI: AtomicU32 = AtomicU32::new(96);
+static LINE_Y: AtomicI32 = AtomicI32::new(0);
+/// ID of the control that had the keyboard focus when the window was last deactivated (an ID,
+/// not a handle: a rebuild replaces the controls).
+static FOCUS: AtomicI32 = AtomicI32::new(0);
 
 pub fn hwnd() -> HWND {
     HWND_SETTINGS.load(Relaxed)
+}
+
+fn pal() -> Option<&'static Palette> {
+    unsafe { PALETTE.load(Relaxed).as_ref() }
+}
+
+/// What Windows asks for now: the system look under high contrast, else the apps' light or dark mode.
+fn wanted() -> Option<&'static Palette> {
+    let mut hc = HIGHCONTRASTW { cbSize: size_of::<HIGHCONTRASTW>() as u32, dwFlags: 0, lpszDefaultScheme: null_mut() };
+    let high = unsafe { SystemParametersInfoW(SPI_GETHIGHCONTRAST, hc.cbSize, (&mut hc as *mut HIGHCONTRASTW).cast(), 0) } != 0
+        && hc.dwFlags & HCF_HIGHCONTRASTON != 0;
+    match (high, apps_dark()) {
+        (true, _) => None,
+        (_, true) => Some(&DARK),
+        _ => Some(&LIGHT),
+    }
+}
+
+/// Windows apps are set to dark mode (Settings > Personalization > Colors).
+fn apps_dark() -> bool {
+    let (mut v, mut n) = (1u32, 4u32);
+    let key = wide(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+    let r = unsafe {
+        RegGetValueW(HKEY_CURRENT_USER, key.as_ptr(), wide("AppsUseLightTheme").as_ptr(), RRF_RT_REG_DWORD, null_mut(), (&mut v as *mut u32).cast(), &mut n)
+    };
+    r == 0 && v == 0
 }
 
 /// Tray thread: the on/off switch changed (hotkey, tray click) while the window may be open.
@@ -61,11 +139,74 @@ pub fn sync_enabled() {
     }
 }
 
-/// Tray thread: the updater has something new to say while the window may be open.
+/// Tray thread: the updater has something new to say while the window may be open. A status that
+/// needs other room (lines, the link or its place) rebuilds the window, posted: this may run inside
+/// a click handler.
 pub fn sync_update() {
     let h = hwnd();
     if !h.is_null() {
-        unsafe { SetWindowTextW(GetDlgItem(h, ID_UPDATE_STATUS), wide(&update::status()).as_ptr()) };
+        unsafe {
+            let s = status(h, DPI.load(Relaxed));
+            if s.key() != SHAPE.load(Relaxed) {
+                PostMessageW(h, WM_APP_REBUILD, 0, 0);
+            } else {
+                SetWindowTextW(GetDlgItem(h, ID_UPDATE_STATUS), wide(&s.text).as_ptr());
+            }
+        }
+    }
+}
+
+/// The update status laid out in the 378 px column at `dpi` with the window's font.
+struct Status {
+    text: String,
+    /// lines it takes (none when empty), the link's own line included, and one line's height in pixels
+    lines: i32,
+    line: i32,
+    /// while a version waits: the link's left edge from the column's (pixels) and its line
+    link: Option<(i32, i32)>,
+}
+
+impl Status {
+    fn key(&self) -> u32 {
+        self.lines as u32 | self.link.map_or(0, |(x, l)| (l as u32 + 1) << 4 | (x as u32) << 8)
+    }
+}
+
+/// The link goes after the text when both fit on one line, else on a line of its own.
+unsafe fn status(hwnd: HWND, dpi: u32) -> Status {
+    let text = update::status();
+    let dc = GetDC(hwnd);
+    let old = SelectObject(dc, FONT.load(Relaxed) as HGDIOBJ);
+    let mut one = std::mem::zeroed::<RECT>();
+    DrawTextW(dc, wide("Ág").as_ptr(), -1, &mut one, DT_CALCRECT | DT_SINGLELINE);
+    let line = one.bottom.max(1);
+    let mut rc = RECT { left: 0, top: 0, right: px(378, dpi), bottom: 0 };
+    if !text.is_empty() {
+        DrawTextW(dc, wide(&text).as_ptr(), -1, &mut rc, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    }
+    SelectObject(dc, old);
+    ReleaseDC(hwnd, dc);
+    let mut lines = (rc.bottom + line - 1) / line;
+    let link = update::waiting().map(|_| {
+        let x = if text.is_empty() { 0 } else { text_width(hwnd, &text) + text_width(hwnd, " ") };
+        if lines == 0 || lines == 1 && x + text_width(hwnd, UPDATE_LINK) + 2 <= px(378, dpi) {
+            lines = 1;
+            (x, 0)
+        } else {
+            lines += 1;
+            (0, lines - 1)
+        }
+    });
+    Status { text, lines, line, link }
+}
+
+/// An https address in the browser. An elevated TrioKey never calls ShellExecute (docs/ARCHITECTURE.md,
+/// 8.3 What an elevated TrioKey must never do): an unelevated program can redirect "open", so it shows the address.
+unsafe fn open_url(hwnd: HWND, url: &str) {
+    if admin::is_elevated() {
+        message(hwnd, &format!("TrioKey đang chạy quyền admin nên không tự mở trình duyệt. Địa chỉ:\n\n{url}"), MB_OK | MB_ICONINFORMATION);
+    } else if url.starts_with("https://") {
+        ShellExecuteW(hwnd, wide("open").as_ptr(), wide(url).as_ptr(), null(), null(), SW_SHOWNORMAL);
     }
 }
 
@@ -74,11 +215,17 @@ fn px(v: i32, dpi: u32) -> i32 {
     v * dpi as i32 / 96
 }
 
-/// Outer window size for the client area at `dpi`.
-unsafe fn window_size(dpi: u32) -> (i32, i32) {
-    let mut rc = RECT { left: 0, top: 0, right: px(WIDTH, dpi), bottom: px(HEIGHT, dpi) };
+/// Outer window size for a client area `height` 96-DPI pixels tall at `dpi`.
+unsafe fn window_size(dpi: u32, height: i32) -> (i32, i32) {
+    let mut rc = RECT { left: 0, top: 0, right: px(WIDTH, dpi), bottom: px(height, dpi) };
     AdjustWindowRectExForDpi(&mut rc, STYLE, 0, 0, dpi);
     (rc.right - rc.left, rc.bottom - rc.top)
+}
+
+unsafe fn top_left(hwnd: HWND) -> (i32, i32) {
+    let mut rc = std::mem::zeroed::<RECT>();
+    GetWindowRect(hwnd, &mut rc);
+    (rc.left, rc.top)
 }
 
 /// Tray thread. Brings the open window to the front instead of opening a second one.
@@ -90,37 +237,14 @@ pub fn open() {
             SetForegroundWindow(old);
             return;
         }
-        // makes sure comctl32 (version 6, chosen by the manifest) is loaded before the controls
-        InitCommonControlsEx(&INITCOMMONCONTROLSEX { dwSize: size_of::<INITCOMMONCONTROLSEX>() as u32, dwICC: ICC_STANDARD_CLASSES });
-        let hinst = GetModuleHandleW(null());
-        let class = wide(CLASS);
-        let wc = WNDCLASSW {
-            lpfnWndProc: Some(wndproc),
-            hInstance: hinst,
-            lpszClassName: class.as_ptr(),
-            hCursor: LoadCursorW(null_mut(), IDC_ARROW),
-            hbrBackground: (COLOR_BTNFACE + 1) as usize as HBRUSH,
-            ..std::mem::zeroed()
-        };
-        // fails harmlessly when already registered
-        RegisterClassW(&wc);
-        // created empty at the primary monitor's origin, so its DPI is that monitor's
-        let hwnd = CreateWindowExW(0, class.as_ptr(), wide("TrioKey – Cài đặt").as_ptr(), STYLE, 0, 0, 0, 0, null_mut(), null_mut(), hinst, null());
+        let hwnd = create(wanted(), app::settings().dev_mode, None, null_mut());
         if hwnd.is_null() {
             return;
         }
-        HWND_SETTINGS.store(hwnd, Relaxed);
-        let dpi = match GetDpiForWindow(hwnd) {
-            0 => 96,
-            d => d,
-        };
-        set_icons(hwnd, dpi);
-        let (w, h) = window_size(dpi);
-        let (x, y) = ((GetSystemMetrics(SM_CXSCREEN) - w) / 2, (GetSystemMetrics(SM_CYSCREEN) - h) / 2);
-        SetWindowPos(hwnd, null_mut(), x, y, w, h, SWP_NOZORDER);
-        build(hwnd, dpi);
-        fill(hwnd);
-        SetTimer(hwnd, 1, 1000, None);
+        let mut rc = std::mem::zeroed::<RECT>();
+        GetWindowRect(hwnd, &mut rc);
+        let (x, y) = ((GetSystemMetrics(SM_CXSCREEN) - rc.right + rc.left) / 2, (GetSystemMetrics(SM_CYSCREEN) - rc.bottom + rc.top) / 2);
+        SetWindowPos(hwnd, null_mut(), x, y, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
         // activation ends in WM_SETFOCUS, which puts the focus on the first control
         ShowWindow(hwnd, SW_SHOW);
         SetForegroundWindow(hwnd);
@@ -130,6 +254,89 @@ pub fn open() {
         }
         warn_unsaved(hwnd);
     }
+}
+
+/// The window, hidden, filled and sized for `dpi` (default: its monitor's) in `theme` (None: the
+/// system look), with the developer part when `dev`. Shows nothing and asks nothing: `open` does
+/// that. `theme`, `dev` and `owner` are parameters for the preview test.
+unsafe fn create(theme: Option<&'static Palette>, dev: bool, dpi: Option<u32>, owner: HWND) -> HWND {
+    // makes sure comctl32 (version 6, chosen by the manifest) is loaded before the controls
+    InitCommonControlsEx(&INITCOMMONCONTROLSEX { dwSize: size_of::<INITCOMMONCONTROLSEX>() as u32, dwICC: ICC_STANDARD_CLASSES });
+    let hinst = GetModuleHandleW(null());
+    let class = wide(CLASS);
+    let wc = WNDCLASSW {
+        lpfnWndProc: Some(wndproc),
+        hInstance: hinst,
+        lpszClassName: class.as_ptr(),
+        hCursor: LoadCursorW(null_mut(), IDC_ARROW),
+        // the system look's background; a palette paints its own in WM_ERASEBKGND
+        hbrBackground: (COLOR_BTNFACE + 1) as usize as HBRUSH,
+        ..std::mem::zeroed()
+    };
+    // fails harmlessly when already registered
+    RegisterClassW(&wc);
+    // created empty at the primary monitor's origin, so its DPI is that monitor's
+    let hwnd = CreateWindowExW(0, class.as_ptr(), wide("TrioKey – Cài đặt").as_ptr(), STYLE, 0, 0, 0, 0, owner, null_mut(), hinst, null());
+    if hwnd.is_null() {
+        return hwnd;
+    }
+    HWND_SETTINGS.store(hwnd, Relaxed);
+    let dpi = dpi.unwrap_or(match GetDpiForWindow(hwnd) {
+        0 => 96,
+        d => d,
+    });
+    rebuild(hwnd, dpi, theme, dev, (0, 0));
+    hwnd
+}
+
+/// The one path that makes the content: at creation, after a DPI change, a theme change and the
+/// developer-mode switch. All state lives in app::settings(), so making the controls again is less
+/// code than moving, re-fonting and recolouring each one. The window is resized to the content
+/// with its top-left at `at`; the focused control keeps the focus.
+unsafe fn rebuild(hwnd: HWND, dpi: u32, theme: Option<&'static Palette>, dev: bool, at: (i32, i32)) {
+    let f = GetFocus();
+    let focus = if IsChild(hwnd, f) != 0 { GetDlgCtrlID(f) } else { 0 };
+    loop {
+        let c = GetWindow(hwnd, GW_CHILD);
+        if c.is_null() || DestroyWindow(c) == 0 {
+            break;
+        }
+    }
+    PALETTE.store(theme.map_or(null_mut(), |p| (p as *const Palette).cast_mut()), Relaxed);
+    let brush = theme.map_or(null_mut(), |p| CreateSolidBrush(p.bg));
+    let old = BRUSH.swap(brush as usize, Relaxed);
+    if old != 0 {
+        DeleteObject(old as HGDIOBJ);
+    }
+    DPI.store(dpi, Relaxed);
+    caption(hwnd);
+    let height = build(hwnd, dpi, dev);
+    fill(hwnd);
+    set_icons(hwnd, dpi);
+    let (w, h) = window_size(dpi, height);
+    SetWindowPos(hwnd, null_mut(), at.0, at.1, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    // the timing line is refreshed only while it exists
+    if dev {
+        SetTimer(hwnd, 1, 1000, None);
+    } else {
+        KillTimer(hwnd, 1);
+    }
+    InvalidateRect(hwnd, null(), 1);
+    if GetActiveWindow() == hwnd {
+        let c = if focus != 0 { GetDlgItem(hwnd, focus) } else { null_mut() };
+        SetFocus(if c.is_null() { GetDlgItem(hwnd, ID_ENABLED) } else { c });
+    }
+}
+
+/// Caption, border and caption text from the palette: the caption is the client area's colour,
+/// the border the hairline's, so the edge stays visible on a desktop of the same colour. The
+/// system look resets all three. Returns each call's HRESULT (dark mode, caption, border, text);
+/// a refusal is ignored (Windows 10 does not know 34-36).
+unsafe fn caption(hwnd: HWND) -> [i32; 4] {
+    let d = DWMWA_COLOR_DEFAULT;
+    let (dark, bg, line, text) = pal().map_or((0, d, d, d), |p| (p.dark as u32, p.bg, p.line, p.text));
+    let set = |a: i32, v: u32| DwmSetWindowAttribute(hwnd, a as u32, (&v as *const u32).cast(), 4);
+    [set(DWMWA_USE_IMMERSIVE_DARK_MODE, dark), set(DWMWA_CAPTION_COLOR, bg), set(DWMWA_BORDER_COLOR, line), set(DWMWA_TEXT_COLOR, text)]
 }
 
 /// The app icon (resource 1, build.rs) at the sizes this window's DPI wants, replacing and
@@ -159,65 +366,256 @@ unsafe fn warn_unsaved(hwnd: HWND) {
     }
 }
 
-/// Create the controls for `dpi`. Called again after a DPI change, once the old ones are gone.
-unsafe fn build(hwnd: HWND, dpi: u32) {
+/// Create the controls for `dpi`, top to bottom (the tab order), and return the client height in
+/// 96-DPI pixels. Windows dialog metrics for Segoe UI 9 pt: 11 px margins, 17 px check boxes,
+/// 23 px buttons and combo boxes, 7 px between related rows, 15 px before a section heading.
+unsafe fn build(hwnd: HWND, dpi: u32, dev: bool) -> i32 {
     let mut ncm: NONCLIENTMETRICSW = std::mem::zeroed();
     ncm.cbSize = size_of::<NONCLIENTMETRICSW>() as u32;
-    // the system message font (Segoe UI 9 pt) at this window's DPI
-    let font = if SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, ncm.cbSize, (&mut ncm as *mut NONCLIENTMETRICSW).cast(), 0, dpi) != 0 {
-        CreateFontIndirectW(&ncm.lfMessageFont)
+    // the system message font (Segoe UI 9 pt) at this window's DPI, and the same in semibold
+    let (font, bold) = if SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, ncm.cbSize, (&mut ncm as *mut NONCLIENTMETRICSW).cast(), 0, dpi) != 0 {
+        let mut lf = ncm.lfMessageFont;
+        let font = CreateFontIndirectW(&lf);
+        lf.lfWeight = FW_SEMIBOLD as i32;
+        (font, CreateFontIndirectW(&lf))
     } else {
-        GetStockObject(DEFAULT_GUI_FONT)
+        let f = GetStockObject(DEFAULT_GUI_FONT);
+        (f, f)
     };
-    let old = FONT.swap(font as usize, Relaxed);
-    if old != 0 {
-        // deleting the stock fallback font is a harmless no-op
-        DeleteObject(old as HFONT);
+    for (slot, new) in [(&FONT, font), (&BOLD, bold)] {
+        let old = slot.swap(new as usize, Relaxed);
+        if old != 0 {
+            // deleting the stock fallback font is a harmless no-op
+            DeleteObject(old as HGDIOBJ);
+        }
     }
     let hinst = GetModuleHandleW(null());
-    let ctl = |class: &str, text: &str, style: u32, id: i32, x: i32, y: i32, w: i32, h: i32| {
-        let c = CreateWindowExW(
-            0,
-            wide(class).as_ptr(),
-            wide(text).as_ptr(),
-            WS_CHILD | WS_VISIBLE | style,
-            px(x, dpi),
-            px(y, dpi),
-            px(w, dpi),
-            px(h, dpi),
-            hwnd,
-            id as usize as HMENU,
-            hinst,
-            null(),
-        );
+    // in pixels; `ctl` takes 96-DPI pixels
+    let ctl_px = |class: &str, text: &str, style: u32, id: i32, x: i32, y: i32, w: i32, h: i32| {
+        let c =
+            CreateWindowExW(0, wide(class).as_ptr(), wide(text).as_ptr(), WS_CHILD | WS_VISIBLE | style, x, y, w, h, hwnd, id as usize as HMENU, hinst, null());
         SendMessageW(c, WM_SETFONT, font as usize, 1);
         c
     };
+    let ctl = |class: &str, text: &str, style: u32, id: i32, x: i32, y: i32, w: i32, h: i32| {
+        ctl_px(class, text, style, id, px(x, dpi), px(y, dpi), px(w, dpi), px(h, dpi))
+    };
+    // a push button (a tab stop that Space, Enter and a click activate) drawn by `draw_link`, as wide
+    // as its text plus one pixel each side and the underline below the line, for the focus
+    // rectangle; (x, y) is where the text starts, as in a label
+    let link = |text: &str, id: i32, x: i32, y: i32, line: i32| {
+        ctl_px("BUTTON", text, (BS_PUSHBUTTON as u32) | WS_TABSTOP | WS_GROUP, id, x - 1, y, text_width(hwnd, text) + 2, line + px(2, dpi).max(2));
+    };
+    let heading = |text: &str, y: i32| SendMessageW(ctl("STATIC", text, 0, 0, 11, y, 378, 16), WM_SETFONT, bold as usize, 1);
     let check = (BS_AUTOCHECKBOX as u32) | WS_TABSTOP;
-    // labels sit 4 px below the top of a 23 px control so the text baselines line up
-    ctl("BUTTON", "Bật gõ tiếng Việt", check | WS_GROUP, ID_ENABLED, 11, 14, 200, 17);
-    ctl("STATIC", "Phím tắt", SS_RIGHT, 0, 219, 15, 60, 15);
-    let combo = ctl("COMBOBOX", "", (CBS_DROPDOWNLIST as u32) | WS_TABSTOP | WS_VSCROLL, ID_HOTKEY, 285, 11, 104, 200);
+    let radio = (BS_AUTORADIOBUTTON as u32) | WS_TABSTOP;
+    let button = (BS_PUSHBUTTON as u32) | WS_TABSTOP;
+    // a row is 17 px (check box) or 23 px (button, combo); in a 23 px row the check box sits 3 px
+    // and a label 4 px below its top, so the text baselines line up
+    let mut y = 11;
+    ctl("BUTTON", "Bật gõ tiếng Việt", check | WS_GROUP, ID_ENABLED, 11, y + 3, 200, 17);
+    ctl("STATIC", "Phím tắt", SS_RIGHT, 0, 179, y + 4, 100, 16);
+    let combo = ctl("COMBOBOX", "", (CBS_DROPDOWNLIST as u32) | WS_TABSTOP | WS_VSCROLL, ID_HOTKEY, 285, y, 104, 200);
     for (_, _, label) in HOTKEYS {
         SendMessageW(combo, CB_ADDSTRING, 0, wide(label).as_ptr() as isize);
     }
-    ctl("STATIC", "Kiểu bỏ dấu", 0, 0, 11, 46, 100, 15);
-    let radio = (BS_AUTORADIOBUTTON as u32) | WS_TABSTOP;
-    ctl("BUTTON", "hòa, thúy", radio | WS_GROUP, ID_TONE_OLD, 118, 45, 110, 17);
-    ctl("BUTTON", "hoà, thuý", radio, ID_TONE_NEW, 234, 45, 110, 17);
+    y += 23 + 15;
+    heading("Gõ", y);
+    y += 16 + 7;
+    ctl("STATIC", "Kiểu bỏ dấu", 0, 0, 11, y + 1, 100, 16);
+    ctl("BUTTON", "hòa, thúy", radio | WS_GROUP, ID_TONE_OLD, 118, y, 110, 17);
+    ctl("BUTTON", "hoà, thuý", radio, ID_TONE_NEW, 234, y, 110, 17);
+    y += 17 + 7;
     // WS_GROUP ends the radio group
-    ctl("BUTTON", "Tự giữ nguyên từ tiếng Anh", check | WS_GROUP, ID_AUTO_EN, 11, 73, 378, 17);
-    ctl("BUTTON", "Nhường khi IME Nhật/Trung/Hàn đang bật", check, ID_YIELD, 11, 97, 378, 17);
-    ctl("BUTTON", "Khởi động cùng Windows", check, ID_STARTUP, 11, 121, 378, 17);
-    ctl("BUTTON", "Chạy quyền admin (gõ được trong cửa sổ admin)", check, ID_ADMIN, 11, 145, 378, 17);
-    ctl("BUTTON", "Tự động cập nhật", check, ID_AUTO_UPDATE, 11, 169, 200, 17);
-    let button = (BS_PUSHBUTTON as u32) | WS_TABSTOP;
-    ctl("BUTTON", "Kiểm tra bản mới", button, ID_CHECK, 259, 166, 130, 23);
-    // two lines: the longest status carries the address of the releases page
-    ctl("STATIC", "", 0, ID_UPDATE_STATUS, 11, 195, 378, 30);
-    ctl("BUTTON", "Mở thư mục cấu hình…", button | WS_GROUP, ID_FOLDER, 11, 236, 160, 23);
-    ctl("STATIC", concat!("v", env!("CARGO_PKG_VERSION")), SS_RIGHT, 0, 289, 240, 100, 15);
-    ctl("STATIC", "", 0, ID_LATENCY, 11, 270, 378, 15);
+    ctl("BUTTON", "Tự giữ nguyên từ tiếng Anh", check | WS_GROUP, ID_AUTO_EN, 11, y, 378, 17);
+    y += 17 + 7;
+    ctl("BUTTON", "Nhường khi IME Nhật/Trung/Hàn đang bật", check, ID_YIELD, 11, y, 378, 17);
+    y += 17 + 15;
+    heading("Hệ thống", y);
+    y += 16 + 7;
+    ctl("BUTTON", "Khởi động cùng Windows", check, ID_STARTUP, 11, y, 378, 17);
+    y += 17 + 7;
+    ctl("BUTTON", "Chạy quyền admin (gõ được trong cửa sổ admin)", check, ID_ADMIN, 11, y, 378, 17);
+    y += 17 + 7;
+    let dev_box = ctl("BUTTON", "Chế độ phát triển", check, ID_DEV, 11, y, 200, 17);
+    set_check(hwnd, ID_DEV, dev);
+    y += 17;
+    if dev {
+        // under the check box's label: the glyph plus a quarter of it, where `draw_check` puts the label
+        let theme = OpenThemeDataForDpi(dev_box, wide("Button").as_ptr(), dpi);
+        let mut glyph = SIZE { cx: px(13, dpi), cy: 0 };
+        if theme != 0 {
+            GetThemePartSize(theme, null_mut(), BP_CHECKBOX, 1, null(), TS_DRAW, &mut glyph);
+            CloseThemeData(theme);
+        }
+        let x = px(11, dpi) + glyph.cx + glyph.cx / 4;
+        y += 7;
+        ctl_px("BUTTON", "Mở thư mục cấu hình…", button | WS_GROUP, ID_FOLDER, x, px(y, dpi), px(160, dpi), px(23, dpi));
+        y += 23 + 7;
+        ctl_px("STATIC", "", 0, ID_LATENCY, x, px(y, dpi), px(389, dpi) - x, px(16, dpi));
+        y += 16;
+    }
+    y += 15;
+    heading("Cập nhật", y);
+    y += 16 + 7;
+    ctl("BUTTON", "Tự động cập nhật", check | WS_GROUP, ID_AUTO_UPDATE, 11, y + 3, 200, 17);
+    ctl("BUTTON", "Kiểm tra bản mới", button, ID_CHECK, 259, y, 130, 23);
+    y += 23;
+    // as many lines as the status needs, none when empty; another need rebuilds (`sync_update`)
+    let st = status(hwnd, dpi);
+    SHAPE.store(st.key(), Relaxed);
+    if st.lines > 0 {
+        y += 7;
+        let (top, h) = (px(y, dpi), st.lines * st.line);
+        // the text beside or above the link, never under it: a sibling that repaints (a new text)
+        // would paint over an overlapped link
+        let (w, th) = match st.link {
+            Some((x, 0)) => (x - 1, h),
+            Some(_) => (px(378, dpi), h - st.line),
+            None => (px(378, dpi), h),
+        };
+        ctl_px("STATIC", &st.text, SS_NOPREFIX, ID_UPDATE_STATUS, px(11, dpi), top, w.max(0), th);
+        if let Some((x, l)) = st.link {
+            link(UPDATE_LINK, ID_UPDATE_LINK, px(11, dpi) + x, top + l * st.line, st.line);
+        }
+        y += (h * 96 + dpi as i32 - 1) / dpi as i32;
+    }
+    y += 11;
+    LINE_Y.store(px(y, dpi), Relaxed);
+    y += 1 + 11;
+    ctl("STATIC", CREDIT, 0, ID_CREDIT, 11, y, 280, 16);
+    link("GitHub", ID_GITHUB, px(389, dpi) - text_width(hwnd, "GitHub"), px(y, dpi), st.line);
+    y += 16;
+    if pal().is_some_and(|p| p.dark) {
+        // the system's dark themes for these classes; a name that does not resolve leaves the usual theme
+        for id in [ID_ENABLED, ID_TONE_OLD, ID_TONE_NEW, ID_AUTO_EN, ID_YIELD, ID_STARTUP, ID_ADMIN, ID_DEV, ID_FOLDER, ID_AUTO_UPDATE, ID_CHECK] {
+            SetWindowTheme(GetDlgItem(hwnd, id), wide("DarkMode_Explorer").as_ptr(), null());
+        }
+        SetWindowTheme(combo, wide("DarkMode_CFD").as_ptr(), null());
+    }
+    y + 11
+}
+
+/// Width of one line of `text` in pixels in the message font.
+unsafe fn text_width(hwnd: HWND, text: &str) -> i32 {
+    let dc = GetDC(hwnd);
+    let old = SelectObject(dc, FONT.load(Relaxed) as HGDIOBJ);
+    let w: Vec<u16> = text.encode_utf16().collect();
+    let mut size = std::mem::zeroed::<SIZE>();
+    GetTextExtentPoint32W(dc, w.as_ptr(), w.len() as i32, &mut size);
+    SelectObject(dc, old);
+    ReleaseDC(hwnd, dc);
+    size.cx
+}
+
+/// `rc` filled with `color` through the DC's own brush: nothing to create or free.
+unsafe fn paint_rect(dc: HDC, rc: &RECT, color: u32) {
+    SetDCBrushColor(dc, color);
+    FillRect(dc, rc, GetStockObject(DC_BRUSH) as HBRUSH);
+}
+
+/// Check boxes and radio buttons in a palette, drawn whole: under visual styles they take their
+/// label colour from the theme, not from WM_CTLCOLORSTATIC, which leaves black text on a dark
+/// background. The glyph is still the control's own theme part, opened for the layout DPI.
+unsafe fn draw_check(cd: &NMCUSTOMDRAW, p: &Palette) -> LRESULT {
+    let (h, dc, rc) = (cd.hdr.hwndFrom, cd.hdc, cd.rc);
+    if cd.dwDrawStage != CDDS_PREPAINT {
+        return CDRF_DODEFAULT as LRESULT;
+    }
+    // not GetWindowTheme: it returns no handle for radio buttons here. The open honours the
+    // control's SetWindowTheme name.
+    let theme = OpenThemeDataForDpi(h, wide("Button").as_ptr(), DPI.load(Relaxed));
+    if theme == 0 {
+        return CDRF_DODEFAULT as LRESULT;
+    }
+    let part = if GetWindowLongW(h, GWL_STYLE) as u32 & BS_TYPEMASK as u32 == BS_AUTORADIOBUTTON as u32 { BP_RADIOBUTTON } else { BP_CHECKBOX };
+    let enabled = IsWindowEnabled(h) != 0;
+    // CBS_* and RBS_* share the numbering: 1-4 unchecked normal/hot/pressed/disabled, 5-8 checked
+    let state = if SendMessageW(h, BM_GETCHECK, 0, 0) == BST_CHECKED { 4 } else { 0 }
+        + if !enabled {
+            4
+        } else if cd.uItemState & CDIS_SELECTED != 0 {
+            3
+        } else if cd.uItemState & CDIS_HOT != 0 {
+            2
+        } else {
+            1
+        };
+    paint_rect(dc, &rc, p.bg);
+    let mut size = std::mem::zeroed::<SIZE>();
+    GetThemePartSize(theme, dc, part, state, null(), TS_DRAW, &mut size);
+    let top = rc.top + (rc.bottom - rc.top - size.cy) / 2;
+    DrawThemeBackground(theme, dc, part, state, &RECT { left: rc.left, top, right: rc.left + size.cx, bottom: top + size.cy }, null());
+    let mut text = [0u16; 128];
+    let n = GetWindowTextW(h, text.as_mut_ptr(), text.len() as i32);
+    let old = SelectObject(dc, SendMessageW(h, WM_GETFONT, 0, 0) as HGDIOBJ);
+    let opt = DTTOPTS { dwSize: size_of::<DTTOPTS>() as u32, dwFlags: DTT_TEXTCOLOR, crText: if enabled { p.text } else { p.off }, ..std::mem::zeroed() };
+    let mut t = RECT { left: rc.left + size.cx + size.cx / 4, ..rc };
+    DrawThemeTextEx(theme, dc, part, state, text.as_ptr(), n, DT_SINGLELINE | DT_VCENTER, &mut t, &opt);
+    // the focus cue only while the keyboard is in use (WM_CHANGEUISTATE)
+    if cd.uItemState & CDIS_FOCUS != 0 && SendMessageW(h, WM_QUERYUISTATE, 0, 0) as u32 & UISF_HIDEFOCUS == 0 {
+        DrawTextW(dc, text.as_ptr(), n, &mut t, DT_SINGLELINE | DT_CALCRECT);
+        // around the text, one pixel out, kept inside the control so no side is clipped
+        let top = ((rc.top + rc.bottom - (t.bottom - t.top)) / 2 - 1).max(rc.top);
+        DrawFocusRect(dc, &RECT { left: t.left - 1, top, right: (t.right + 1).min(rc.right), bottom: (top + t.bottom - t.top + 2).min(rc.bottom) });
+    }
+    SelectObject(dc, old);
+    CloseThemeData(theme);
+    CDRF_SKIPDEFAULT as LRESULT
+}
+
+/// A link: underlined text in the message font in the palette's link colour or, in the system look, the system's
+/// hyperlink colour (COLOR_HOTLIGHT) on the button face, and the focus rectangle around the control
+/// (the text and one pixel) while the keyboard is in use.
+unsafe fn draw_link(cd: &NMCUSTOMDRAW) -> LRESULT {
+    let (h, dc, rc) = (cd.hdr.hwndFrom, cd.hdc, cd.rc);
+    if cd.dwDrawStage != CDDS_PREPAINT {
+        return CDRF_DODEFAULT as LRESULT;
+    }
+    let (bg, fg) = pal().map_or((GetSysColor(COLOR_BTNFACE), GetSysColor(COLOR_HOTLIGHT)), |p| (p.bg, p.link));
+    paint_rect(dc, &rc, bg);
+    let mut text = [0u16; 64];
+    let n = GetWindowTextW(h, text.as_mut_ptr(), text.len() as i32);
+    let old = SelectObject(dc, SendMessageW(h, WM_GETFONT, 0, 0) as HGDIOBJ);
+    SetTextColor(dc, fg);
+    SetBkMode(dc, TRANSPARENT as _);
+    let mut t = RECT { left: rc.left + 1, ..rc };
+    DrawTextW(dc, text.as_ptr(), n, &mut t, DT_SINGLELINE | DT_NOPREFIX);
+    // its own underline, under the line: an underlined font's runs through the dot below of ạ and ậ
+    let mut tm = std::mem::zeroed::<TEXTMETRICW>();
+    GetTextMetricsW(dc, &mut tm);
+    let top = rc.top + tm.tmHeight;
+    // twice as thick while pressed: the only press feedback a link has
+    let thick = px(if cd.uItemState & CDIS_SELECTED != 0 { 2 } else { 1 }, DPI.load(Relaxed)).max(1);
+    paint_rect(dc, &RECT { left: rc.left + 1, top, right: rc.right - 1, bottom: top + thick }, fg);
+    if cd.uItemState & CDIS_FOCUS != 0 && SendMessageW(h, WM_QUERYUISTATE, 0, 0) as u32 & UISF_HIDEFOCUS == 0 {
+        DrawFocusRect(dc, &rc);
+    }
+    SelectObject(dc, old);
+    CDRF_SKIPDEFAULT as LRESULT
+}
+
+/// A disabled push button in a palette, drawn whole: the dark theme's disabled face differs from
+/// the enabled one only by a slightly greyer label, so the label takes the palette's disabled colour.
+unsafe fn draw_disabled_button(cd: &NMCUSTOMDRAW, p: &Palette) -> LRESULT {
+    let (h, dc, mut rc) = (cd.hdr.hwndFrom, cd.hdc, cd.rc);
+    if cd.dwDrawStage != CDDS_PREPAINT {
+        return CDRF_DODEFAULT as LRESULT;
+    }
+    let theme = OpenThemeDataForDpi(h, wide("Button").as_ptr(), DPI.load(Relaxed));
+    if theme == 0 {
+        return CDRF_DODEFAULT as LRESULT;
+    }
+    paint_rect(dc, &rc, p.bg);
+    DrawThemeBackground(theme, dc, BP_PUSHBUTTON, PBS_DISABLED, &rc, null());
+    let mut text = [0u16; 128];
+    let n = GetWindowTextW(h, text.as_mut_ptr(), text.len() as i32);
+    let old = SelectObject(dc, SendMessageW(h, WM_GETFONT, 0, 0) as HGDIOBJ);
+    let opt = DTTOPTS { dwSize: size_of::<DTTOPTS>() as u32, dwFlags: DTT_TEXTCOLOR, crText: p.off, ..std::mem::zeroed() };
+    DrawThemeTextEx(theme, dc, BP_PUSHBUTTON, PBS_DISABLED, text.as_ptr(), n, DT_CENTER | DT_VCENTER | DT_SINGLELINE, &mut rc, &opt);
+    SelectObject(dc, old);
+    CloseThemeData(theme);
+    CDRF_SKIPDEFAULT as LRESULT
 }
 
 unsafe fn set_check(hwnd: HWND, id: i32, on: bool) {
@@ -228,7 +626,8 @@ unsafe fn checked(hwnd: HWND, id: i32) -> bool {
     SendMessageW(GetDlgItem(hwnd, id), BM_GETCHECK, 0, 0) == BST_CHECKED
 }
 
-/// Show the real state: live on/off switch, Run value, config for the rest.
+/// Show the real state: live on/off switch, Run value, config for the rest. The developer-mode
+/// box is set by `build`, which knows whether its part exists.
 unsafe fn fill(hwnd: HWND) {
     let s = app::settings();
     set_check(hwnd, ID_ENABLED, app::enabled());
@@ -251,10 +650,14 @@ unsafe fn fill(hwnd: HWND) {
     latency(hwnd);
 }
 
+/// The timing line, when developer mode shows it.
 unsafe fn latency(hwnd: HWND) {
-    let ((sent, ns), (pass, np)) = hook::latency();
-    let t = format!("Hook p99: gửi {sent} µs · không gửi {pass} µs ({} phím)", ns + np);
-    SetWindowTextW(GetDlgItem(hwnd, ID_LATENCY), wide(&t).as_ptr());
+    let c = GetDlgItem(hwnd, ID_LATENCY);
+    if !c.is_null() {
+        let ((sent, ns), (pass, np)) = hook::latency();
+        let t = format!("Hook p99: gửi {sent} µs · không gửi {pass} µs ({} phím)", ns + np);
+        SetWindowTextW(c, wide(&t).as_ptr());
+    }
 }
 
 unsafe fn message(hwnd: HWND, text: &str, flags: MESSAGEBOX_STYLE) -> MESSAGEBOX_RESULT {
@@ -303,6 +706,14 @@ unsafe fn command(hwnd: HWND, id: i32, code: u32) {
         }
         // the answer arrives through `sync_update`; the request runs on the updater thread
         (ID_CHECK, BN_CLICKED) => update::check_now(),
+        // installs, or opens the download page (the address in a message box when elevated)
+        (ID_UPDATE_LINK, BN_CLICKED) => update::click(),
+        (ID_GITHUB, BN_CLICKED) => open_url(hwnd, REPO),
+        (ID_DEV, BN_CLICKED) => {
+            let on = checked(hwnd, id);
+            app::update(|s| s.dev_mode = on);
+            PostMessageW(hwnd, WM_APP_REBUILD, 0, 0);
+        }
         (ID_FOLDER, BN_CLICKED) => {
             let Some(dir) = app::config_dir() else { return };
             // The shell looks up the "open" verb in HKCU\Software\Classes, where an unelevated
@@ -406,61 +817,117 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             warn_unsaved(hwnd);
             0
         }
+        // wParam 1: a theme change, applied here so no click handler (one waiting on a message box)
+        // has its control destroyed; several posts for one switch rebuild once
+        WM_APP_REBUILD => {
+            let theme = if wp != 0 { wanted() } else { pal() };
+            if wp == 0 || theme.map_or(null(), |p| p as *const Palette) != PALETTE.load(Relaxed).cast_const() {
+                rebuild(hwnd, DPI.load(Relaxed), theme, checked(hwnd, ID_DEV), top_left(hwnd));
+            }
+            0
+        }
         WM_TIMER => {
             latency(hwnd);
             0
         }
-        // Moved to a monitor with another scale (or the scale changed). All state lives in
-        // app::settings(), so making the controls again at the new size is less code than
-        // moving and re-fonting each one.
+        // Moved to a monitor with another scale (or the scale changed): the position Windows
+        // suggests, our own size for this DPI.
         WM_DPICHANGED => {
-            let dpi = (wp & 0xFFFF) as u32;
             let to = &*(lp as *const RECT);
-            loop {
-                let c = GetWindow(hwnd, GW_CHILD);
-                if c.is_null() || DestroyWindow(c) == 0 {
-                    break;
-                }
-            }
-            build(hwnd, dpi);
-            fill(hwnd);
-            set_icons(hwnd, dpi);
-            // the position Windows suggests, our own size for this DPI
-            let (w, h) = window_size(dpi);
-            SetWindowPos(hwnd, null_mut(), to.left, to.top, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-            if GetActiveWindow() == hwnd {
-                SetFocus(GetDlgItem(hwnd, ID_ENABLED));
-            }
+            rebuild(hwnd, (wp & 0xFFFF) as u32, pal(), checked(hwnd, ID_DEV), (to.left, to.top));
             0
+        }
+        // The apps' light/dark mode ("ImmersiveColorSet", sent several times per switch) or high
+        // contrast changed: rebuilt only when the look it asks for differs from the one shown.
+        WM_SETTINGCHANGE | WM_THEMECHANGED | WM_SYSCOLORCHANGE => {
+            let relevant = msg != WM_SETTINGCHANGE || wp == SPI_SETHIGHCONTRAST as usize || (lp != 0 && wide_eq(lp as *const u16, "ImmersiveColorSet"));
+            if relevant && wanted().map_or(null(), |p| p as *const Palette) != PALETTE.load(Relaxed).cast_const() {
+                PostMessageW(hwnd, WM_APP_REBUILD, 1, 0);
+            }
+            DefWindowProcW(hwnd, msg, wp, lp)
         }
         // A plain window, not a dialog: nothing else remembers which control had the focus
         // and gives it back after Alt+Tab, and a focus left on the frame makes Space do nothing.
         WM_ACTIVATE => {
             let f = GetFocus();
             if (wp & 0xFFFF) as u32 == WA_INACTIVE && IsChild(hwnd, f) != 0 {
-                FOCUS.store(f, Relaxed);
+                FOCUS.store(GetDlgCtrlID(f), Relaxed);
             }
             DefWindowProcW(hwnd, msg, wp, lp)
         }
         WM_SETFOCUS => {
-            let f = FOCUS.load(Relaxed);
-            SetFocus(if IsChild(hwnd, f) != 0 && IsWindowEnabled(f) != 0 { f } else { GetDlgItem(hwnd, ID_ENABLED) });
+            let id = FOCUS.load(Relaxed);
+            let f = if id != 0 { GetDlgItem(hwnd, id) } else { null_mut() };
+            SetFocus(if !f.is_null() && IsWindowEnabled(f) != 0 { f } else { GetDlgItem(hwnd, ID_ENABLED) });
             0
         }
-        WM_CTLCOLORSTATIC if GetDlgCtrlID(lp as HWND) == ID_LATENCY => {
-            let dc = wp as HDC;
-            SetTextColor(dc, GetSysColor(COLOR_GRAYTEXT));
-            SetBkMode(dc, TRANSPARENT as i32);
-            GetSysColorBrush(COLOR_BTNFACE) as LRESULT
+        // IsDialogMessageW asks this on Enter: the focused push button (a link too) is the default
+        // one, as in a dialog, so Enter activates it like Space
+        DM_GETDEFID => {
+            let f = GetFocus();
+            let push = IsChild(hwnd, f) != 0 && SendMessageW(f, WM_GETDLGCODE, 0, 0) as u32 & (DLGC_DEFPUSHBUTTON | DLGC_UNDEFPUSHBUTTON) != 0;
+            if push {
+                (DC_HASDEFID << 16 | GetDlgCtrlID(f) as u32) as LRESULT
+            } else {
+                0
+            }
         }
+        WM_SETCURSOR if matches!(GetDlgCtrlID(wp as HWND), ID_UPDATE_LINK | ID_GITHUB) => {
+            SetCursor(LoadCursorW(null_mut(), IDC_HAND));
+            1
+        }
+        WM_NOTIFY => {
+            // only NM_CUSTOMDRAW carries the larger NMCUSTOMDRAW
+            let hdr = &*(lp as *const NMHDR);
+            let kind = GetWindowLongW(hdr.hwndFrom, GWL_STYLE) as u32 & BS_TYPEMASK as u32;
+            if hdr.code == NM_CUSTOMDRAW && matches!(GetDlgCtrlID(hdr.hwndFrom), ID_UPDATE_LINK | ID_GITHUB) {
+                return draw_link(&*(lp as *const NMCUSTOMDRAW));
+            }
+            match pal() {
+                Some(p) if hdr.code == NM_CUSTOMDRAW && (kind == BS_AUTOCHECKBOX as u32 || kind == BS_AUTORADIOBUTTON as u32) => {
+                    draw_check(&*(lp as *const NMCUSTOMDRAW), p)
+                }
+                Some(p) if hdr.code == NM_CUSTOMDRAW && kind == BS_PUSHBUTTON as u32 && IsWindowEnabled(hdr.hwndFrom) == 0 => {
+                    draw_disabled_button(&*(lp as *const NMCUSTOMDRAW), p)
+                }
+                _ => DefWindowProcW(hwnd, msg, wp, lp),
+            }
+        }
+        // the background (the class brush in the system look) and the hairline above the footer
+        WM_ERASEBKGND => {
+            let dc = wp as HDC;
+            let mut rc = std::mem::zeroed::<RECT>();
+            GetClientRect(hwnd, &mut rc);
+            match pal() {
+                Some(p) => paint_rect(dc, &rc, p.bg),
+                None => {
+                    DefWindowProcW(hwnd, msg, wp, lp);
+                }
+            }
+            let top = LINE_Y.load(Relaxed);
+            let line = RECT { top, bottom: top + px(1, DPI.load(Relaxed)).max(1), ..rc };
+            paint_rect(dc, &line, pal().map_or(GetSysColor(COLOR_BTNTEXT), |p| p.line));
+            1
+        }
+        // labels, check boxes and radio buttons (their background), and the dropped hotkey list
+        WM_CTLCOLORSTATIC | WM_CTLCOLORBTN | WM_CTLCOLORLISTBOX => match pal() {
+            Some(p) => {
+                let dc = wp as HDC;
+                SetTextColor(dc, if matches!(GetDlgCtrlID(lp as HWND), ID_LATENCY | ID_CREDIT) { p.dim } else { p.text });
+                SetBkColor(dc, p.bg);
+                BRUSH.load(Relaxed) as LRESULT
+            }
+            None => DefWindowProcW(hwnd, msg, wp, lp),
+        },
         WM_DESTROY => {
             KillTimer(hwnd, 1);
             set_icons(hwnd, 0);
             HWND_SETTINGS.store(null_mut(), Relaxed);
-            FOCUS.store(null_mut(), Relaxed);
-            let f = FONT.swap(0, Relaxed);
-            if f != 0 {
-                DeleteObject(f as HFONT);
+            FOCUS.store(0, Relaxed);
+            for h in [FONT.swap(0, Relaxed), BOLD.swap(0, Relaxed), BRUSH.swap(0, Relaxed)] {
+                if h != 0 {
+                    DeleteObject(h as HGDIOBJ);
+                }
             }
             // not PostQuitMessage: the tray loop keeps running
             0
@@ -476,5 +943,351 @@ mod tests {
     #[test]
     fn layout_scales_with_the_window_dpi() {
         assert_eq!([px(23, 96), px(23, 120), px(23, 144), px(23, 192)], [23, 28, 34, 46]);
+    }
+
+    #[test]
+    fn palette_text_meets_wcag_aa() {
+        let rgb = |c: u32| [c as u8, (c >> 8) as u8, (c >> 16) as u8];
+        for p in [&LIGHT, &DARK] {
+            for c in [p.text, p.dim, p.link] {
+                let r = crate::icon::tests::contrast(rgb(c), rgb(p.bg));
+                assert!(r >= 4.5, "{c:06x} on {:06x}: {r:.2}", p.bg);
+            }
+        }
+    }
+
+    /// Client area (or, `frame`, the whole window through DWM) as RGB rows. `WM_PRINT` draws the
+    /// children at their offset from the window, not the client area, so the whole window is
+    /// printed and the client area cut out.
+    unsafe fn capture(hwnd: HWND, frame: bool) -> (u32, u32, Vec<u8>) {
+        #[link(name = "user32")]
+        extern "system" {
+            fn PrintWindow(hwnd: HWND, dc: HDC, flags: u32) -> i32;
+        }
+        let (mut win, mut cl): (RECT, RECT) = std::mem::zeroed();
+        GetWindowRect(hwnd, &mut win);
+        GetClientRect(hwnd, &mut cl);
+        let mut origin = windows_sys::Win32::Foundation::POINT { x: 0, y: 0 };
+        ClientToScreen(hwnd, &mut origin);
+        let (ww, wh) = ((win.right - win.left) as u32, (win.bottom - win.top) as u32);
+        let dc = CreateCompatibleDC(null_mut());
+        let mut bi: BITMAPINFO = std::mem::zeroed();
+        bi.bmiHeader = BITMAPINFOHEADER {
+            biSize: size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: ww as i32,
+            biHeight: -(wh as i32),
+            biPlanes: 1,
+            biBitCount: 32,
+            ..std::mem::zeroed()
+        };
+        let mut bits = null_mut();
+        let bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
+        assert!(!bmp.is_null());
+        let old = SelectObject(dc, bmp);
+        if frame {
+            assert_ne!(PrintWindow(hwnd, dc, PW_RENDERFULLCONTENT), 0, "PrintWindow");
+        } else {
+            SendMessageW(hwnd, WM_PRINT, dc as usize, (PRF_NONCLIENT | PRF_CLIENT | PRF_CHILDREN | PRF_ERASEBKGND) as isize);
+        }
+        GdiFlush();
+        let bgra = std::slice::from_raw_parts(bits as *const u8, (ww * wh * 4) as usize);
+        let (x0, y0, w, h) =
+            if frame { (0, 0, ww, wh) } else { ((origin.x - win.left) as u32, (origin.y - win.top) as u32, cl.right as u32, cl.bottom as u32) };
+        let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+        for y in y0..y0 + h {
+            for x in x0..x0 + w {
+                let i = ((y * ww + x) * 4) as usize;
+                rgb.extend([bgra[i + 2], bgra[i + 1], bgra[i]]);
+            }
+        }
+        SelectObject(dc, old);
+        DeleteObject(bmp);
+        DeleteDC(dc);
+        (w, h, rgb)
+    }
+
+    /// The control's own comctl32 (the module that registered its class) reports version 6.
+    unsafe fn comctl_major(c: HWND) -> u32 {
+        use windows_sys::Win32::System::LibraryLoader::GetProcAddress;
+        use windows_sys::Win32::UI::Shell::{DLLGETVERSIONPROC, DLLVERSIONINFO};
+        let module = GetClassLongPtrW(c, GCLP_HMODULE) as windows_sys::Win32::Foundation::HMODULE;
+        let f: DLLGETVERSIONPROC = std::mem::transmute(GetProcAddress(module, c"DllGetVersion".as_ptr().cast()));
+        let mut v = DLLVERSIONINFO { cbSize: size_of::<DLLVERSIONINFO>() as u32, ..std::mem::zeroed() };
+        f.map_or(0, |f| if f(&mut v) == 0 { v.dwMajorVersion } else { 0 })
+    }
+
+    const LATEST: &str = "Đang dùng bản mới nhất.";
+    /// A long status (an install stopped half-way), two lines at this width.
+    const LONGEST: &str = "Có bản 9.9.9 nhưng chưa cài được: đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe.";
+    const WAITING: (Option<(&str, bool)>, &str) = (Some(("9.9.9", true)), "Có bản mới v9.9.9.");
+    use crate::update::tests::pretend;
+
+    fn save(dir: &std::path::Path, name: &str, what: &str, (w, h, rgb): (u32, u32, Vec<u8>)) {
+        std::fs::write(dir.join(name), crate::icon::tests::png_rgb(w, h, &rgb)).unwrap();
+        println!("{name}: {what}");
+    }
+
+    /// `TRIOKEY_PREVIEW_DIR=<dir> cargo test -p triokey settings_preview -- --ignored --nocapture`
+    /// writes, without ever showing or activating a window, and prints what each file shows:
+    /// `client-<look>-dev-<off|on>-<latest|waiting>-96.png` (the client area of a hidden window as a
+    /// user sees it, with the status "up to date" or a waiting version and its link),
+    /// `frame-…-96.png` (the same with the caption, cloaked and off-screen), `client-<look>-dev-on-waiting-144.png`,
+    /// `client-system-dev-off-waiting-96.png`, and `states-…` for the artificial states (disabled
+    /// controls, simulated focus, the longest status, a wide timing line). The update status is set
+    /// directly (`pretend`): nothing is checked, fetched or opened. The look is forced by parameter and
+    /// no Windows setting is changed; `triggers` reads the apps' light/dark mode to check the theme-change path.
+    #[test]
+    #[ignore]
+    fn settings_preview() {
+        let dir = std::path::PathBuf::from(std::env::var("TRIOKEY_PREVIEW_DIR").expect("TRIOKEY_PREVIEW_DIR"));
+        std::fs::create_dir_all(&dir).unwrap();
+        unsafe {
+            let manifest = !windows_sys::Win32::System::LibraryLoader::FindResourceW(null_mut(), 1 as _, 24 as _).is_null();
+            println!("manifest in test exe: {manifest}, monitor dpi: {}", windows_sys::Win32::UI::HiDpi::GetDpiForSystem());
+            let on = |dev: bool| if dev { "on" } else { "off" };
+            for (theme, name) in [(&LIGHT, "light"), (&DARK, "dark")] {
+                for dev in [false, true] {
+                    for (pending, status, what) in [(None, LATEST, "latest"), (WAITING.0, WAITING.1, "waiting")] {
+                        pretend(pending, status);
+                        let tag = format!("{name}-dev-{}-{what}", on(dev));
+                        let h = create(Some(theme), dev, Some(96), null_mut());
+                        check(h, dev, &tag);
+                        let link = if pending.is_some() { " + link \"Cập nhật tại đây\"" } else { "" };
+                        let what = format!("{name}, developer mode {}, status \"{status}\"{link}", on(dev));
+                        save(&dir, &format!("client-{tag}-96.png"), &format!("client area, {what}"), capture(h, false));
+                        DestroyWindow(h);
+                        save(&dir, &format!("frame-{tag}-96.png"), &format!("whole window with caption, {what}"), frame(theme, dev, &tag));
+                    }
+                }
+                pretend(WAITING.0, WAITING.1);
+                let h = create(Some(theme), true, Some(144), null_mut());
+                check(h, true, name);
+                let what = format!("client area at 144 DPI (layout and fonts only), {name}, developer mode on, waiting version");
+                save(&dir, &format!("client-{name}-dev-on-waiting-144.png"), &what, capture(h, false));
+                DestroyWindow(h);
+                pretend(None, LONGEST);
+                let h = create(Some(theme), true, Some(96), null_mut());
+                states(h);
+                let what =
+                    format!("ARTIFICIAL, {name}: disabled check box and button, simulated focus on a check box, a long two-line status, a wide Hook line");
+                save(&dir, &format!("states-{name}-error-dev-on-96.png"), &what, capture(h, false));
+                DestroyWindow(h);
+                pretend(WAITING.0, LONGEST);
+                let h = create(Some(theme), false, Some(96), null_mut());
+                check(h, false, name);
+                let what =
+                    format!("ARTIFICIAL, {name}: a version waits while the status says something long (a failed install): the link on a line of its own");
+                save(&dir, &format!("states-{name}-waiting-long-status-96.png"), &what, capture(h, false));
+                DestroyWindow(h);
+                pretend(WAITING.0, WAITING.1);
+                let h = create(Some(theme), false, Some(96), null_mut());
+                focus(h, &[ID_UPDATE_LINK, ID_GITHUB]);
+                let what = format!("ARTIFICIAL, {name}: simulated keyboard focus on both links at once (for real only one has it)");
+                save(&dir, &format!("states-{name}-focus-links-96.png"), &what, capture(h, false));
+                DestroyWindow(h);
+            }
+            pretend(WAITING.0, WAITING.1);
+            let h = create(None, false, Some(96), null_mut());
+            check(h, false, "system");
+            let what = "client area, system look (high contrast off, so normal system colours), waiting version: the link in COLOR_HOTLIGHT";
+            save(&dir, "client-system-dev-off-waiting-96.png", what, capture(h, false));
+            DestroyWindow(h);
+            heights();
+            triggers();
+            leaks();
+        }
+    }
+
+    /// Visual styles are active, and the developer part and the links exist exactly when they should.
+    unsafe fn check(h: HWND, dev: bool, tag: &str) {
+        use windows_sys::Win32::UI::Controls::{GetWindowTheme, IsAppThemed};
+        assert!(!h.is_null());
+        let first = GetDlgItem(h, ID_ENABLED);
+        let major = comctl_major(first);
+        println!(
+            "{tag} {}: comctl32 {major}, themed app {}, DWM HRESULTs (dark mode, caption, border, text) {:x?}",
+            DPI.load(Relaxed),
+            IsAppThemed(),
+            caption(h)
+        );
+        assert!(major == 6 && IsAppThemed() != 0 && GetWindowTheme(first) != 0, "visual styles are not active");
+        assert_eq!([GetDlgItem(h, ID_FOLDER).is_null(), GetDlgItem(h, ID_LATENCY).is_null()], [!dev; 2]);
+        assert_eq!(GetDlgItem(h, ID_UPDATE_LINK).is_null(), update::waiting().is_none());
+        assert!(!GetDlgItem(h, ID_GITHUB).is_null());
+        // the link and the status text do not overlap
+        let rect = |id| {
+            let mut rc = std::mem::zeroed::<RECT>();
+            GetWindowRect(GetDlgItem(h, id), &mut rc);
+            rc
+        };
+        let mut both = std::mem::zeroed::<RECT>();
+        assert_eq!(IntersectRect(&mut both, &rect(ID_UPDATE_STATUS), &rect(ID_UPDATE_LINK)), 0, "{tag}: the link overlaps the status");
+    }
+
+    /// The window is as tall as its content: no room for an empty status, one line, two lines, and
+    /// developer mode adds its part; a waiting version with its link takes one line.
+    unsafe fn heights() {
+        let mut hs = Vec::new();
+        let cases =
+            [(false, (None, "")), (false, (None, LATEST)), (false, WAITING), (false, (None, LONGEST)), (true, (None, LONGEST)), (false, (WAITING.0, LONGEST))];
+        for (dev, (pending, status)) in cases {
+            pretend(pending, status);
+            let h = create(Some(&LIGHT), dev, Some(96), null_mut());
+            let mut cl = std::mem::zeroed::<RECT>();
+            GetClientRect(h, &mut cl);
+            hs.push((cl.bottom, SHAPE.load(Relaxed) & 0xF));
+            DestroyWindow(h);
+        }
+        println!("client heights and status lines (empty, latest, waiting, long, long with developer mode, long while a version waits): {hs:?}");
+        assert_eq!(hs.iter().map(|h| h.1).collect::<Vec<_>>(), [0, 1, 1, 2, 2, 3]);
+        assert!(hs[0].0 < hs[1].0 && hs[1].0 == hs[2].0 && hs[2].0 < hs[3].0 && hs[3].0 < hs[4].0 && hs[3].0 < hs[5].0, "{hs:?}");
+    }
+
+    /// The window procedure's rebuild triggers, on a hidden window and through messages sent to it
+    /// alone: the developer-mode switch (posted message, not WM_COMMAND, which would save the
+    /// setting), a theme change, a status that needs other room, and a DPI change.
+    unsafe fn triggers() {
+        let height = |h: HWND| {
+            let mut rc = std::mem::zeroed::<RECT>();
+            GetClientRect(h, &mut rc);
+            (rc.right, rc.bottom)
+        };
+        pretend(None, LATEST);
+        let other = if wanted().is_some_and(|p| p.dark) { &LIGHT } else { &DARK };
+        let h = create(Some(other), false, Some(96), null_mut());
+        let off = height(h);
+        set_check(h, ID_DEV, true);
+        SendMessageW(h, WM_APP_REBUILD, 0, 0);
+        assert!(!GetDlgItem(h, ID_FOLDER).is_null() && height(h).1 > off.1, "developer mode on");
+        set_check(h, ID_DEV, false);
+        SendMessageW(h, WM_APP_REBUILD, 0, 0);
+        assert!(GetDlgItem(h, ID_FOLDER).is_null() && height(h) == off, "developer mode off");
+        let name = wide("ImmersiveColorSet");
+        let mut m = std::mem::zeroed::<MSG>();
+        let pump = |m: &mut MSG| {
+            while PeekMessageW(m, h, 0, 0, PM_REMOVE) != 0 {
+                DispatchMessageW(m);
+            }
+        };
+        let first = GetDlgItem(h, ID_ENABLED);
+        // twice, as Windows does: the rebuild is posted, not done inside the sent message, and done once
+        SendMessageW(h, WM_SETTINGCHANGE, 0, name.as_ptr() as isize);
+        SendMessageW(h, WM_SETTINGCHANGE, 0, name.as_ptr() as isize);
+        assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt inside WM_SETTINGCHANGE");
+        pump(&mut m);
+        assert_eq!(PALETTE.load(Relaxed).cast_const(), wanted().map_or(null(), |p| p as *const Palette), "theme change not applied");
+        let first = GetDlgItem(h, ID_ENABLED);
+        SendMessageW(h, WM_SETTINGCHANGE, 0, name.as_ptr() as isize);
+        pump(&mut m);
+        assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt although the look did not change");
+        // a status of the same room only changes the text; one that needs a second line rebuilds, posted
+        pretend(None, "Đang kiểm tra…");
+        sync_update();
+        pump(&mut m);
+        assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt for a status of the same room");
+        pretend(None, LONGEST);
+        sync_update();
+        assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt inside sync_update");
+        pump(&mut m);
+        assert!(height(h).1 > off.1, "no second status line");
+        pretend(WAITING.0, WAITING.1);
+        sync_update();
+        pump(&mut m);
+        assert!(!GetDlgItem(h, ID_UPDATE_LINK).is_null() && height(h) == off, "waiting version");
+        let to = RECT { left: 0, top: 0, right: 1, bottom: 1 };
+        SendMessageW(h, WM_DPICHANGED, 144 | (144 << 16), &to as *const RECT as isize);
+        assert_eq!(height(h).0, px(WIDTH, 144), "DPI change");
+        DestroyWindow(h);
+    }
+
+    /// Rebuilds (theme, developer mode, DPI) and paints leave the GDI and USER object counts as
+    /// they were: fonts, brushes and icons are freed or replaced, theme handles closed.
+    unsafe fn leaks() {
+        use windows_sys::Win32::System::Threading::{GetCurrentProcess, GetGuiResources, GR_GDIOBJECTS, GR_USEROBJECTS};
+        let count = || [GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS), GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS)];
+        pretend(WAITING.0, WAITING.1);
+        let h = create(Some(&LIGHT), false, Some(96), null_mut());
+        let round = |i: usize| {
+            rebuild(h, [96, 144][i % 2], [Some(&LIGHT), Some(&DARK), None][i % 3], i.is_multiple_of(2), (0, 0));
+            focus(h, &[ID_UPDATE_LINK, ID_GITHUB]);
+            capture(h, false);
+        };
+        (0..6).for_each(round);
+        let before = count();
+        (0..30).for_each(round);
+        println!("GDI, USER objects after 6 rounds {before:?}, after 36 {:?}", count());
+        assert_eq!(before, count(), "rebuilding or painting leaks");
+        DestroyWindow(h);
+    }
+
+    /// The artificial states: a checked box, disabled check box and button, a wide timing line and
+    /// the focus cue on a check box. Nothing here sends WM_COMMAND: no setting, file or registry value is touched.
+    unsafe fn states(h: HWND) {
+        set_check(h, ID_YIELD, true);
+        EnableWindow(GetDlgItem(h, ID_STARTUP), 0);
+        EnableWindow(GetDlgItem(h, ID_CHECK), 0);
+        SetWindowTextW(GetDlgItem(h, ID_LATENCY), wide("Hook p99: gửi 12345 µs · không gửi 9876 µs (2048 phím)").as_ptr());
+        focus(h, &[ID_AUTO_EN]);
+    }
+
+    /// The keyboard focus cue on these controls, simulated: SetFocus would activate the window.
+    unsafe fn focus(h: HWND, ids: &[i32]) {
+        SendMessageW(h, WM_CHANGEUISTATE, (UIS_CLEAR | (UISF_HIDEFOCUS << 16)) as usize, 0);
+        for &id in ids {
+            SendMessageW(GetDlgItem(h, id), WM_SETFOCUS, 0, 0);
+        }
+    }
+
+    /// The window at 96 DPI shown far off-screen, cloaked and without activation, owned by a hidden
+    /// window so it gets no taskbar button, captured with its caption through DWM, then destroyed.
+    /// Checks that the caption is the client area's colour.
+    unsafe fn frame(p: &'static Palette, dev: bool, tag: &str) -> (u32, u32, Vec<u8>) {
+        let owner = CreateWindowExW(0, wide("STATIC").as_ptr(), null(), WS_POPUP, 0, 0, 0, 0, null_mut(), null_mut(), GetModuleHandleW(null()), null());
+        let h = create(Some(p), dev, Some(96), owner);
+        let x = GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN) + 400;
+        let y = GetSystemMetrics(SM_YVIRTUALSCREEN) + GetSystemMetrics(SM_CYVIRTUALSCREEN) + 400;
+        SetWindowPos(h, null_mut(), x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        let on = 1u32;
+        let tr = DwmSetWindowAttribute(h, DWMWA_TRANSITIONS_FORCEDISABLED as u32, (&on as *const u32).cast(), 4);
+        // cloaked: DWM keeps rendering it for PrintWindow but never puts it on screen
+        let hc = DwmSetWindowAttribute(h, DWMWA_CLOAK as u32, (&on as *const u32).cast(), 4);
+        assert_eq!(hc, 0, "cloak refused: not showing the window");
+        let fg = GetForegroundWindow();
+        let t = std::time::Instant::now();
+        ShowWindow(h, SW_SHOWNOACTIVATE);
+        UpdateWindow(h);
+        let (mut win, mut origin) = (std::mem::zeroed::<RECT>(), windows_sys::Win32::Foundation::POINT { x: 0, y: 0 });
+        GetWindowRect(h, &mut win);
+        ClientToScreen(h, &mut origin);
+        let bg = vec![p.bg as u8, (p.bg >> 8) as u8, (p.bg >> 16) as u8];
+        // the first window DWM composes can take longer than one pass: capture until the client
+        // margin shows the palette, for at most a second
+        let (mut w, mut ht, mut rgb, mut m) = (0, 0, Vec::new(), std::mem::zeroed::<MSG>());
+        let at = |rgb: &[u8], w: u32, x: i32, y: i32| rgb[((y as u32 * w + x as u32) * 3) as usize..][..3].to_vec();
+        let body = (origin.x - win.left + 4, origin.y - win.top + 4);
+        while t.elapsed() < std::time::Duration::from_secs(1) {
+            let pass = std::time::Instant::now();
+            while pass.elapsed() < std::time::Duration::from_millis(100) {
+                while PeekMessageW(&mut m, null_mut(), 0, 0, PM_REMOVE) != 0 {
+                    DispatchMessageW(&m);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            DwmFlush();
+            (w, ht, rgb) = capture(h, true);
+            if at(&rgb, w, body.0, body.1) == bg {
+                break;
+            }
+        }
+        ShowWindow(h, SW_HIDE);
+        let shown = t.elapsed();
+        DestroyWindow(h);
+        DestroyWindow(owner);
+        println!("  frame {tag}: transitions-off {tr:x}, cloak {hc:x}, shown {shown:?}");
+        assert_eq!(fg, GetForegroundWindow(), "the preview took the foreground");
+        // middle of the caption, right of the title and left of the buttons, against the client margin
+        let (cap, body) = (at(&rgb, w, w as i32 * 3 / 5, (origin.y - win.top) / 2), at(&rgb, w, body.0, body.1));
+        assert_eq!([&cap, &body], [&bg, &bg], "{tag}: caption and body are not the palette's background");
+        (w, ht, rgb)
     }
 }

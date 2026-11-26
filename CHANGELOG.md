@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 (2026-11-26)
+
+The owner reviewed images of the window rendered by a test at 96 DPI (hidden or cloaked, never on screen) and asked for the footer and the notice as they are now. The window itself has not been checked on a desktop (rows 2n to 2x in `docs/HANDS_ON_TEST.md`).
+
+### Windows app (`triokey`)
+
+- **Settings window look.** Light and dark colours that follow the Windows app mode (Settings > Personalization > Colors), switched while the window is open. On Windows 11 the title bar has the same colour as the rest of the window, and the window border is a thin line that stays visible on a desktop of the same colour. The options are grouped under the headings `Gõ`, `Hệ thống` and `Cập nhật`, without frames. Below a thin line, the footer is one line of credit, `TrioKey vX.Y.Z · © 2026 ved0el`, and a `GitHub` link to the repository page. With high contrast on, the window keeps the plain system look and colours, and links take the system's hyperlink colour.
+- **Developer mode** (`Chế độ phát triển`, off by default, `dev_mode` in `config.txt`), the last box under `Hệ thống`. The config folder button (`Mở thư mục cấu hình…`) and the hook timing line (`Hook p99: …`) are now shown only while it is on, directly under the box; the window grows to show them. Timings are still recorded either way.
+- **Shorter update notice.** While a newer version waits, the line under `Tự động cập nhật` reads `Có bản mới vX.Y.Z.` followed by the link `Cập nhật tại đây`, which does what clicking the tray item does (install, or open the download page); the address is no longer written out. `Đang dùng bản mới nhất.` no longer repeats the version, which the footer shows. The status line takes no room when there is nothing to say and takes only as many lines as the text and the link need. The tray menu item and the notifications are unchanged.
+- **Links** (`Cập nhật tại đây`, `GitHub`) are reached with Tab and activated with Space, Enter or a click. The admin-mode copy opens no browser: the `GitHub` link shows the address in a message box, as the folder button shows the path. Enter presses the focused button (`Kiểm tra bản mới`, `Mở thư mục cấu hình…`) too.
+
 ## 0.2.0 (2026-11-26)
 
 The owner typed ordinary mixed English and Vietnamese text with this build on one Windows 11 machine and found it good enough to release; a few words still came out wrong. One hook timing reading was taken there (AT7 in `docs/HANDS_ON_TEST.md`): p99 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys. Everything else is covered by the automated tests only: no swap was remembered in that session, and admin mode, the icon checks and the updater (AT10) have not been run on a real machine.

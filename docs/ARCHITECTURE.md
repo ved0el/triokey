@@ -10,7 +10,7 @@ Vietnamese text with the 0.2.0 build (the frequency scoring engine) and found it
 release, with a few words still wrong, and took one hook timing reading (AT7: p99 314 µs for
 keys passed through, 5,600 µs for keys that replace text, 502 keys). Remembering of kept swaps
 (no swap was kept in that session), the checked file access of the elevated copy, the tray and
-app icons and the save at logoff have so far been checked only by `cargo test` and compilation. Chinese and Korean have
+app icons and the save at logoff have so far been checked only by `cargo test` and compilation. The settings window's look (section 2.6) has been seen only in images that the ignored test `settings_preview` renders at 96 DPI; nobody has looked at it on a desktop. Chinese and Korean have
 never been tried by hand. The other checklist rows (among them hook reinstall, admin mode and the
 update swap, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
 
@@ -26,7 +26,7 @@ update swap, and AT11 and AT12 for the new engine and remembering) have no recor
 - **No English/Vietnamese toggle.** The user types Telex all the time; each word is decided as
   English or Vietnamese when it ends. A hotkey only switches TrioKey off and on.
 - **Small settings surface.** One settings window (on/off, hotkey preset, tone style, keep
-  English words, yield to CJK IMEs, start with Windows, admin mode, automatic updates) plus a few
+  English words, yield to CJK IMEs, start with Windows, admin mode, automatic updates, developer mode) plus a few
   plain text files (section 7). No macros, no per-app memory, no key recorder.
 - **The engine is plain Rust with no OS calls**, so all typing behaviour is testable with
   `cargo test` and the Windows part stays thin.
@@ -129,7 +129,8 @@ character resets the word.
 
 The budget is a p99 below 1 ms for keys that pass through, checked by hand in checklist row AT7.
 The code only measures: two rings of the last 1024 callback times (keys that called `SendInput`,
-time included, and keys that did not), shown at the bottom of the settings window. A key that
+time included, and keys that did not), shown in the settings window under the developer mode box while developer
+mode is on (section 2.6); they are recorded whether it is on or not. A key that
 waited for a fresh IME read (section 3.3) is not recorded.
 
 ### 2.5 Warm-up
@@ -139,6 +140,102 @@ installing the hook, which builds the syllable tables, and calls `Lexicon::rates
 parses the four data files into the frequency tables (about 70 ms in a release build). The word
 `a` alone never reaches `rates`. After both, the first word typed costs tens of microseconds
 (measured: `tieesng ` about 42 µs after the full warm-up, about 70 ms with the word alone).
+
+### 2.6 Settings window
+
+`settings_ui.rs`: one plain Win32 window (not a dialog) of standard controls on the tray thread;
+`tray.rs` passes its messages through `IsDialogMessageW` for Tab and the arrow keys. Every change
+goes through `app::update` (saved to `config.txt`, applied at once).
+
+**Look.** Chosen when the window is made and again when Windows reports a change
+(`WM_SETTINGCHANGE` with `ImmersiveColorSet` or `SPI_SETHIGHCONTRAST`, `WM_THEMECHANGED`,
+`WM_SYSCOLORCHANGE`; rebuilt only when the wanted look differs from the shown one):
+
+- High contrast on (`SPI_GETHIGHCONTRAST`, `HCF_HIGHCONTRASTON`): the system look. No palette, no
+  custom drawing except the links (below, in the system hyperlink colour), no theme names; class background `COLOR_BTNFACE`, system colours, and the DWM
+  caption, border and caption text colours reset to `DWMWA_COLOR_DEFAULT`. An accessibility
+  requirement.
+- Else `AppsUseLightTheme = 0` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`: the dark palette.
+- Else the light palette.
+
+One `Palette` struct is the only source of colour: background, text, dim (credit, timing line),
+disabled, line (hairline and window border), link. Light `#F3F3F3`, `#1A1A1A`, `#5C5C5C`, `#A0A0A0`,
+`#D0D0D0`, link `#3565B8` (the tray icon's deep blue); dark `#202020`, `#F2F2F2`, `#ABABAB`,
+`#6E6E6E`, `#3D3D3D`, link `#8AB4F8` (the tray icon's light blue). A unit test checks WCAG
+contrast of at least 4.5 for text, dim and link on the background. The caption colour
+(`DWMWA_CAPTION_COLOR`) is the background, so title bar and body match by construction; the
+caption text is the text colour, the border (`DWMWA_BORDER_COLOR`) the line colour, and
+`DWMWA_USE_IMMERSIVE_DARK_MODE` follows the palette. Windows 10 refuses attributes 34 to 36; the
+results are ignored. In the dark palette the buttons get the `DarkMode_Explorer` theme and the
+combo box `DarkMode_CFD` through `SetWindowTheme`; a name that does not resolve leaves the light
+theme, still usable. A disabled push button in `DarkMode_Explorer` keeps an enabled-looking face
+and only slightly dimmer text, so in a palette a disabled push button is custom drawn: the theme's
+`PBS_DISABLED` face and the label in the disabled colour. Under visual styles a check box or radio button takes its label colour from
+the theme, so in a palette they are custom drawn (`NM_CUSTOMDRAW`): the glyph is the control's own
+theme part, opened with `OpenThemeDataForDpi` at the layout DPI (Windows 10 1703 and later), the
+label is drawn with `DrawThemeTextEx` in the palette colour, and a focus rectangle is drawn while
+the keyboard is in use. Labels, button corners and the dropped hotkey list take the palette through
+`WM_CTLCOLORSTATIC`, `WM_CTLCOLORBTN` and `WM_CTLCOLORLISTBOX`. Only documented APIs are used; the
+tray menu and message boxes keep the system look (a dark menu needs undocumented ones).
+
+**Layout.** No group boxes or frames. Windows dialog metrics for Segoe UI 9 pt at 96 DPI, scaled
+by the window's DPI: 11 px margins, 17 px check boxes, 23 px buttons and combo box, a label 4 px
+below the top of a 23 px control, 7 px between related rows, 15 px before a section heading.
+Headings (`Gõ`, `Hệ thống`, `Cập nhật`) are the message font in semibold; `Chế độ phát triển` is the
+last box of `Hệ thống`. The update status under `Tự động cập nhật` takes the lines its text needs
+in the 378 px column (`DrawText` with `DT_CALCRECT | DT_WORDBREAK` in the window's font), none when
+it is empty; while a version waits (`update::waiting()`) the link `Cập nhật tại đây` follows the
+text on its line, or goes on a line of its own when both do not fit. One hairline in the line
+colour (in the system look `COLOR_BTNTEXT`, so it stays visible in every high-contrast scheme)
+separates the footer: the credit `TrioKey vX.Y.Z · © 2026 ved0el` in the dim colour on the left
+(one constant, version from `CARGO_PKG_VERSION`) and the link `GitHub` to `CARGO_PKG_REPOSITORY` on
+the right, on the same baseline. The window is as tall as its content.
+
+**Links.** Push buttons (`BS_PUSHBUTTON`: a tab stop, Space and a click activate them, and the
+button's text is its accessible name) drawn whole through `NM_CUSTOMDRAW` as text in the message
+font, in the palette's link colour or, in the system look, `COLOR_HOTLIGHT` on `COLOR_BTNFACE`,
+with an underline of their own one text line below the top: the font's underline runs through the
+dot below of `ạ` and `ậ`. Each is as wide as its text plus one pixel each side and two pixels
+taller than the line, so the focus rectangle (drawn while the keyboard is in use) hugs the words.
+The hand cursor comes from `WM_SETCURSOR`. A plain window is not a dialog, so `IsDialogMessageW`
+asks it for the default button on Enter (`DM_GETDEFID`); the window answers with the focused push
+button, so Enter activates a link, `Kiểm tra bản mới` or the folder button like Space does.
+`Cập nhật tại đây` calls `update::click()` (install, or the download page); `GitHub` goes through
+`open_url`, which in the elevated copy shows the address instead (section 8.3).
+
+**Developer mode** (`dev_mode`, off by default). Only while it is on do the config folder button
+and the timing line exist, directly under its box, their left edge on the box's label (the glyph
+width from `GetThemePartSize` plus a quarter, where `draw_check` puts the label); the one-second
+timer that refreshes the line runs only then. Display only: `hook.rs` records timings either way.
+
+**One rebuild path.** `rebuild` destroys the controls and makes them again from `app::settings()`
+for a DPI change, a look change, the developer-mode switch and an update status that needs other
+room (another number of lines, or the link appearing, going or moving; `sync_update` compares it
+with the shape the window was built for and otherwise only sets the text). All but the first are posted
+(`WM_APP_REBUILD`): a click handler, or the message box it is showing, must not have its control
+destroyed under it, and `WM_SETTINGCHANGE` is a sent message that also arrives inside a message box. It keeps the window's top-left corner (the suggested one for a DPI
+change) and the focused control (by ID). Fonts and the background brush are replaced and freed per
+rebuild, theme handles closed per paint; the preview test checks that GDI and USER object counts
+stay flat over repeated rebuilds and paints.
+
+**Preview.** `TRIOKEY_PREVIEW_DIR=<dir> cargo test -p triokey settings_preview -- --ignored --nocapture`
+writes PNGs and prints what each one shows. The main ones are the window as a user sees it: client
+area from a hidden window and the whole window with its caption at 96 DPI (from a window that is
+cloaked and off-screen first, shown without activation, and checked not to have taken the
+foreground; the caption pixel must equal the client background), light and dark, developer mode
+off and on, with the status `Đang dùng bản mới nhất.` and with a waiting version and its
+link; one 144 DPI image per look and the system look once. Files named `states-…` hold the
+artificial states (disabled controls, simulated keyboard focus on a check box and on the links, the
+longest status, a wide timing line). The look is forced by parameter and the status is set
+directly; nothing is checked, fetched or opened. The test asserts the heights (no room for an empty
+status, then one line, then two, then developer mode), drives the rebuild triggers through
+messages sent to that hidden window alone (the developer-mode rebuild message, `WM_SETTINGCHANGE`
+with `ImmersiveColorSet`, a status needing another line through `sync_update`, `WM_DPICHANGED`) and
+checks that a second, unchanged theme notice, or a status of the same room, does not rebuild. The "system" image is the system look
+with normal colours, not a contrast theme. A hidden combo box draws no text, the DWM border is
+not in the capture, and at 144 DPI on a 96 DPI monitor the themed controls draw at 96 DPI scale:
+the 144 images show layout and fonts only. Nothing in this section has been seen on a desktop, including Tab, Space, Enter,
+the hand cursor and the browser or message box the links open; checklist rows 2a, 2n to 2x, 10g to 10j.
 
 ## 3. IME state and yielding
 
@@ -499,7 +596,7 @@ Each file is optional; TrioKey runs on defaults without any of them.
 
 | File | Format | Read | Written |
 |---|---|---|---|
-| `config.txt` | `key = value` lines: `enabled`, `tone_new`, `auto_english`, `yield_cjk`, `hotkey` (`ctrl_shift`, `alt_z`, `ctrl_space`, `none`), `run_at_startup`, `run_as_admin`, `auto_update`, `last_update_check` (Unix seconds). Unknown keys, bad values and a BOM are tolerated | once at start | created with defaults when missing (not by an elevated copy); rewritten on every settings change (tray thread) and after every answered update check (updater thread, unelevated only) |
+| `config.txt` | `key = value` lines: `enabled`, `tone_new`, `auto_english`, `yield_cjk`, `hotkey` (`ctrl_shift`, `alt_z`, `ctrl_space`, `none`), `run_at_startup`, `run_as_admin`, `auto_update`, `last_update_check` (Unix seconds), `dev_mode` (settings window shows the config folder button and the hook timing line). Unknown keys, bad values and a BOM are tolerated | once at start | created with defaults when missing (not by an elevated copy); rewritten on every settings change (tray thread) and after every answered update check (updater thread, unelevated only) |
 | `force_vi.txt`, `force_en.txt` | one word per line as typed keys (`this`, not `thí`), `#` comments, case ignored; a word in both counts as English | once at start; editing needs a restart | never |
 | `learned.txt` | section 5.5 | once at start (at most 256 KB, UTF-8) | created with the header when missing (not by an elevated copy); about 2 s after the last change (watcher tick), at exit and at logoff/shutdown (`WM_ENDSESSION`) |
 
@@ -566,8 +663,9 @@ Exit codes: `OK` 0, `FAILED` 1, `OK_AFTER_REBOOT` 2, `COPY_FAILED` 3, `TASK_FAIL
 ### 8.3 What an elevated TrioKey must never do
 
 - **Call `ShellExecute`.** Verbs are resolved through `HKCU\Software\Classes`, where an
-  unelevated program can register its own command. Elevated, "open config folder" and "open the
-  releases page" show the path or address as text, and the admin part runs in-process instead of
+  unelevated program can register its own command. Elevated, "open config folder", "open the
+  releases page" (tray item, notification, `Cập nhật tại đây`) and the settings window's `GitHub`
+  link show the path or address as text, and the admin part runs in-process instead of
   through `runas`.
 - **Create files** under `%APPDATA%`, or write anything there except an existing file through the
   checked open (8.4). It does not write `last_update_check` (kept in memory) and does not migrate
@@ -740,7 +838,7 @@ edited workflow under a tag; the protection is who has push access. Steps and re
   `realtext.rs` and `vielotus.rs` (tone-position equivalence, line planning, cost and armed
   counting, CSV quoting);
 - app: pure parts of each module (tray tooltip, icon geometry and WCAG contrast of the tray
-  colours, settings window DPI scaling, `ime::decide`, key classification, hotkey state machine,
+  colours, settings window DPI scaling and WCAG contrast of its palettes, `ime::decide`, key classification, hotkey state machine,
   Enter/Tab split, hook-liveness test, latency ring, `SendInput` records, config round trip,
   password class test, task XML, Run value, the elevated checked writes and reads on real
   temporary folders with junctions and links, version comparison, trusted comment, host list,

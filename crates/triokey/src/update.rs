@@ -371,6 +371,17 @@ pub fn status() -> String {
     state().status.clone()
 }
 
+/// The newer version waiting for a click (installs it, or opens the download page), if any: the
+/// settings window puts its link after the status while this is Some.
+pub fn waiting() -> Option<String> {
+    state().pending.as_ref().map(|(v, _)| v.clone())
+}
+
+/// The status while a version waits: short, the window adds the link and `click` knows the way.
+fn notice(version: &str) -> String {
+    format!("Có bản mới v{version}.")
+}
+
 /// Tray thread: the notification to show, once.
 pub fn take_balloon() -> Option<(String, String)> {
     state().balloon.take()
@@ -394,7 +405,7 @@ pub fn check_now() {
     }
 }
 
-/// Tray thread: the user clicked the notification or the menu item.
+/// Tray thread: the user clicked the notification, the menu item or the settings window's link.
 pub fn click() {
     let Some((_, install)) = state().pending.clone() else { return };
     if install {
@@ -432,7 +443,7 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
     }
     let (claimed, sig) = match found {
         Ok(Some(found)) => found,
-        Ok(None) => return set(|s| (s.pending, s.status) = (None, format!("Đang dùng bản mới nhất (v{VERSION})."))),
+        Ok(None) => return set(|s| (s.pending, s.status) = (None, "Đang dùng bản mới nhất.".into())),
         Err(e) => return set(|s| s.status = format!("Chưa kiểm tra được: {}.", e.text())),
     };
     let known = state().pending.as_ref().is_some_and(|(v, _)| *v == claimed);
@@ -450,7 +461,7 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
         (Mode::Click, Some(dir)) if clicked => install(&dir, &bytes),
         (Mode::Click, _) => {
             return set(|s| {
-                s.status = format!("Có bản {version}. Bấm vào biểu tượng khay → \"Có bản {version} — bấm để cập nhật\".");
+                s.status = notice(&version);
                 // announce a version once, not at every daily check
                 if !known || manual {
                     s.balloon = Some((format!("Có bản {version} — bấm để cập nhật"), "TrioKey chạy quyền admin chỉ cập nhật khi bạn bấm.".into()));
@@ -467,7 +478,7 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
             s.installed = Some(version);
         }),
         Err(Error::NotWritable) => set(|s| {
-            s.status = format!("Có bản mới {version}, nhưng bản này không tự cập nhật được. Tải tại {RELEASES_URL}");
+            s.status = notice(&version);
             if !known || manual {
                 s.balloon = Some((format!("Có bản mới {version}"), "Bấm để mở trang tải về.".into()));
             }
@@ -512,7 +523,7 @@ pub fn spawn() {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use std::io::Cursor;
 
@@ -548,6 +559,21 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join(FILE), "running").unwrap();
         dir
+    }
+
+    /// What the settings preview shows, set directly: nothing is checked, fetched or announced.
+    pub(crate) fn pretend(pending: Option<(&str, bool)>, status: &str) {
+        let mut s = state();
+        (s.pending, s.status) = (pending.map(|(v, click)| (v.to_string(), click)), status.to_string());
+    }
+
+    #[test]
+    fn a_waiting_version_is_short_and_named_once() {
+        assert_eq!(notice("0.3.0"), "Có bản mới v0.3.0.");
+        pretend(Some(("0.3.0", false)), &notice("0.3.0"));
+        assert_eq!((waiting(), menu_label()), (Some("0.3.0".into()), Some("Có bản 0.3.0 — mở trang tải về".into())));
+        pretend(None, "Đang dùng bản mới nhất.");
+        assert_eq!((waiting(), menu_label()), (None, None));
     }
 
     #[test]
