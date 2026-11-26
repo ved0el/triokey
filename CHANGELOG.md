@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-26)
 
-Not released yet. Covered by the automated tests; none of it has been run on a real machine yet.
+The owner typed ordinary mixed English and Vietnamese text with this build on one Windows 11 machine and found it good enough to release; a few words still came out wrong. One hook timing reading was taken there (AT7 in `docs/HANDS_ON_TEST.md`): p99 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys. Everything else is covered by the automated tests only: no swap was remembered in that session, and admin mode, the icon checks and the updater (AT10) have not been run on a real machine.
 
 ### Engine (`triokey-engine`)
 

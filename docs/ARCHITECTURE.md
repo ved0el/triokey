@@ -5,9 +5,12 @@ the code as it is. Section numbers and titles are stable: source comments refer 
 "docs/ARCHITECTURE.md, <number> <title>" (for example "docs/ARCHITECTURE.md, 8. Elevated copy").
 
 What has been run on a real machine: an earlier build was hand-tested with the Japanese
-Microsoft IME (checklist rows AT1 and AT2 passed). The frequency scoring engine, remembering of
-kept swaps, the checked file access of the elevated copy, the tray and app icons and the save at
-logoff have so far been checked only by `cargo test` and compilation. Chinese and Korean have
+Microsoft IME (checklist rows AT1 and AT2 passed). The owner typed ordinary mixed English and
+Vietnamese text with the 0.2.0 build (the frequency scoring engine) and found it good enough to
+release, with a few words still wrong, and took one hook timing reading (AT7: p99 314 µs for
+keys passed through, 5,600 µs for keys that replace text, 502 keys). Remembering of kept swaps
+(no swap was kept in that session), the checked file access of the elevated copy, the tray and
+app icons and the save at logoff have so far been checked only by `cargo test` and compilation. Chinese and Korean have
 never been tried by hand. The other checklist rows (among them hook reinstall, admin mode and the
 update swap, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
 

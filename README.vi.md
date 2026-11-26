@@ -23,7 +23,7 @@ the songs␣          the songs    (sau một từ tiếng Anh)
 this␣⌫              thí          (một lần Backspace đổi từ mà bộ gõ còn phân vân)
 ```
 
-Bản đầu: 0.1.0 và 0.1.1 đã phát hành và có chữ ký, nhưng nhiều phần của ứng dụng Windows, kể cả phần tự cập nhật đang bật sẵn, chưa từng chạy trên máy thật; các ví dụ trên trang này mô tả lõi gõ trên `main`, chưa có trong bản phát hành nào. Xin đọc mục [Tình trạng](#tình-trạng) trước.
+Bản đầu: 0.2.0 đã phát hành và có chữ ký, các ví dụ trên trang này mô tả lõi gõ của bản đó. Nhiều phần của ứng dụng Windows, kể cả phần tự cập nhật đang bật sẵn, chưa được kiểm trên máy thật. Xin đọc mục [Tình trạng](#tình-trạng) trước.
 
 ## Vì sao có TrioKey
 
@@ -45,10 +45,10 @@ Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, khô
 
 ## Tình trạng
 
-- **Đã phát hành:** [0.1.0 và 0.1.1](https://github.com/ved0el/triokey/releases), do CI build và ký ([CHANGELOG.md](CHANGELOG.md)). Hai bản này dùng lõi gõ cũ, quyết định từ theo một danh sách từ và từ đứng trước.
-- **Có trên `main`, chưa có trong bản phát hành nào:** lõi gõ mô tả trên trang này (tần suất từ và ngôn ngữ của dòng), việc nhớ các lần đổi đã giữ, biểu tượng khay đỏ/xanh dương và biểu tượng ứng dụng mới. Chưa phần nào trong số này từng chạy trên máy thật; lõi gõ mới chỉ được kiểm bằng bộ test và một bài đo gõ chữ.
-- **Đã gõ thử bằng tay:** một bản dựng trước đây với tiếng Nhật (Microsoft IME, trong Notepad và Brave) đạt AT1 và AT2 của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). Bản hiện tại chưa được gõ thử lại.
-- **Chưa từng chạy trên máy thật**, mới chỉ biên dịch và unit test ở chỗ làm được: biểu tượng khay và menu, biểu tượng ứng dụng, các phím tắt, cửa sổ cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật (AT10 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) vẫn chưa làm), việc lưu các từ đã nhớ, các bước gỡ bỏ và việc bỏ qua ô mật khẩu Win32. Các mục bên dưới mô tả chúng theo mã nguồn. Nếu không muốn một phần tự cập nhật chưa được thử thay file exe của bạn, hãy bỏ chọn `Tự động cập nhật` trong Cài đặt.
+- **Đã phát hành:** [0.2.0](https://github.com/ved0el/triokey/releases), do CI build và ký ([CHANGELOG.md](CHANGELOG.md)). Bản này có lõi gõ mô tả trên trang này (tần suất từ và ngôn ngữ của dòng), việc nhớ các lần đổi đã giữ, biểu tượng khay đỏ/xanh dương và biểu tượng ứng dụng mới. 0.1.0 và 0.1.1 dùng lõi gõ cũ, quyết định từ theo một danh sách từ và từ đứng trước.
+- **Tác giả đã gõ thử:** bản 0.2.0 đã được dùng để gõ văn bản trộn Anh/Việt thông thường trên một máy Windows 11 và được coi là đủ tốt để phát hành; vẫn còn vài từ ra sai. Trong lần gõ đó không có lần đổi nào được nhớ, và không dòng nào của bảng kiểm được chạy, trừ một lần đọc thời gian (AT7).
+- **Đã gõ thử bằng tay:** một bản dựng trước đây với tiếng Nhật (Microsoft IME, trong Notepad và Brave) đạt AT1 và AT2 của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). Cả hai chưa được làm lại với 0.2.0.
+- **Chưa được kiểm trên máy thật** (chưa dòng nào của bảng kiểm có kết quả ghi lại), mới chỉ biên dịch và unit test ở chỗ làm được: biểu tượng khay và menu, biểu tượng ứng dụng, các phím tắt, cửa sổ cài đặt, khởi động cùng Windows, chế độ admin, phần tự cập nhật (AT10 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) vẫn chưa làm), việc lưu các từ đã nhớ, các bước gỡ bỏ và việc bỏ qua ô mật khẩu Win32. Các mục bên dưới mô tả chúng theo mã nguồn. Nếu không muốn một phần tự cập nhật chưa được thử thay file exe của bạn, hãy bỏ chọn `Tự động cập nhật` trong Cài đặt.
 - **Tiếng Trung và tiếng Hàn:** mới chỉ có unit test cho luật quyết định (IME mở và đang ở chế độ bản ngữ), với giá trị giả. Các IME đó có báo đúng trạng thái hay không thì chưa ai thử.
 - Mới thử trên Windows 11; Windows 10 chưa thử. Chỉ có Telex, chưa có VNI. Giao diện (menu khay, tooltip, cửa sổ cài đặt, thông báo) chỉ có tiếng Việt.
 - **Số đo**, có được bằng cách cho chữ chạy qua lõi gõ trong một bài test (không phải trên máy thật): trên 10.274 từ văn bản trộn Anh/Việt do những người chưa từng thấy lõi gõ viết ra, tỉ lệ từ sai giảm từ 0,54% với lõi gõ của 0.1.1 xuống 0,16% với lõi hiện tại, và số phím phải bấm để sửa từ giảm từ 2,74 xuống 0,59 trên 100 từ. Khi bật việc nhớ, số từ sai giảm từ 16 xuống 12 và không từ nào phải sửa tới lần thứ hai. Bộ test hồi quy của VieLotus-IM, gồm những từ đơn khó gõ không có ngữ cảnh và chỉ dùng để canh không cho lõi gõ tụt lùi, tăng từ 8.361 lên 8.524 trên 9.084. Cách chạy cả hai: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), mục 11.
@@ -135,8 +135,8 @@ Các bộ gõ kia đi xa hơn: có gói cài, đã được phát hành tới ng
 Chưa có bộ cài. Các bản phát hành do CI build và ký từ một tag phiên bản ([docs/RELEASING.md](docs/RELEASING.md)).
 
 1. **Thoát mọi bộ gõ tiếng Việt khác trước** (UniKey, EVKey, OpenKey, VKey, Vikey…). Hai bộ gõ chạy cùng lúc sẽ sửa chữ của nhau.
-2. Tải `triokey-X.Y.Z-windows-x64.zip` từ [bản phát hành mới nhất](https://github.com/ved0el/triokey/releases/latest) rồi giải nén vào một thư mục riêng, hoặc tự build từ mã nguồn (bên dưới) để có lõi gõ trên `main`.
-3. Chạy `triokey.exe`. Không có cửa sổ nào hiện ra; ở khay hệ thống xuất hiện chữ `V` (có thể nằm sau mũi tên `^`). Các bản phát hành tới 0.1.1 vẽ chữ này một màu; bản build từ `main` vẽ chữ `V` màu đỏ.
+2. Tải `triokey-X.Y.Z-windows-x64.zip` từ [bản phát hành mới nhất](https://github.com/ved0el/triokey/releases/latest) rồi giải nén vào một thư mục riêng, hoặc tự build từ mã nguồn (bên dưới).
+3. Chạy `triokey.exe`. Không có cửa sổ nào hiện ra; ở khay hệ thống xuất hiện chữ `V` màu đỏ (có thể nằm sau mũi tên `^`). 0.1.0 và 0.1.1 vẽ chữ này một màu.
 
 ### Build từ mã nguồn
 
@@ -161,7 +161,7 @@ File exe chưa được ký số. SmartScreen hoặc phần mềm diệt virus c
 
 ## Cách dùng
 
-Mục này mô tả `main`; biểu tượng đỏ/xanh dương, các luật Backspace hiện tại và việc nhớ từ chưa có trong 0.1.1. Chưa phần nào dưới đây từng chạy trên máy thật (xem [Tình trạng](#tình-trạng)).
+Mục này mô tả bản 0.2.0; biểu tượng đỏ/xanh dương, các luật Backspace hiện tại và việc nhớ từ chưa có trong 0.1.0 và 0.1.1. Phần lớn chưa được kiểm trên máy thật (xem [Tình trạng](#tình-trạng)).
 
 - **Biểu tượng khay.** Chữ `V` màu đỏ là TrioKey đang gõ tiếng Việt. Chữ `E` màu xanh dương là phím đi thẳng, vì bạn đã tắt hoặc vì nó đang nhường IME CJK; di chuột lên để xem lý do (`Tiếng Anh — đã tắt` hoặc `Tiếng Anh — đang nhường IME Nhật`; với IME Trung và Hàn là `IME Trung`, `IME Hàn`). Chữ nằm trên nền trong suốt, màu đậm khi thanh tác vụ sáng và màu nhạt khi thanh tác vụ tối, và được vẽ lại khi bạn đổi chủ đề sáng/tối của Windows.
 - **Nhấp trái** vào biểu tượng để bật/tắt TrioKey. **Nhấp phải** để mở menu: `Tiếng Việt` (bật/tắt), `Cài đặt…`, `Thoát`.
@@ -208,7 +208,7 @@ Những gì nó làm:
 - Theo dõi việc đổi cửa sổ và đổi focus (hai WinEvent hook) và đọc thời điểm của thao tác nhập gần nhất.
 - Gửi phím Backspace và chữ Unicode tới cửa sổ đang gõ bằng `SendInput`.
 - Đọc layout bàn phím và trạng thái mở/đóng IME của cửa sổ đang gõ.
-- Lưu trong `%APPDATA%\triokey`: `config.txt` (tạo ở lần chạy đầu, ghi lại khi bạn đổi một thiết lập), hai file ép từ do bạn tự tạo, và `learned.txt` (tạo ở lần chạy đầu, chỉ ở bản build từ `main`). `learned.txt` chỉ chứa những từ bạn đã đổi bằng Backspace rồi giữ lại: phím gõ và chữ hiện ra, ngoài ra không có gì, không thời gian, không thứ tự gõ.
+- Lưu trong `%APPDATA%\triokey`: `config.txt` (tạo ở lần chạy đầu, ghi lại khi bạn đổi một thiết lập), hai file ép từ do bạn tự tạo, và `learned.txt` (tạo ở lần chạy đầu, từ bản 0.2.0). `learned.txt` chỉ chứa những từ bạn đã đổi bằng Backspace rồi giữ lại: phím gõ và chữ hiện ra, ngoài ra không có gì, không thời gian, không thứ tự gõ.
 - Đọc hai giá trị dưới `HKCU`: thiết lập sáng/tối của Windows (để chọn màu biểu tượng) và giá trị Run của chính nó.
 - Nếu `Tự động cập nhật` đang bật: mỗi ngày một lần (lần thử đầu khoảng một phút sau khi chạy; lần nào không nhận được trả lời thì một giờ sau thử lại), lấy file chữ ký của bản phát hành mới nhất (vài trăm byte) từ `github.com`. Chỉ khi file đó nêu một phiên bản mới hơn, nó mới tải `triokey.exe` của chính bản phát hành ấy, kiểm chữ ký [minisign](https://jedisct1.github.io/minisign/) bằng khoá công khai nằm sẵn trong file exe đang chạy, rồi đặt file vào chỗ để dùng từ lần chạy sau. Mỗi file trong hai file này cần hai hoặc ba yêu cầu HTTPS, vì GitHub chuyển hướng lượt tải sang máy chủ chứa file phát hành. Yêu cầu chỉ mang một `User-Agent: TrioKey-updater` cố định và không gì khác: không có chữ bạn gõ, không có từ đã nhớ, không có mã nhận dạng máy hay người dùng, kể cả số phiên bản đang chạy cũng không. GitHub thấy địa chỉ IP của bạn, như mọi trang bạn tải file về. Thời điểm kiểm tra gần nhất được ghi trong `config.txt`; bản chạy ở chế độ admin chỉ giữ nó trong bộ nhớ, nên nó có thể kiểm tra thêm một lần sau mỗi lần chạy, rồi mỗi ngày một lần.
 - Ở lần chạy đầu, nếu có thư mục `%APPDATA%\evj` (tên tạm của dự án trước khi công bố) thì chép `config.txt`, `force_vi.txt` và `force_en.txt` từ đó sang. Người dùng mới không có thư mục này.
@@ -231,7 +231,7 @@ Những gì nó không bao giờ làm:
 Hai crate:
 
 - **`triokey-engine`**: Rust thuần, không gọi hệ điều hành. Nó giữ dãy phím gốc của từ đang gõ và, sau mỗi phím, tính lại từ đầu xem dãy phím ấy nên hiện thành gì, so với chữ đang có trên màn hình rồi trả về một lệnh sửa: xoá N ký tự, chèn một chuỗi. Giữa hai từ, lõi giữ rất ít: độ nghiêng của dòng, vài cờ về đoạn chữ đang gõ (có phải mã hay không), lần đổi bằng Backspace đang chờ và các từ đã nhớ. Lõi không đọc lại màn hình, nên chữ thật vẫn có thể khác ở những ô tự chèn gợi ý. Phần ghép Telex và đặt dấu thanh dùng crate [`vi`](https://github.com/ZeroX-DG/vi-rs); phần kiểm tra âm tiết, các bảng tần suất, các luật về mã và quyết định cho từng từ là của TrioKey. Lõi có bộ test riêng và một bài đo gõ chữ.
-- **`triokey`**: ứng dụng khay cho Windows. Callback của hook hỏi lõi gõ và, khi chữ cần đổi, chặn phím rồi gửi Backspace cùng chữ mới bằng `SendInput` ngay trong callback, để không phím nào gõ sau chen vào giữa. Phím không làm đổi chữ thì đi thẳng, không bị đụng tới. Phím do chính TrioKey gửi được đánh dấu và bỏ qua. Thời gian p99 của callback được hiện ở cuối cửa sổ cài đặt; chưa có con số nào được công bố.
+- **`triokey`**: ứng dụng khay cho Windows. Callback của hook hỏi lõi gõ và, khi chữ cần đổi, chặn phím rồi gửi Backspace cùng chữ mới bằng `SendInput` ngay trong callback, để không phím nào gõ sau chen vào giữa. Phím không làm đổi chữ thì đi thẳng, không bị đụng tới. Phím do chính TrioKey gửi được đánh dấu và bỏ qua. Thời gian p99 của callback được hiện ở cuối cửa sổ cài đặt. Lần đọc duy nhất tới nay, trên máy của tác giả với bản 0.2.0: 314 µs với phím đi thẳng và 5.600 µs với phím thay chữ, trên 502 phím.
 
 Trạng thái IME được đọc từ cửa sổ IME mặc định của cửa sổ đang gõ (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): open status với tiếng Nhật, open status cùng conversion mode với tiếng Trung và tiếng Hàn. Một luồng riêng giữ cho giá trị này luôn mới, nên đường xử lý phím chỉ đọc một giá trị đã lưu sẵn.
 

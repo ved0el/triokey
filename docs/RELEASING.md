@@ -98,7 +98,7 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
    - The release must be neither a draft nor a pre-release: `latest` skips both, and the
      updater does not understand pre-release ordering beyond "older than the release".
 6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. It has not
-   been run yet, not for 0.1.0 or 0.1.1; it is runnable now that releases exist.
+   been run for any release so far; it is runnable now that releases exist.
 
 To sign or check by hand (for example to test an exe without tagging):
 

@@ -1,6 +1,6 @@
 # TrioKey — gõ thử trên máy thật
 
-Những gì kiểm được bằng `cargo test` đều đã chạy; các mục dưới đây chỉ kiểm được trên máy thật và, trừ AT1, AT2 (xem Phạm vi), chưa ai chạy. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`.
+Những gì kiểm được bằng `cargo test` đều đã chạy; các mục dưới đây chỉ kiểm được trên máy thật và, trừ AT1, AT2 (xem Phạm vi) và một lần đọc AT7, chưa ai chạy. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`.
 
 **Phạm vi:** TrioKey nhường cho IME CJK (Chinese, Japanese, Korean). Tiếng Nhật (Microsoft IME, layout `0411`) đã được gõ thử tay trên một bản dựng trước đây: AT1 và AT2 dưới đây đạt (chưa điền vào các ô kết quả); bản hiện tại chưa gõ thử lại. Tiếng Trung và tiếng Hàn mới có luật được kiểm bằng unit test (`crates/triokey/src/ime.rs`), chưa ai gõ thử tay; các bước ở mục AT2-CK, làm khi có máy cài hai layout đó.
 
@@ -110,6 +110,8 @@ Gõ liên tục ít nhất 500 phím (văn bản bình thường, không bật/t
 | --- | --- | --- | --- |
 | | | | |
 
+Một lần đọc đã có, với bản 0.2.0 trên máy của tác giả: không gửi 314 µs, gửi 5600 µs, 502 phím (đạt).
+
 ## AT8 — Ô mật khẩu Win32
 
 Cần một ô mật khẩu Win32 cổ điển: control lớp `Edit` (hoặc `RichEdit…`) có style `ES_PASSWORD`, thường gặp ở hộp đăng nhập của ứng dụng desktop cũ. Nếu không chắc ô đó có phải loại này, ghi tên ứng dụng vào ô kết quả. Gõ `tieesng`, bấm hiện mật khẩu nếu có.
@@ -122,7 +124,7 @@ Cần một ô mật khẩu Win32 cổ điển: control lớp `Edit` (hoặc `Ri
 
 ## AT11 — Engine mới: gõ lẫn tiếng Anh và tiếng Việt
 
-Engine mới quyết định từng từ theo tần suất dùng của hai cách đọc và theo "chế độ dòng": dòng mới hơi nghiêng về tiếng Việt, mỗi từ đã gõ kéo dòng về một phía, Enter bắt đầu dòng mới. Chưa chạy trên máy thật; mọi kết quả mong đợi dưới đây đã được kiểm bằng cách cho engine gõ đúng các phím đó.
+Engine mới quyết định từng từ theo tần suất dùng của hai cách đọc và theo "chế độ dòng": dòng mới hơi nghiêng về tiếng Việt, mỗi từ đã gõ kéo dòng về một phía, Enter bắt đầu dòng mới. Bảng dưới đây chưa ai chạy trên máy thật (bản 0.2.0 mới được gõ thử tự do, không theo bảng); mọi kết quả mong đợi dưới đây đã được kiểm bằng cách cho engine gõ đúng các phím đó.
 
 Notepad, layout `0409`. **Mỗi bước bắt đầu ở một dòng mới** (bấm Enter trước). Sau một lần Backspace đổi từ (⌫ ra cách đọc khác), **đừng** gõ phím cách hay Enter: nhấp chuột ra chỗ khác rồi xoá dòng, nếu không TrioKey sẽ nhớ lần đổi đó (xem AT12). ⌫ dưới đây là bấm Backspace một lần ngay sau phím cách.
 

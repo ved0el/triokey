@@ -23,7 +23,7 @@ the songs␣          the songs    (after an English word)
 this␣⌫              thí          (one Backspace swaps a word the engine was unsure of)
 ```
 
-Early version: 0.1.0 and 0.1.1 are released and signed, but much of the Windows app, including the updater that is on by default, has not been run on a real machine, and the examples on this page describe the engine on `main`, which is not in a release yet. Read [Status](#status) first.
+Early version: 0.2.0 is released and signed, and the examples on this page describe its engine. Much of the Windows app, including the updater that is on by default, has not been checked on a real machine. Read [Status](#status) first.
 
 ## Why
 
@@ -45,10 +45,10 @@ No macros, no per-app memory, no cloud, no telemetry, no typing log. The only ne
 
 ## Status
 
-- **Released:** [0.1.0 and 0.1.1](https://github.com/ved0el/triokey/releases), built and signed by CI ([CHANGELOG.md](CHANGELOG.md)). Their engine is the earlier one, which decided words from a word list and the word before.
-- **On `main`, not in a release yet:** the engine described on this page (word frequencies and the line's language), remembering kept swaps, and the red/blue tray icons and new app icon. None of this has been run on a real machine yet; the engine is checked by its test suite and a typing benchmark only.
-- **Hand-tested:** an earlier build with Japanese (Microsoft IME, in Notepad and Brave) passed AT1 and AT2 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). The current build has not been re-run.
-- **Never run on a real machine**, only compiled and unit-tested where possible: the tray icon and menu, the app icon, the hotkeys, the settings window, start-with-Windows, admin mode, the updater (AT10 in [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) is still open), saving of remembered words, the uninstall steps and the skipping of Win32 password fields. The sections below describe them as written in the code. If you would rather not have an untested updater replace the exe, untick `Tự động cập nhật` in Settings.
+- **Released:** [0.2.0](https://github.com/ved0el/triokey/releases), built and signed by CI ([CHANGELOG.md](CHANGELOG.md)). It brings the engine described on this page (word frequencies and the line's language), remembering kept swaps, and the red/blue tray icons and new app icon. 0.1.0 and 0.1.1 had an earlier engine, which decided words from a word list and the word before.
+- **Typed with by the author:** the 0.2.0 build was used for ordinary mixed English and Vietnamese typing on one Windows 11 machine and found good enough to release; a few words still came out wrong. No swap was remembered in that session, and no row of the checklist was run except one timing reading (AT7).
+- **Hand-tested:** an earlier build with Japanese (Microsoft IME, in Notepad and Brave) passed AT1 and AT2 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). Neither has been repeated with 0.2.0.
+- **Not checked on a real machine** (no checklist row has a recorded result), only compiled and unit-tested where possible: the tray icon and menu, the app icon, the hotkeys, the settings window, start-with-Windows, admin mode, the updater (AT10 in [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) is still open), saving of remembered words, the uninstall steps and the skipping of Win32 password fields. The sections below describe them as written in the code. If you would rather not have an untested updater replace the exe, untick `Tự động cập nhật` in Settings.
 - **Chinese and Korean:** only the decision rule (IME open and in native mode) is unit-tested, with made-up values. Whether those IMEs report their state correctly has not been tried.
 - Windows 11 only so far; Windows 10 is untried. Telex only, no VNI. The interface (tray menu, tooltip, settings, messages) is in Vietnamese only.
 - **Measured** by typing text through the engine in a test (not on a real machine): on 10,274 words of mixed English/Vietnamese text written by people who never saw the engine, wrong words went from 0.54% with the engine of 0.1.1 to 0.16% with the current one, and keystrokes spent fixing words from 2.74 to 0.59 per 100 words. With remembering on, wrong words went from 16 to 12 and no word had to be fixed twice. The VieLotus-IM regression suite, a guardrail of hard single words typed without context, went from 8,361 to 8,524 of 9,084. How both are run: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 11.
@@ -135,8 +135,8 @@ The others are further along: they are packaged, already distributed, and cover 
 There is no installer. Releases are built and signed by CI from a version tag ([docs/RELEASING.md](docs/RELEASING.md)).
 
 1. **Quit every other Vietnamese input method first** (UniKey, EVKey, OpenKey, VKey, Vikey…). Two of them running together will rewrite each other's text.
-2. Download `triokey-X.Y.Z-windows-x64.zip` from the [latest release](https://github.com/ved0el/triokey/releases/latest) and unpack it into a folder of its own, or build from source (below) to get the engine on `main`.
-3. Run `triokey.exe`. No window opens; a `V` appears in the system tray (possibly behind the `^` overflow arrow). Releases up to 0.1.1 draw it in one colour; builds from `main` draw a red `V`.
+2. Download `triokey-X.Y.Z-windows-x64.zip` from the [latest release](https://github.com/ved0el/triokey/releases/latest) and unpack it into a folder of its own, or build from source (below).
+3. Run `triokey.exe`. No window opens; a red `V` appears in the system tray (possibly behind the `^` overflow arrow). 0.1.0 and 0.1.1 drew it in one colour.
 
 ### Build from source
 
@@ -161,7 +161,7 @@ The exe is not code-signed. SmartScreen or antivirus software may warn about it,
 
 ## Usage
 
-The interface is in Vietnamese only, so the Vietnamese labels are given next to the English names. This section describes `main`; the red/blue icon, the current Backspace rules and remembered words are not in 0.1.1. None of this has been run on a real machine yet (see [Status](#status)).
+The interface is in Vietnamese only, so the Vietnamese labels are given next to the English names. This section describes 0.2.0; the red/blue icon, the current Backspace rules and remembered words are not in 0.1.0 and 0.1.1. Most of it has not been checked on a real machine (see [Status](#status)).
 
 - **Tray icon.** A red `V` means TrioKey is typing Vietnamese. A blue `E` means keys pass through, either because you switched it off or because it is stepping aside for a CJK IME; the tooltip says which (`Tiếng Anh — đã tắt` = switched off, `Tiếng Anh — đang nhường IME Nhật` = stepping aside for the Japanese IME; `IME Trung` and `IME Hàn` are Chinese and Korean). The letters sit on a transparent background, in deep shades on a light taskbar and light shades on a dark one, and are redrawn when the Windows theme changes.
 - **Left click** the icon to switch TrioKey on or off. **Right click** for the menu: `Tiếng Việt` (on/off), `Cài đặt…` (Settings), `Thoát` (Quit).
@@ -208,7 +208,7 @@ What it does:
 - Listens for foreground and focus changes (two WinEvent hooks) and reads the time of the last input.
 - Sends Backspaces and Unicode text to the focused window with `SendInput`.
 - Reads the focused window's keyboard layout and IME open/closed state.
-- Stores, in `%APPDATA%\triokey`: `config.txt` (created on first run, rewritten when you change a setting), the two force files you create yourself, and `learned.txt` (created on first run, builds from `main` only). `learned.txt` holds only the words you swapped with Backspace and kept: their keys and the text shown, nothing else, no times, no order of typing.
+- Stores, in `%APPDATA%\triokey`: `config.txt` (created on first run, rewritten when you change a setting), the two force files you create yourself, and `learned.txt` (created on first run, from 0.2.0 on). `learned.txt` holds only the words you swapped with Backspace and kept: their keys and the text shown, nothing else, no times, no order of typing.
 - Reads two values under `HKCU`: the Windows light/dark setting (for the icon colour) and its own Run value.
 - If `Tự động cập nhật` is on: once a day (first try about a minute after start; a check that gets no answer is tried again an hour later), fetches the signature file of the latest release (a few hundred bytes) from `github.com`. Only when that file names a newer version does it download `triokey.exe` from the same release, check its [minisign](https://jedisct1.github.io/minisign/) signature against the public key built into the running exe, and put the file in place for the next start. Each of the two files takes two or three HTTPS requests, because GitHub redirects the download to its release-asset server. The requests carry a fixed `User-Agent: TrioKey-updater` and nothing else: no typed text, no remembered words, no machine or user identifier, not even the running version. GitHub sees your IP address, as any site you download from does. The time of the last check is kept in `config.txt`; the admin-mode copy keeps it in memory only, so it may check once more after each start, then once a day.
 - On first run, if a folder `%APPDATA%\evj` exists (the project's working name before release), copies `config.txt`, `force_vi.txt` and `force_en.txt` from it. A new user has no such folder.
@@ -231,7 +231,7 @@ Things to know:
 Two crates:
 
 - **`triokey-engine`**: pure Rust with no operating-system calls. It keeps the raw keys of the word being typed and, after every key, recomputes from scratch what those keys should look like, compares that with what is on screen and returns one edit: delete N characters, insert a string. Between words it keeps little: the line's lean, a few flags about the current run of text (code or not), the Backspace swap on offer and the remembered words. It does not read the screen back, so the real text can still differ in fields that insert suggestions. Telex composition and tone placement come from the [`vi`](https://github.com/ZeroX-DG/vi-rs) crate; the syllable check, the frequency tables, the code rules and the per-word decision are TrioKey's. It has its own test suite and a typing benchmark.
-- **`triokey`**: the Windows tray app. The hook callback asks the engine and, when the text must change, swallows the key and sends Backspaces plus the new text with `SendInput` from inside the callback, so no later key can slip in between. Keys that change nothing pass through untouched. TrioKey's own injected keys are marked and ignored. The hook callback's p99 time is shown at the bottom of the settings window; no figure is published yet.
+- **`triokey`**: the Windows tray app. The hook callback asks the engine and, when the text must change, swallows the key and sends Backspaces plus the new text with `SendInput` from inside the callback, so no later key can slip in between. Keys that change nothing pass through untouched. TrioKey's own injected keys are marked and ignored. The hook callback's p99 time is shown at the bottom of the settings window. The only reading so far, on the author's machine with 0.2.0: 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys.
 
 IME state is read from the focused window's default IME window (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): the open status for Japanese, and the open status plus conversion mode for Chinese and Korean. A separate thread keeps the value fresh, so the key path only reads a cached value.
 
