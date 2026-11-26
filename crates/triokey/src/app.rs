@@ -7,7 +7,7 @@ use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
-use std::sync::{Mutex, RwLock};
+use std::sync::{Mutex, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
 use triokey_engine::lexicon::{Learned, Lexicon};
@@ -49,6 +49,9 @@ struct Saver {
 }
 /// None: no folder, or a learned.txt that must be left alone (not UTF-8, too big).
 static SAVER: Mutex<Option<Saver>> = Mutex::new(None);
+/// The remembered words the engine uses, and the entry counts of force_vi.txt and force_en.txt
+/// as read at startup: counts for the debug information, which reads no file.
+static USER_DATA: OnceLock<(Learned, usize, usize)> = OnceLock::new();
 
 pub fn config_unreadable() -> bool {
     CONFIG_UNREADABLE.load(Relaxed)
@@ -57,6 +60,21 @@ pub fn config_unreadable() -> bool {
 /// True once per failed write, for the settings window to report.
 pub fn take_save_failed() -> bool {
     SAVE_FAILED.swap(false, Relaxed)
+}
+
+/// (remembered words, force_vi.txt entries, force_en.txt entries): numbers only, never the words.
+pub fn user_data_counts() -> (usize, usize, usize) {
+    USER_DATA.get().map_or((0, 0, 0), |(l, vi, en)| (learned_count(l), *vi, *en))
+}
+
+/// The engine crate has no length accessor: the entry lines of the rendered file (the header lines start with `#`).
+fn learned_count(l: &Learned) -> usize {
+    l.render().lines().filter(|l| !l.starts_with('#')).count()
+}
+
+/// Entries of a force file as `Lexicon::with_user` reads them: the text before `#`, trimmed, not empty.
+fn entries(text: &str) -> usize {
+    text.lines().filter(|l| !l.split('#').next().unwrap_or("").trim().is_empty()).count()
 }
 
 pub fn settings() -> Settings {
@@ -226,7 +244,9 @@ pub fn run() {
     SAVE_FAILED.store(readable && !dir.as_ref().is_some_and(|d| d.join("config.txt").is_file()), Relaxed);
     let read = |name: &str| dir.as_ref().and_then(|d| fs::read_to_string(d.join(name)).ok()).unwrap_or_default();
     let (learned, saver) = load_learned(dir.as_deref(), elevated);
-    let lexicon = Lexicon::builtin().with_user(&read("force_vi.txt"), &read("force_en.txt")).with_learned(learned);
+    let (vi, en) = (read("force_vi.txt"), read("force_en.txt"));
+    let _ = USER_DATA.set((learned.clone(), entries(&vi), entries(&en)));
+    let lexicon = Lexicon::builtin().with_user(&vi, &en).with_learned(learned);
     *SAVER.lock().unwrap_or_else(|e| e.into_inner()) = saver;
     ENABLED.store(s.enabled, Relaxed);
     *SETTINGS.write().unwrap_or_else(|e| e.into_inner()) = s;
@@ -482,5 +502,12 @@ mod tests {
         migrate(&old, &new);
         assert_eq!(fs::read_to_string(new.join("force_vi.txt")).unwrap(), "has\n");
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn force_file_entries_are_counted_as_the_lexicon_reads_them() {
+        assert_eq!(entries("# comment\nthis\n\n  that  # note\n   \n#x\nmore"), 3);
+        let learned = Learned::parse("# header\nthis\tthí\nwas\twá\n");
+        assert_eq!((learned_count(&learned), learned_count(&Learned::default())), (2, 0));
     }
 }

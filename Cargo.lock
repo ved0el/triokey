@@ -479,12 +479,13 @@ dependencies = [
 
 [[package]]
 name = "triokey"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "embed-manifest",
  "minisign",
  "minisign-verify",
  "triokey-engine",
+ "triokey-shared",
  "windows-sys 0.59.0",
 ]
 
@@ -506,7 +507,12 @@ dependencies = [
  "objc2-core-graphics",
  "objc2-foundation",
  "triokey-engine",
+ "triokey-shared",
 ]
+
+[[package]]
+name = "triokey-shared"
+version = "0.1.0"
 
 [[package]]
 name = "typenum"

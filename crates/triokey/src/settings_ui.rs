@@ -8,11 +8,14 @@
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicI32, AtomicPtr, AtomicU32, AtomicUsize, Ordering::Relaxed};
 
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
+use windows_sys::Win32::Foundation::{GlobalFree, HWND, LPARAM, LRESULT, RECT, SIZE, WPARAM};
 use windows_sys::Win32::Graphics::Dwm::*;
 use windows_sys::Win32::Graphics::Gdi::*;
+use windows_sys::Win32::System::DataExchange::{CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+use windows_sys::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
 use windows_sys::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows_sys::Win32::UI::Controls::{
     CloseThemeData, DrawThemeBackground, DrawThemeTextEx, GetThemePartSize, InitCommonControlsEx, SetWindowTheme, BP_CHECKBOX, BP_PUSHBUTTON, BP_RADIOBUTTON,
@@ -25,9 +28,9 @@ use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 use crate::admin::{self, Elevated};
-use crate::config::HOTKEYS;
+use crate::config::{render, HOTKEYS};
 use crate::tray::{wide, wide_eq};
-use crate::{app, autostart, hook, tray, update};
+use crate::{app, autostart, hook, ime_watch, tray, update};
 
 const CLASS: &str = "triokey-settings";
 const ID_ENABLED: i32 = 101;
@@ -39,7 +42,7 @@ const ID_YIELD: i32 = 106;
 const ID_STARTUP: i32 = 107;
 const ID_ADMIN: i32 = 108;
 const ID_FOLDER: i32 = 109;
-const ID_LATENCY: i32 = 110;
+const ID_DEBUG: i32 = 110;
 const ID_AUTO_UPDATE: i32 = 111;
 const ID_CHECK: i32 = 112;
 const ID_UPDATE_STATUS: i32 = 113;
@@ -47,15 +50,16 @@ const ID_DEV: i32 = 114;
 const ID_CREDIT: i32 = 115;
 const ID_UPDATE_LINK: i32 = 116;
 const ID_GITHUB: i32 = 117;
-/// The footer: the author's credit, and the GitHub link to the crate's `repository`.
-const CREDIT: &str = concat!("TrioKey v", env!("CARGO_PKG_VERSION"), " · © 2026 ved0el");
-const REPO: &str = env!("CARGO_PKG_REPOSITORY");
+/// The footer: the author's credit (`triokey_shared::credit` with this crate's version), and the GitHub link.
+const REPO: &str = triokey_shared::REPOSITORY;
 const UPDATE_LINK: &str = "Cập nhật tại đây";
 /// Posted by the developer-mode check box (its own click handler must not destroy it), by `sync_update` and, with
 /// wParam 1, by a theme change, which can arrive inside a click handler's message box.
 const WM_APP_REBUILD: u32 = WM_APP + 1;
 const SS_RIGHT: u32 = 0x2;
 const SS_NOPREFIX: u32 = 0x80;
+/// Clipboard format of UTF-16 text (Win32_System_Ole, not otherwise needed).
+const CF_UNICODETEXT: u32 = 13;
 const BST_CHECKED: isize = 1;
 const STYLE: u32 = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 /// Client width in 96-DPI pixels; the height follows the content (`build`).
@@ -66,7 +70,7 @@ const WIDTH: i32 = 400;
 struct Palette {
     bg: u32,
     text: u32,
-    /// secondary text: version, timing line
+    /// secondary text: the credit
     dim: u32,
     /// disabled check boxes and radio buttons
     off: u32,
@@ -159,7 +163,7 @@ pub fn sync_update() {
 /// The update status laid out in the 378 px column at `dpi` with the window's font.
 struct Status {
     text: String,
-    /// lines it takes (none when empty), the link's own line included, and one line's height in pixels
+    /// lines it takes (at least one, kept also when empty), the link's own line included, and one line's height in pixels
     lines: i32,
     line: i32,
     /// while a version waits: the link's left edge from the column's (pixels) and its line
@@ -186,11 +190,11 @@ unsafe fn status(hwnd: HWND, dpi: u32) -> Status {
     }
     SelectObject(dc, old);
     ReleaseDC(hwnd, dc);
-    let mut lines = (rc.bottom + line - 1) / line;
+    // one line is always reserved: the ordinary answers of `Kiểm tra bản mới` change no size
+    let mut lines = ((rc.bottom + line - 1) / line).max(1);
     let link = update::waiting().map(|_| {
         let x = if text.is_empty() { 0 } else { text_width(hwnd, &text) + text_width(hwnd, " ") };
-        if lines == 0 || lines == 1 && x + text_width(hwnd, UPDATE_LINK) + 2 <= px(378, dpi) {
-            lines = 1;
+        if lines == 1 && x + text_width(hwnd, UPDATE_LINK) + 2 <= px(378, dpi) {
             (x, 0)
         } else {
             lines += 1;
@@ -315,12 +319,6 @@ unsafe fn rebuild(hwnd: HWND, dpi: u32, theme: Option<&'static Palette>, dev: bo
     set_icons(hwnd, dpi);
     let (w, h) = window_size(dpi, height);
     SetWindowPos(hwnd, null_mut(), at.0, at.1, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-    // the timing line is refreshed only while it exists
-    if dev {
-        SetTimer(hwnd, 1, 1000, None);
-    } else {
-        KillTimer(hwnd, 1);
-    }
     InvalidateRect(hwnd, null(), 1);
     if GetActiveWindow() == hwnd {
         let c = if focus != 0 { GetDlgItem(hwnd, focus) } else { null_mut() };
@@ -450,10 +448,10 @@ unsafe fn build(hwnd: HWND, dpi: u32, dev: bool) -> i32 {
         }
         let x = px(11, dpi) + glyph.cx + glyph.cx / 4;
         y += 7;
+        // two buttons of one size on one row, 7 px apart
         ctl_px("BUTTON", "Mở thư mục cấu hình…", button | WS_GROUP, ID_FOLDER, x, px(y, dpi), px(160, dpi), px(23, dpi));
-        y += 23 + 7;
-        ctl_px("STATIC", "", 0, ID_LATENCY, x, px(y, dpi), px(389, dpi) - x, px(16, dpi));
-        y += 16;
+        ctl_px("BUTTON", "Chép thông tin debug", button, ID_DEBUG, x + px(160 + 7, dpi), px(y, dpi), px(160, dpi), px(23, dpi));
+        y += 23;
     }
     y += 15;
     heading("Cập nhật", y);
@@ -461,34 +459,32 @@ unsafe fn build(hwnd: HWND, dpi: u32, dev: bool) -> i32 {
     ctl("BUTTON", "Tự động cập nhật", check | WS_GROUP, ID_AUTO_UPDATE, 11, y + 3, 200, 17);
     ctl("BUTTON", "Kiểm tra bản mới", button, ID_CHECK, 259, y, 130, 23);
     y += 23;
-    // as many lines as the status needs, none when empty; another need rebuilds (`sync_update`)
+    // as many lines as the status needs, one also when empty; another need rebuilds (`sync_update`)
     let st = status(hwnd, dpi);
     SHAPE.store(st.key(), Relaxed);
-    if st.lines > 0 {
-        y += 7;
-        let (top, h) = (px(y, dpi), st.lines * st.line);
-        // the text beside or above the link, never under it: a sibling that repaints (a new text)
-        // would paint over an overlapped link
-        let (w, th) = match st.link {
-            Some((x, 0)) => (x - 1, h),
-            Some(_) => (px(378, dpi), h - st.line),
-            None => (px(378, dpi), h),
-        };
-        ctl_px("STATIC", &st.text, SS_NOPREFIX, ID_UPDATE_STATUS, px(11, dpi), top, w.max(0), th);
-        if let Some((x, l)) = st.link {
-            link(UPDATE_LINK, ID_UPDATE_LINK, px(11, dpi) + x, top + l * st.line, st.line);
-        }
-        y += (h * 96 + dpi as i32 - 1) / dpi as i32;
+    y += 7;
+    let (top, h) = (px(y, dpi), st.lines * st.line);
+    // the text beside or above the link, never under it: a sibling that repaints (a new text)
+    // would paint over an overlapped link
+    let (w, th) = match st.link {
+        Some((x, 0)) => (x - 1, h),
+        Some(_) => (px(378, dpi), h - st.line),
+        None => (px(378, dpi), h),
+    };
+    ctl_px("STATIC", &st.text, SS_NOPREFIX, ID_UPDATE_STATUS, px(11, dpi), top, w.max(0), th);
+    if let Some((x, l)) = st.link {
+        link(UPDATE_LINK, ID_UPDATE_LINK, px(11, dpi) + x, top + l * st.line, st.line);
     }
+    y += (h * 96 + dpi as i32 - 1) / dpi as i32;
     y += 11;
     LINE_Y.store(px(y, dpi), Relaxed);
     y += 1 + 11;
-    ctl("STATIC", CREDIT, 0, ID_CREDIT, 11, y, 280, 16);
+    ctl("STATIC", &triokey_shared::credit(env!("CARGO_PKG_VERSION")), 0, ID_CREDIT, 11, y, 280, 16);
     link("GitHub", ID_GITHUB, px(389, dpi) - text_width(hwnd, "GitHub"), px(y, dpi), st.line);
     y += 16;
     if pal().is_some_and(|p| p.dark) {
         // the system's dark themes for these classes; a name that does not resolve leaves the usual theme
-        for id in [ID_ENABLED, ID_TONE_OLD, ID_TONE_NEW, ID_AUTO_EN, ID_YIELD, ID_STARTUP, ID_ADMIN, ID_DEV, ID_FOLDER, ID_AUTO_UPDATE, ID_CHECK] {
+        for id in [ID_ENABLED, ID_TONE_OLD, ID_TONE_NEW, ID_AUTO_EN, ID_YIELD, ID_STARTUP, ID_ADMIN, ID_DEV, ID_FOLDER, ID_DEBUG, ID_AUTO_UPDATE, ID_CHECK] {
             SetWindowTheme(GetDlgItem(hwnd, id), wide("DarkMode_Explorer").as_ptr(), null());
         }
         SetWindowTheme(combo, wide("DarkMode_CFD").as_ptr(), null());
@@ -647,17 +643,128 @@ unsafe fn fill(hwnd: HWND) {
     EnableWindow(GetDlgItem(hwnd, ID_AUTO_UPDATE), update::available() as i32);
     EnableWindow(GetDlgItem(hwnd, ID_CHECK), update::available() as i32);
     sync_update();
-    latency(hwnd);
 }
 
-/// The timing line, when developer mode shows it.
-unsafe fn latency(hwnd: HWND) {
-    let c = GetDlgItem(hwnd, ID_LATENCY);
-    if !c.is_null() {
-        let ((sent, ns), (pass, np)) = hook::latency();
-        let t = format!("Hook p99: gửi {sent} µs · không gửi {pass} µs ({} phím)", ns + np);
-        SetWindowTextW(c, wide(&t).as_ptr());
+/// What `Chép thông tin debug` copies, as plain values (docs/ARCHITECTURE.md, 2.6 Settings window).
+struct DebugInfo<'a> {
+    version: &'a str,
+    /// Windows major, minor, build
+    windows: (u32, u32, u32),
+    elevated: bool,
+    admin_copy: bool,
+    exe: &'a str,
+    config_dir: &'a str,
+    config_readable: bool,
+    /// config.txt as written (`config::render`)
+    config: &'a str,
+    enabled: bool,
+    typing: bool,
+    /// primary language of the foreground keyboard layout at the watcher's last read
+    lang: u16,
+    /// `hook::latency()`
+    latency: ((u32, usize), (u32, usize)),
+    status: &'a str,
+    waiting: Option<&'a str>,
+    /// remembered words, force_vi.txt entries, force_en.txt entries
+    counts: (usize, usize, usize),
+    look: &'a str,
+    dpi: u32,
+    /// the profile folder, replaced by `~` everywhere
+    home: &'a str,
+}
+
+/// The debug information, in English, one fact per line. Counts only: never typed text, a remembered
+/// word or the user's folder name (the home folder is masked over the whole text).
+fn debug_text(d: &DebugInfo) -> String {
+    let yes = |b: bool| if b { "yes" } else { "no" };
+    let ((sent, ns), (pass, np)) = d.latency;
+    let (learned, vi, en) = d.counts;
+    let (major, minor, build) = d.windows;
+    let settings = d.config.lines().map(str::trim).filter(|l| !l.is_empty()).collect::<Vec<_>>().join("; ");
+    // a path outside the profile folder (redirected AppData, an exe on another drive) could name the user
+    let place =
+        |p: &str| if p == "unknown" || triokey_shared::mask_home(p, d.home).starts_with('~') { p.to_string() } else { "outside the profile folder".into() };
+    let text = [
+        format!("TrioKey {} (Windows {major}.{minor}.{build}, x64)", d.version),
+        format!("copy: {}; admin-mode copy {}", if d.elevated { "elevated" } else { "normal" }, yes(d.admin_copy)),
+        format!("exe: {}", place(d.exe)),
+        format!("config folder: {}; config.txt readable {}", place(d.config_dir), yes(d.config_readable)),
+        format!("settings: {settings}"),
+        format!(
+            "state: {}; IME decision {}; keyboard layout primary language 0x{:04X}",
+            if d.enabled { "on" } else { "off" },
+            if d.typing { "Type" } else { "Yield" },
+            d.lang
+        ),
+        format!("hook: p99 {sent} µs over {ns} keys that sent text; {pass} µs over {np} keys passed through"),
+        format!("update: {}; waiting version {}", if d.status.is_empty() { "(no status)" } else { d.status }, d.waiting.unwrap_or("none")),
+        format!("remembered words: {learned}; force_vi.txt: {vi} entries; force_en.txt: {en} entries"),
+        format!("window: look {}, DPI {}", d.look, d.dpi),
+    ]
+    .join("\n");
+    triokey_shared::mask_home(&(text + "\n"), d.home)
+}
+
+/// The debug information of this copy now.
+unsafe fn debug_now() -> String {
+    let mut v = OSVERSIONINFOW { dwOSVersionInfoSize: size_of::<OSVERSIONINFOW>() as u32, ..std::mem::zeroed() };
+    // the manifest declares Windows 10, so the real version comes back
+    GetVersionExW(&mut v);
+    let path = |p: Option<std::path::PathBuf>| p.map(|p| p.display().to_string());
+    let (exe, dir, home) = (path(std::env::current_exe().ok()), path(app::config_dir()), path(admin::profile_dir()));
+    // without a profile folder to mask, no path is given
+    let (exe, dir) = if home.is_some() { (exe, dir) } else { (None, None) };
+    let (status, waiting) = (update::status(), update::waiting());
+    debug_text(&DebugInfo {
+        version: env!("CARGO_PKG_VERSION"),
+        windows: (v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber),
+        elevated: admin::is_elevated(),
+        admin_copy: admin::is_admin_copy(),
+        exe: exe.as_deref().unwrap_or("unknown"),
+        config_dir: dir.as_deref().unwrap_or("unknown"),
+        config_readable: !app::config_unreadable(),
+        config: &render(&app::settings()),
+        enabled: app::enabled(),
+        typing: ime_watch::current() == crate::ime::ImeState::Type,
+        lang: ime_watch::lang(),
+        latency: hook::latency(),
+        status: &status,
+        waiting: waiting.as_deref(),
+        counts: app::user_data_counts(),
+        look: match pal() {
+            None => "system",
+            Some(p) if p.dark => "dark",
+            _ => "light",
+        },
+        dpi: DPI.load(Relaxed),
+        home: home.as_deref().unwrap_or(""),
+    })
+}
+
+/// `text` on the clipboard as CF_UNICODETEXT (CRLF lines); false when any step fails. After a
+/// successful SetClipboardData the system owns the memory, else it is freed here.
+unsafe fn copy_text(hwnd: HWND, text: &str) -> bool {
+    let w = wide(&text.replace('\n', "\r\n"));
+    let mem = GlobalAlloc(GMEM_MOVEABLE, w.len() * 2);
+    if mem.is_null() {
+        return false;
     }
+    let p = GlobalLock(mem);
+    if p.is_null() {
+        GlobalFree(mem);
+        return false;
+    }
+    std::ptr::copy_nonoverlapping(w.as_ptr(), p.cast::<u16>(), w.len());
+    GlobalUnlock(mem);
+    let ok = OpenClipboard(hwnd) != 0 && {
+        let set = EmptyClipboard() != 0 && !SetClipboardData(CF_UNICODETEXT, mem).is_null();
+        CloseClipboard();
+        set
+    };
+    if !ok {
+        GlobalFree(mem);
+    }
+    ok
 }
 
 unsafe fn message(hwnd: HWND, text: &str, flags: MESSAGEBOX_STYLE) -> MESSAGEBOX_RESULT {
@@ -713,6 +820,13 @@ unsafe fn command(hwnd: HWND, id: i32, code: u32) {
             let on = checked(hwnd, id);
             app::update(|s| s.dev_mode = on);
             PostMessageW(hwnd, WM_APP_REBUILD, 0, 0);
+        }
+        (ID_DEBUG, BN_CLICKED) => {
+            if copy_text(hwnd, &debug_now()) {
+                message(hwnd, "Đã chép thông tin debug vào clipboard.", MB_OK | MB_ICONINFORMATION);
+            } else {
+                message(hwnd, "Không chép được thông tin debug vào clipboard.", MB_OK | MB_ICONWARNING);
+            }
         }
         (ID_FOLDER, BN_CLICKED) => {
             let Some(dir) = app::config_dir() else { return };
@@ -826,10 +940,6 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             }
             0
         }
-        WM_TIMER => {
-            latency(hwnd);
-            0
-        }
         // Moved to a monitor with another scale (or the scale changed): the position Windows
         // suggests, our own size for this DPI.
         WM_DPICHANGED => {
@@ -913,14 +1023,13 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         WM_CTLCOLORSTATIC | WM_CTLCOLORBTN | WM_CTLCOLORLISTBOX => match pal() {
             Some(p) => {
                 let dc = wp as HDC;
-                SetTextColor(dc, if matches!(GetDlgCtrlID(lp as HWND), ID_LATENCY | ID_CREDIT) { p.dim } else { p.text });
+                SetTextColor(dc, if GetDlgCtrlID(lp as HWND) == ID_CREDIT { p.dim } else { p.text });
                 SetBkColor(dc, p.bg);
                 BRUSH.load(Relaxed) as LRESULT
             }
             None => DefWindowProcW(hwnd, msg, wp, lp),
         },
         WM_DESTROY => {
-            KillTimer(hwnd, 1);
             set_icons(hwnd, 0);
             HWND_SETTINGS.store(null_mut(), Relaxed);
             FOCUS.store(0, Relaxed);
@@ -943,6 +1052,56 @@ mod tests {
     #[test]
     fn layout_scales_with_the_window_dpi() {
         assert_eq!([px(23, 96), px(23, 120), px(23, 144), px(23, 192)], [23, 28, 34, 46]);
+    }
+
+    #[test]
+    fn debug_text_is_one_fact_per_line_and_names_no_user() {
+        let config = render(&crate::config::Settings::default());
+        let d = DebugInfo {
+            version: "0.3.0",
+            windows: (10, 0, 26100),
+            elevated: false,
+            admin_copy: false,
+            exe: r"C:\Users\example-user\AppData\Local\TrioKey\triokey.exe",
+            config_dir: r"C:\Users\Example-User\AppData\Roaming\triokey",
+            config_readable: true,
+            config: &config,
+            enabled: true,
+            typing: false,
+            lang: 0x2A,
+            latency: ((180, 40), (25, 900)),
+            status: "Chưa kiểm tra được: không tải được từ GitHub.",
+            waiting: None,
+            counts: (3, 1, 0),
+            look: "dark",
+            dpi: 144,
+            home: r"C:\Users\example-user",
+        };
+        let t = debug_text(&d);
+        assert!(!t.to_lowercase().contains("example-user"), "{t}");
+        let lines: Vec<_> = t.lines().collect();
+        assert_eq!(lines.len(), 10, "{t}");
+        assert_eq!(lines[0], "TrioKey 0.3.0 (Windows 10.0.26100, x64)");
+        assert_eq!(lines[1], "copy: normal; admin-mode copy no");
+        assert_eq!(lines[2], r"exe: ~\AppData\Local\TrioKey\triokey.exe");
+        assert_eq!(lines[3], r"config folder: ~\AppData\Roaming\triokey; config.txt readable yes");
+        assert!(lines[4].starts_with("settings: enabled = true; tone_new = false; ") && lines[4].ends_with("; dev_mode = false"), "{t}");
+        assert_eq!(lines[5], "state: on; IME decision Yield; keyboard layout primary language 0x002A");
+        assert_eq!(lines[6], "hook: p99 180 µs over 40 keys that sent text; 25 µs over 900 keys passed through");
+        assert_eq!(lines[7], "update: Chưa kiểm tra được: không tải được từ GitHub.; waiting version none");
+        assert_eq!(lines[8], "remembered words: 3; force_vi.txt: 1 entries; force_en.txt: 0 entries");
+        assert_eq!(lines[9], "window: look dark, DPI 144");
+        let elevated = debug_text(&DebugInfo { elevated: true, admin_copy: true, waiting: Some("9.9.9"), status: "", ..d });
+        assert!(elevated.contains("copy: elevated; admin-mode copy yes\n") && elevated.contains("update: (no status); waiting version 9.9.9\n"));
+        let redirected = debug_text(&DebugInfo {
+            exe: r"D:\Users\example-user\tools\triokey.exe",
+            config_dir: r"\\server\users$\example-user\AppData\Roaming\triokey",
+            ..d
+        });
+        assert!(
+            redirected.contains("exe: outside the profile folder\nconfig folder: outside the profile folder; ") && !redirected.contains("example-user"),
+            "{redirected}"
+        );
     }
 
     #[test]
@@ -1020,6 +1179,11 @@ mod tests {
     /// A long status (an install stopped half-way), two lines at this width.
     const LONGEST: &str = "Có bản 9.9.9 nhưng chưa cài được: đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe.";
     const WAITING: (Option<(&str, bool)>, &str) = (Some(("9.9.9", true)), "Có bản mới v9.9.9.");
+    const NO_NETWORK: &str = "Chưa kiểm tra được: không tải được từ GitHub.";
+    /// The ordinary answers of `Kiểm tra bản mới`, and no status yet: one line each, also beside
+    /// the link of a version that already waits (a new check keeps it).
+    const ONE_LINE: [(Option<(&str, bool)>, &str); 7] =
+        [(None, ""), (None, "Đang kiểm tra…"), (None, LATEST), WAITING, (None, NO_NETWORK), (WAITING.0, "Đang kiểm tra…"), (WAITING.0, NO_NETWORK)];
     use crate::update::tests::pretend;
 
     fn save(dir: &std::path::Path, name: &str, what: &str, (w, h, rgb): (u32, u32, Vec<u8>)) {
@@ -1033,7 +1197,7 @@ mod tests {
     /// user sees it, with the status "up to date" or a waiting version and its link),
     /// `frame-…-96.png` (the same with the caption, cloaked and off-screen), `client-<look>-dev-on-waiting-144.png`,
     /// `client-system-dev-off-waiting-96.png`, and `states-…` for the artificial states (disabled
-    /// controls, simulated focus, the longest status, a wide timing line). The update status is set
+    /// controls, simulated focus, the longest status). The update status is set
     /// directly (`pretend`): nothing is checked, fetched or opened. The look is forced by parameter and
     /// no Windows setting is changed; `triggers` reads the apps' light/dark mode to check the theme-change path.
     #[test]
@@ -1068,8 +1232,7 @@ mod tests {
                 pretend(None, LONGEST);
                 let h = create(Some(theme), true, Some(96), null_mut());
                 states(h);
-                let what =
-                    format!("ARTIFICIAL, {name}: disabled check box and button, simulated focus on a check box, a long two-line status, a wide Hook line");
+                let what = format!("ARTIFICIAL, {name}: disabled check box and buttons, simulated focus on a check box, a long two-line status");
                 save(&dir, &format!("states-{name}-error-dev-on-96.png"), &what, capture(h, false));
                 DestroyWindow(h);
                 pretend(WAITING.0, LONGEST);
@@ -1094,6 +1257,7 @@ mod tests {
             DestroyWindow(h);
             heights();
             triggers();
+            debug_info();
             leaks();
         }
     }
@@ -1111,36 +1275,51 @@ mod tests {
             caption(h)
         );
         assert!(major == 6 && IsAppThemed() != 0 && GetWindowTheme(first) != 0, "visual styles are not active");
-        assert_eq!([GetDlgItem(h, ID_FOLDER).is_null(), GetDlgItem(h, ID_LATENCY).is_null()], [!dev; 2]);
+        assert_eq!([GetDlgItem(h, ID_FOLDER).is_null(), GetDlgItem(h, ID_DEBUG).is_null()], [!dev; 2]);
         assert_eq!(GetDlgItem(h, ID_UPDATE_LINK).is_null(), update::waiting().is_none());
-        assert!(!GetDlgItem(h, ID_GITHUB).is_null());
+        assert!(!GetDlgItem(h, ID_GITHUB).is_null() && !GetDlgItem(h, ID_UPDATE_STATUS).is_null());
         // the link and the status text do not overlap
         let rect = |id| {
             let mut rc = std::mem::zeroed::<RECT>();
             GetWindowRect(GetDlgItem(h, id), &mut rc);
             rc
         };
+        if dev {
+            // the two developer buttons: one row, one size, 7 px apart, below the check box
+            let (a, b, d) = (rect(ID_FOLDER), rect(ID_DEBUG), DPI.load(Relaxed));
+            assert!(a.top == b.top && a.bottom == b.bottom && a.right - a.left == b.right - b.left, "{tag}: developer buttons differ");
+            assert!(b.left - a.right == px(7, d) && (a.top - rect(ID_DEV).bottom - px(7, d)).abs() <= 1, "{tag}: developer button gaps");
+        }
         let mut both = std::mem::zeroed::<RECT>();
         assert_eq!(IntersectRect(&mut both, &rect(ID_UPDATE_STATUS), &rect(ID_UPDATE_LINK)), 0, "{tag}: the link overlaps the status");
     }
 
-    /// The window is as tall as its content: no room for an empty status, one line, two lines, and
-    /// developer mode adds its part; a waiting version with its link takes one line.
+    /// The window is as tall as its content: one status line is always reserved, so the ordinary
+    /// answers of the version check (`ONE_LINE`) give one height per DPI and developer mode; two
+    /// lines are taller, and developer mode adds its row.
     unsafe fn heights() {
-        let mut hs = Vec::new();
-        let cases =
-            [(false, (None, "")), (false, (None, LATEST)), (false, WAITING), (false, (None, LONGEST)), (true, (None, LONGEST)), (false, (WAITING.0, LONGEST))];
-        for (dev, (pending, status)) in cases {
+        let client = |dev: bool, dpi: u32, (pending, status): (Option<(&str, bool)>, &str)| {
             pretend(pending, status);
-            let h = create(Some(&LIGHT), dev, Some(96), null_mut());
+            let h = create(Some(&LIGHT), dev, Some(dpi), null_mut());
             let mut cl = std::mem::zeroed::<RECT>();
             GetClientRect(h, &mut cl);
-            hs.push((cl.bottom, SHAPE.load(Relaxed) & 0xF));
             DestroyWindow(h);
+            (cl.bottom, SHAPE.load(Relaxed) & 0xF)
+        };
+        let mut one = Vec::new();
+        for dev in [false, true] {
+            for dpi in [96, 144] {
+                let hs: Vec<_> = ONE_LINE.iter().map(|&st| client(dev, dpi, st)).collect();
+                println!("client heights and status lines at {dpi} DPI, developer mode {dev} (empty, checking, latest, waiting, no network, checking and no network while a version waits): {hs:?}");
+                assert!(hs.iter().all(|&h| h == (hs[0].0, 1)), "the window size changes with an ordinary status: {hs:?}");
+                one.push(hs[0].0);
+            }
         }
-        println!("client heights and status lines (empty, latest, waiting, long, long with developer mode, long while a version waits): {hs:?}");
-        assert_eq!(hs.iter().map(|h| h.1).collect::<Vec<_>>(), [0, 1, 1, 2, 2, 3]);
-        assert!(hs[0].0 < hs[1].0 && hs[1].0 == hs[2].0 && hs[2].0 < hs[3].0 && hs[3].0 < hs[4].0 && hs[3].0 < hs[5].0, "{hs:?}");
+        assert!(one[0] < one[2] && one[1] < one[3], "developer mode adds no row: {one:?}");
+        let hs = [client(false, 96, (None, LONGEST)), client(true, 96, (None, LONGEST)), client(false, 96, (WAITING.0, LONGEST))];
+        println!("long, long with developer mode, long while a version waits: {hs:?}");
+        assert_eq!(hs.map(|h| h.1), [2, 2, 3]);
+        assert!(one[0] < hs[0].0 && hs[0].0 < hs[1].0 && hs[0].0 < hs[2].0, "{hs:?}");
     }
 
     /// The window procedure's rebuild triggers, on a hidden window and through messages sent to it
@@ -1180,11 +1359,17 @@ mod tests {
         SendMessageW(h, WM_SETTINGCHANGE, 0, name.as_ptr() as isize);
         pump(&mut m);
         assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt although the look did not change");
-        // a status of the same room only changes the text; one that needs a second line rebuilds, posted
+        // a status of the same room only changes the text, also from none at all; one that needs a
+        // second line rebuilds, posted
+        pretend(None, "");
+        sync_update();
+        pump(&mut m);
+        let (first, empty) = (GetDlgItem(h, ID_ENABLED), height(h));
         pretend(None, "Đang kiểm tra…");
         sync_update();
         pump(&mut m);
-        assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt for a status of the same room");
+        assert_eq!((first, height(h)), (GetDlgItem(h, ID_ENABLED), empty), "rebuilt or resized for a status of the same room");
+        assert_eq!(empty, off, "an empty status took other room than a one-line one");
         pretend(None, LONGEST);
         sync_update();
         assert_eq!(first, GetDlgItem(h, ID_ENABLED), "rebuilt inside sync_update");
@@ -1198,6 +1383,15 @@ mod tests {
         SendMessageW(h, WM_DPICHANGED, 144 | (144 << 16), &to as *const RECT as isize);
         assert_eq!(height(h).0, px(WIDTH, 144), "DPI change");
         DestroyWindow(h);
+    }
+
+    /// The debug information of this test process, made the way the button makes it; the clipboard
+    /// is not touched. Ten lines, and the profile folder's name nowhere.
+    unsafe fn debug_info() {
+        let t = debug_now();
+        let name = admin::profile_dir().and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_lowercase())).unwrap_or_default();
+        assert!(t.lines().count() == 10 && t.starts_with("TrioKey ") && !name.is_empty() && !t.to_lowercase().contains(&name), "debug information");
+        println!("debug information: {} lines, {} bytes, profile folder name absent", t.lines().count(), t.len());
     }
 
     /// Rebuilds (theme, developer mode, DPI) and paints leave the GDI and USER object counts as
@@ -1220,13 +1414,13 @@ mod tests {
         DestroyWindow(h);
     }
 
-    /// The artificial states: a checked box, disabled check box and button, a wide timing line and
-    /// the focus cue on a check box. Nothing here sends WM_COMMAND: no setting, file or registry value is touched.
+    /// The artificial states: a checked box, disabled check box and buttons, and the focus cue on a
+    /// check box. Nothing here sends WM_COMMAND: no setting, file, registry value or clipboard is touched.
     unsafe fn states(h: HWND) {
         set_check(h, ID_YIELD, true);
         EnableWindow(GetDlgItem(h, ID_STARTUP), 0);
         EnableWindow(GetDlgItem(h, ID_CHECK), 0);
-        SetWindowTextW(GetDlgItem(h, ID_LATENCY), wide("Hook p99: gửi 12345 µs · không gửi 9876 µs (2048 phím)").as_ptr());
+        EnableWindow(GetDlgItem(h, ID_DEBUG), 0);
         focus(h, &[ID_AUTO_EN]);
     }
 

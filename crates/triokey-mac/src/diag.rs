@@ -1,4 +1,5 @@
-//! The "Chẩn đoán" text: what this Mac reports, for a person to paste into a bug report. Never holds typed text.
+//! The debug information ("Chép thông tin debug"): what this Mac reports, for a person to paste into a bug report
+//! (docs/ARCHITECTURE.md, 12.7 Diagnostics). Never holds typed text, a remembered word or the user's name.
 
 use std::fmt::Write;
 
@@ -33,15 +34,16 @@ pub struct Diagnostics {
     pub seen: Vec<Source>,
     pub counters: Counters,
     pub last_error: Option<String>,
-}
-
-/// `text` with the `home` folder written as `~` wherever a path inside it starts there.
-pub fn tilde(text: &str, home: Option<&str>) -> String {
-    match home.map(|h| h.trim_end_matches('/')).filter(|h| !h.is_empty()) {
-        Some(h) if text == h => "~".into(),
-        Some(h) => text.replace(&format!("{h}/"), "~/"),
-        None => text.into(),
-    }
+    /// config.txt as it would be written (`config::render`), and its folder.
+    pub config: String,
+    pub config_dir: Option<String>,
+    pub config_readable: bool,
+    /// Remembered words, force_vi.txt entries, force_en.txt entries: numbers only.
+    pub counts: (usize, usize, usize),
+    /// `login::state`.
+    pub login: String,
+    pub update: String,
+    pub waiting: Option<String>,
 }
 
 fn yes(b: bool) -> &'static str {
@@ -61,11 +63,10 @@ fn source_line(s: &Source) -> String {
 
 impl Diagnostics {
     pub fn render(&self) -> String {
-        let home = self.home.as_deref();
         let c = &self.counters;
         let mut t = String::new();
         let _ = writeln!(t, "TrioKey {} (macOS {}, {})", self.version, self.os, self.arch);
-        let _ = writeln!(t, "bundle: {} (AppTranslocation: {})", tilde(&self.bundle, home), yes(self.bundle.contains("AppTranslocation")));
+        let _ = writeln!(t, "bundle: {} (AppTranslocation: {})", self.bundle, yes(self.bundle.contains("AppTranslocation")));
         let _ = writeln!(t, "tap: created {}, enabled {}; AXIsProcessTrusted: {}", yes(self.tap_created), yes(self.tap_enabled), yes(self.ax_trusted));
         let _ = writeln!(t, "Secure Input: {}", if self.secure { "on" } else { "off" });
         let _ = writeln!(t, "state: {}", tooltip(self.state));
@@ -79,25 +80,30 @@ impl Diagnostics {
             "counters: key events {}, replaced {}, characters posted {}, backspaces posted {}, re-enabled after timeout {}, re-enabled after user input {}, panics caught {}",
             c.keys, c.replaced, c.chars, c.backspaces, c.reenabled_timeout, c.reenabled_user, c.panics
         );
-        let _ = writeln!(t, "last error: {}", self.last_error.as_deref().map_or("none".into(), |e| tilde(e, home)));
-        t
+        let _ = writeln!(t, "last error: {}", self.last_error.as_deref().unwrap_or("none"));
+        let settings = self.config.lines().map(str::trim).filter(|l| !l.is_empty()).collect::<Vec<_>>().join("; ");
+        let _ = writeln!(t, "config folder: {}; config.txt readable {}", self.config_dir.as_deref().unwrap_or("unknown"), yes(self.config_readable));
+        let _ = writeln!(t, "settings: {settings}");
+        let (learned, vi, en) = self.counts;
+        let _ = writeln!(t, "remembered words: {learned}; force_vi.txt: {vi} entries; force_en.txt: {en} entries");
+        let _ = writeln!(t, "start at login: {}", self.login);
+        let _ = writeln!(
+            t,
+            "update: {}; waiting version {}",
+            if self.update.is_empty() { "(no status)" } else { &self.update },
+            self.waiting.as_deref().unwrap_or("none")
+        );
+        // the home folder names the user: masked over the whole text, case-insensitively
+        match self.home.as_deref() {
+            Some(h) => triokey_shared::mask_home(&t, h),
+            None => t,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn tilde_replaces_only_the_home_prefix() {
-        assert_eq!(tilde("/Users/x/Downloads/TrioKey.app", Some("/Users/x")), "~/Downloads/TrioKey.app");
-        assert_eq!(tilde("/Users/x/a", Some("/Users/x/")), "~/a");
-        assert_eq!(tilde("/Users/x", Some("/Users/x")), "~");
-        assert_eq!(tilde("/Users/xy/a", Some("/Users/x")), "/Users/xy/a");
-        assert_eq!(tilde("/Applications/TrioKey.app", Some("/Users/x")), "/Applications/TrioKey.app");
-        assert_eq!(tilde("/Users/x/a", None), "/Users/x/a");
-        assert_eq!(tilde("/a", Some("")), "/a");
-    }
 
     #[test]
     fn render() {
@@ -113,7 +119,7 @@ mod tests {
             os: "Version 15.1 (Build 24B83)".into(),
             arch: "aarch64".into(),
             bundle: "/private/var/folders/x/AppTranslocation/ABC/d/TrioKey.app".into(),
-            home: Some("/Users/x".into()),
+            home: Some("/Users/example-user".into()),
             tap_created: true,
             tap_enabled: false,
             ax_trusted: false,
@@ -122,7 +128,17 @@ mod tests {
             current: us.clone(),
             seen: vec![us, jp],
             counters: Counters { keys: 9, replaced: 2, chars: 5, backspaces: 3, reenabled_timeout: 1, reenabled_user: 0, panics: 0 },
-            last_error: Some("panic at /Users/x/src/a.rs".into()),
+            last_error: Some("panic at /Users/example-user/src/a.rs".into()),
+            config: "enabled = true
+hotkey = ctrl_shift
+"
+            .into(),
+            config_dir: Some("/Users/Example-User/Library/Application Support/triokey".into()),
+            config_readable: true,
+            counts: (3, 1, 0),
+            login: "on".into(),
+            update: "Có bản mới v0.3.1.".into(),
+            waiting: Some("0.3.1".into()),
         };
         let want = "TrioKey 0.3.0 (macOS Version 15.1 (Build 24B83), aarch64)
 bundle: /private/var/folders/x/AppTranslocation/ABC/d/TrioKey.app (AppTranslocation: yes)
@@ -135,12 +151,34 @@ input sources seen since launch: 2
   id com.apple.inputmethod.Kotoeri, type TISTypeKeyboardInputMode, mode com.apple.inputmethod.Japanese, ASCII capable no -> Yield
 counters: key events 9, replaced 2, characters posted 5, backspaces posted 3, re-enabled after timeout 1, re-enabled after user input 0, panics caught 0
 last error: panic at ~/src/a.rs
+config folder: ~/Library/Application Support/triokey; config.txt readable yes
+settings: enabled = true; hotkey = ctrl_shift
+remembered words: 3; force_vi.txt: 1 entries; force_en.txt: 0 entries
+start at login: on
+update: Có bản mới v0.3.1.; waiting version 0.3.1
 ";
         assert_eq!(d.render(), want);
-        let none = Diagnostics { bundle: "/Users/x/Applications/TrioKey.app".into(), current: Source::default(), seen: vec![], last_error: None, ..d };
+        let none = Diagnostics {
+            bundle: "/Users/example-user/Applications/TrioKey.app".into(),
+            current: Source::default(),
+            seen: vec![],
+            last_error: None,
+            config_dir: None,
+            update: String::new(),
+            waiting: None,
+            ..d
+        };
         let r = none.render();
         assert!(r.contains("bundle: ~/Applications/TrioKey.app (AppTranslocation: no)"));
         assert!(r.contains("current input source: id ?, type ?, mode ?, ASCII capable ? -> Yield"));
-        assert!(r.ends_with("last error: none\n"));
+        assert!(r.contains(
+            "last error: none
+config folder: unknown;"
+        ));
+        assert!(r.ends_with(
+            "update: (no status); waiting version none
+"
+        ));
+        assert!(!r.to_lowercase().contains("example-user"));
     }
 }

@@ -86,7 +86,7 @@ TrioKey cho macOS
    Đừng chạy thẳng từ file dmg hay thư mục Downloads.
 
 3. Cấp quyền Trợ năng (Accessibility)
-   TrioKey phải thấy phím bạn gõ để bỏ dấu; nó không gửi gì ra ngoài.
+   TrioKey phải thấy phím bạn gõ để bỏ dấu; nó không gửi chữ bạn gõ đi đâu cả.
    Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Trợ năng → bật TrioKey.
    Nếu không thấy TrioKey trong danh sách, bấm dấu + và chọn TrioKey trong Applications.
    Menu của TrioKey (chữ V hoặc E trên thanh menu) có mục "Hướng dẫn cấp quyền…".
@@ -112,7 +112,7 @@ TrioKey for macOS
    Do not run it straight from the dmg or from Downloads.
 
 3. Granting Accessibility
-   TrioKey has to see the keys you type to place the tone marks; it sends nothing anywhere.
+   TrioKey has to see the keys you type to place the tone marks; it sends none of your typing anywhere.
    System Settings → Privacy & Security → Accessibility → turn TrioKey on.
    If TrioKey is not in the list, click + and choose TrioKey in Applications.
    TrioKey's menu (the V or E in the menu bar) has "Hướng dẫn cấp quyền…" (permission guide).

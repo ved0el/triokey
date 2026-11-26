@@ -17,7 +17,7 @@ signed and published by itself. What stands between a push and every installed c
   secret. The environment has no required reviewer; its deployment policy allows only tags
   matching `v*`, so a branch run cannot get the key.
 - The first job of `release.yml` stops unless the tagged commit is on `origin/main` ("Tag is
-  on main") and the tag is `v` plus the crate version. GitHub runs the workflow file of the
+  on main") and the tag is `v` plus the version of both app crates, `triokey` and `triokey-mac`. GitHub runs the workflow file of the
   tagged commit, so these checks catch a tag on the wrong commit; they do not stop someone
   with push access, who could push an edited workflow under a `v*` tag.
 - So the real protection is who can push: anyone who can push a `v*` tag pointing at `main`
@@ -63,12 +63,12 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
 
 ## Each release
 
-1. Set the new version in `crates/triokey/Cargo.toml` (`X.Y.Z`, numbers only), run
-   `cargo build -p triokey` so that `Cargo.lock` follows (CI builds with `--locked`), and
-   update `CHANGELOG.md`.
-2. Commit, push to `main`, and wait for the CI run on `main` to pass.
+1. Set the new version in `crates/triokey/Cargo.toml` and in `crates/triokey-mac/Cargo.toml`
+   (the same `X.Y.Z` in both, numbers only), run `cargo build -p triokey` so that `Cargo.lock`
+   follows (CI builds with `--locked`), and update `CHANGELOG.md`.
+2. Commit, push to `main`, and wait for the CI run and the `macOS` run on `main` to pass.
 3. Check that `main` is the commit you mean to release: nothing asks again after the tag is
-   pushed. Then tag and push the tag. The tag must be `v` plus exactly the crate version.
+   pushed. Then tag and push the tag. The tag must be `v` plus exactly the version of both crates.
 
    ```sh
    git tag vX.Y.Z
@@ -77,10 +77,12 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
 
 4. The `Release` workflow then, in a first job without the key:
    - stops if the tagged commit is not on `main`;
-   - stops if the tag and the crate version differ;
+   - stops if the tag and the `triokey` crate version differ;
+   - stops if the tag and the `triokey-mac` crate version differ;
    - runs the tests and builds `triokey.exe` (GNU toolchain, no cache).
 
-   The second job starts by itself once the first has passed. It:
+   Next to it the `macos` job (`macos.yml`, no key, no environment) builds and checks
+   `TrioKey-X.Y.Z-macos.dmg`. The publishing job starts by itself once both have passed. It:
    - stops if `TRIOKEY_SIGN_KEY` is not set in the environment;
    - builds the signing tool `xtask` and nothing else;
    - signs the exe from the first job: `triokey.exe.minisig` with the trusted comment `version=X.Y.Z file=triokey.exe`;
@@ -90,14 +92,23 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
      and writes `SHA256SUMS.txt`;
    - records a build provenance attestation (best-effort; check with
      `gh attestation verify triokey.exe --repo ved0el/triokey`);
-   - creates the GitHub release with the four files.
+   - creates the GitHub release with the five files (the dmg too) in one `gh release create`.
+     gh makes a draft, uploads each file, then publishes it: if an upload fails the run stops
+     with a draft no updater sees, and a re-run makes a second draft; delete the stale one by hand.
 5. Look at the release page:
    - The assets `triokey.exe` and `triokey.exe.minisig` must be there **under exactly these
      names**. Installed copies fetch `releases/latest/download/triokey.exe.minisig` and
      `.../triokey.exe`.
    - The release must be neither a draft nor a pre-release: `latest` skips both, and the
      updater does not understand pre-release ordering beyond "older than the release".
-6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. Its rows
+   - `TrioKey-X.Y.Z-macos.dmg` must be there with the tag's version in its name, and
+     `SHA256SUMS.txt` must list four files: `triokey.exe`, `triokey.exe.minisig`, the zip and the
+     dmg. Installed macOS copies download nothing:
+     their version check reads only where `releases/latest` redirects, so the release tag
+     `vX.Y.Z` is what they compare.
+   - No draft left over from an earlier failed run (see step 4).
+6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed, and the
+   macOS rows (M1 to M32) on a Mac with the released dmg whenever `triokey-mac` changed. Its rows
    have not been run for any release so far. One automatic update was seen to work: the owner's
    normal copy of 0.2.0 installed 0.2.1 by itself, leaving `triokey.old.exe` next to it.
 

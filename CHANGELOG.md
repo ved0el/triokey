@@ -1,18 +1,29 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-11-26)
 
-### macOS app (`triokey-mac`, experimental, 0.3.0)
+First release for Windows and macOS together. The Windows changes below were seen only as images rendered by a test; the macOS app is experimental (see its section).
 
-A first macOS build. **It has never run on a real Mac:** it was written and type-checked on Windows. The workflow on the `macos` branch builds it, runs a start-up self-test and uploads the dmg as an artifact; no result of that workflow is recorded yet. It is not released. The Windows app and the engine are unchanged.
+### Windows app (`triokey`)
 
-- **Same engine, macOS front-end.** A session event tap reads key-downs and mouse-downs; for an edit the key is swallowed and TrioKey posts Deletes, the text as Unicode key events (at most 20 UTF-16 units each) and, after a word ended with Return or Tab, the real key with the original Shift and Option. No input source or keyboard layout is registered. A panic or an internal error in the tap turns the tap off for the rest of the run and lets the key through.
-- **Menu bar item** `V`/`E` with a menu: `Tiếng Việt` (on/off), `Hướng dẫn cấp quyền…`, `Chẩn đoán (chép vào clipboard)`, `Thoát`. No Dock icon.
-- **Accessibility permission** with a guide window written to open the Accessibility page of System Settings, to notice the grant within about 2 seconds without a restart (unverified), and to warn never to remove the permission while TrioKey runs.
-- **Steps aside** whenever the input source is anything but a plain ASCII-capable keyboard layout (every input method, including a Japanese one in its Latin mode), and while Secure Input is on.
-- **Diagnostics** copied to the clipboard on request: macOS version, bundle path, tap and permission state, input sources seen, counters, last error; never typed text.
-- **Packaging:** one universal app (Apple silicon and Intel, macOS 11 or later) in a dmg, signed ad hoc, not notarized: the first open needs Open Anyway, and each new build needs the Accessibility entry removed and added again.
-- **Not in this build:** settings, hotkey, start at login, saving remembered words (kept until quit only), updater. It reads and writes no files and uses no network.
+- **Developer mode shows two buttons** side by side under `Chế độ phát triển`: `Mở thư mục cấu hình…` as before, and `Chép thông tin debug`, which copies a short English report to the clipboard (version, Windows version, normal or admin copy, paths with your user folder shown as `~` and any path outside it replaced by `outside the profile folder`, every setting, on/off and IME state, hook timings, update status, how many remembered words and force-file entries there are, window look and DPI) and says so in a message box. It never contains typed text, remembered words or your user name. The `Hook p99: …` line and its one-second timer are gone from the window; its numbers are in the report.
+- **The update line always keeps room for one line**, so pressing `Kiểm tra bản mới` no longer changes the window size for the usual answers. The no-network answer is now `Chưa kiểm tra được: không tải được từ GitHub.`
+
+### macOS app (`triokey-mac`, experimental)
+
+Written and type-checked on Windows. The owner installed the first macOS build on a Mac, granted the permission and typed with it; everything added since (settings window, files, hotkey, start at login, version check, debug information) has not run on a real Mac yet. The engine is unchanged; the Windows app changes are listed above.
+
+- **Same engine, macOS front-end.** A session event tap reads key-downs, modifier changes (for the hotkey only) and mouse-downs; for an edit the key is swallowed and TrioKey posts Deletes, the text as Unicode key events (at most 20 UTF-16 units each) and, after a word ended with Return or Tab, the real key with the original Shift and Option. No input source or keyboard layout is registered. A panic or an internal error in the tap turns the tap off for the rest of the run and lets the key through.
+- **Menu bar item** `V`/`E` with a menu: `Tiếng Việt` (on/off), `Cài đặt…`, `Hướng dẫn cấp quyền…`, `Có bản … — mở trang tải về` while a newer version waits, `TrioKey <version>`, `Thoát`. No Dock icon.
+- **Settings window** with the structure and texts of the Windows one: on/off and the hotkey (`Control+Shift`, `Option+Z` or none; no Control+Space, which is macOS's input-source switch), tone style, keeping English words, stepping aside for CJK input methods (off: Vietnamese under any input source), `Khởi động cùng máy`, developer mode with `Mở thư mục cấu hình…` and `Chép thông tin debug`, `Tự động kiểm tra bản mới` and `Kiểm tra bản mới` with one reserved line for the answer, and the credit with a GitHub link. Standard controls only, so it follows light and dark. Settings apply at once.
+- **Files** in `~/Library/Application Support/triokey`, in the Windows formats: `config.txt`, `learned.txt` (remembered swaps now survive a restart), `force_vi.txt` and `force_en.txt`. Writes go through a temporary file renamed over the old one; a `config.txt` that is not UTF-8 is never overwritten.
+- **Start at login** through a LaunchAgent file without KeepAlive, available only when TrioKey runs from Applications.
+- **Version check, never an installation:** daily (if on) and on request, `/usr/bin/curl` asks only where the releases page redirects, with a fixed user agent and nothing about you, your Mac or the running version; a newer version is shown with a link to the releases page.
+- **Debug information** (`Chép thông tin debug`, replaces the menu item `Chẩn đoán`): macOS version, bundle path, tap and permission state, input sources seen, counters, last error, every setting, config folder, counts of remembered words and force-file entries, start-at-login and update state; your home folder is shown as `~`, never typed text.
+- **Accessibility permission** with a guide window that opens the Accessibility page of System Settings, is written to notice the grant within about 2 seconds (unverified), and warns never to remove the permission while TrioKey runs.
+- **Steps aside** whenever the input source is anything but a plain ASCII-capable keyboard layout (unless turned off in the settings), and while Secure Input is on.
+- **Packaging:** one universal app (Apple silicon and Intel, macOS 11 or later) in a dmg, signed ad hoc, not notarized: the first open needs Open Anyway, and each new build needs the Accessibility entry removed and added again (quit TrioKey first).
+- **Part of the release:** the tag's release workflow now also runs the macOS workflow and publishes `TrioKey-X.Y.Z-macos.dmg` with the Windows files; `SHA256SUMS.txt` lists it too, and the tag must match the version of both apps. The macOS workflow also runs on `main` and on pull requests, and self-tests the Intel half under Rosetta when the runner has it.
 
 ## 0.2.1 (2026-11-26)
 

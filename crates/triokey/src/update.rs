@@ -29,7 +29,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PUBKEY: &str = include_str!("../update-pubkey.txt");
 const SIG_URL: &str = "https://github.com/ved0el/triokey/releases/latest/download/triokey.exe.minisig";
 const EXE_URL: &str = "https://github.com/ved0el/triokey/releases/latest/download/triokey.exe";
-const RELEASES_URL: &str = "https://github.com/ved0el/triokey/releases/latest";
+const RELEASES_URL: &str = triokey_shared::RELEASES;
 /// github.com answers with a redirect to its release-asset CDN (the first name is the one seen
 /// in November 2026, the second the one used before it). Exact names, no subdomain matching.
 const HOSTS: [&str; 3] = ["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"];
@@ -63,7 +63,7 @@ pub enum Error {
 impl Error {
     fn text(&self) -> &'static str {
         match self {
-            Error::Net => "không tải được từ GitHub (mất mạng, hoặc chưa có bản phát hành nào)",
+            Error::Net => "không tải được từ GitHub",
             Error::Format => "không đọc được chữ ký của bản phát hành",
             Error::Signature => "chữ ký không hợp lệ, không cài",
             Error::File | Error::NotWritable => "không ghi được vào thư mục chứa triokey.exe",

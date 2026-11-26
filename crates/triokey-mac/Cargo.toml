@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 triokey-engine = { path = "../triokey-engine" }
+triokey-shared = { path = "../triokey-shared" }
 
 # macOS only: nothing here is built for the Windows gates (docs/ARCHITECTURE.md, 12. macOS app)
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -36,6 +37,7 @@ objc2-core-graphics = { version = "0.3.2", default-features = false, features = 
 objc2-app-kit = { version = "0.3.2", default-features = false, features = [
     "std",
     "NSAlert",
+    "NSBox",
     "NSApplication",
     "NSButton",
     "NSCell",
@@ -43,10 +45,12 @@ objc2-app-kit = { version = "0.3.2", default-features = false, features = [
     "NSControl",
     "NSFont",
     "NSGraphics",
+    "NSLayoutAnchor",
     "NSLayoutConstraint",
     "NSMenu",
     "NSMenuItem",
     "NSPasteboard",
+    "NSPopUpButton",
     "NSResponder",
     "NSRunningApplication",
     "NSStackView",

@@ -11,6 +11,7 @@ use std::ptr::{null_mut, NonNull};
 
 use objc2_core_foundation::{kCFRunLoopCommonModes, CFMachPort, CFRetained, CFRunLoop, CFRunLoopSource};
 use objc2_core_graphics::{CGEvent, CGEventField, CGEventFlags, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventTapProxy, CGEventType};
+use triokey_mac::hotkey::Hot;
 use triokey_mac::keymap::{classify, vk, KeyClass};
 use triokey_mac::plan::{chunks, plan, Plan};
 use triokey_mac::source::Decision;
@@ -39,7 +40,12 @@ pub fn create() -> bool {
     if exists() {
         return true;
     }
-    let mask = bit(CGEventType::KeyDown) | bit(CGEventType::LeftMouseDown) | bit(CGEventType::RightMouseDown) | bit(CGEventType::OtherMouseDown);
+    // modifier changes only for the hotkey; they always pass unchanged
+    let mask = bit(CGEventType::KeyDown)
+        | bit(CGEventType::FlagsChanged)
+        | bit(CGEventType::LeftMouseDown)
+        | bit(CGEventType::RightMouseDown)
+        | bit(CGEventType::OtherMouseDown);
     // SAFETY: the callback matches CGEventTapCallBack and uses no user info
     let port = unsafe {
         CGEvent::tap_create(
@@ -107,9 +113,21 @@ fn on_event(proxy: CGEventTapProxy, ty: CGEventType, ev: &CGEvent) -> Result<boo
         app::with(|a| if ty == CGEventType::TapDisabledByTimeout { a.counters.reenabled_timeout += 1 } else { a.counters.reenabled_user += 1 });
         return Ok(false);
     }
+    // the hotkey (docs/ARCHITECTURE.md, 12.13 Settings, files and the window): a branch of its own, before typing
+    if ty == CGEventType::FlagsChanged {
+        let flags = CGEvent::flags(Some(ev)).0;
+        if app::with(|a| a.hot.flags_changed(a.settings.hotkey, flags)) == Hot::Toggle {
+            app::toggle();
+        }
+        return Ok(false);
+    }
     if ty == CGEventType::LeftMouseDown || ty == CGEventType::RightMouseDown || ty == CGEventType::OtherMouseDown {
         // a click may move the caret
-        app::with(|a| a.engine.reset());
+        let flags = CGEvent::flags(Some(ev)).0;
+        app::with(|a| {
+            a.hot.mouse_down(flags);
+            a.engine.reset()
+        });
         return Ok(false);
     }
     if ty != CGEventType::KeyDown {
@@ -119,6 +137,14 @@ fn on_event(proxy: CGEventTapProxy, ty: CGEventType, ev: &CGEvent) -> Result<boo
     let keycode = CGEvent::integer_value_field(ev, CGEventField::KeyboardEventKeycode) as u16;
     let autorepeat = CGEvent::integer_value_field(ev, CGEventField::KeyboardEventAutorepeat) != 0;
     let flags = CGEvent::flags(ev).0;
+    match app::with(|a| a.hot.key_down(a.settings.hotkey, keycode, flags, autorepeat)) {
+        Hot::ToggleSwallow => {
+            app::toggle();
+            return Ok(true);
+        }
+        Hot::Swallow => return Ok(true),
+        Hot::Toggle | Hot::None => {}
+    }
     let mut buf = [0u16; 8];
     let mut len = 0;
     // SAFETY: both pointers are valid for the given capacity
@@ -126,7 +152,7 @@ fn on_event(proxy: CGEventTapProxy, ty: CGEventType, ev: &CGEvent) -> Result<boo
     let text = String::from_utf16_lossy(&buf[..(len as usize).min(buf.len())]);
     let todo = app::with(|a| {
         a.counters.keys += 1;
-        if !a.on || a.source.decision() == Decision::Yield {
+        if !a.on || a.decision() == Decision::Yield {
             a.engine.reset();
             return None;
         }

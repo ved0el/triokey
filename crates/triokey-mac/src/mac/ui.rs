@@ -1,5 +1,5 @@
 //! Menu bar item, its menu, the permission guide window, the timer and the input source notification. One Objective-C
-//! class receives every action; the state it acts on lives in `app.rs`.
+//! class receives every action, the settings window's too (`settings.rs`); the state it acts on lives in `app.rs`.
 
 use std::cell::RefCell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -18,12 +18,14 @@ use objc2_foundation::{
 };
 use triokey_mac::text::{self, State};
 
-use super::{app, tis};
+use super::{app, settings, tis};
 
 struct Ui {
     target: Retained<Target>,
     item: Retained<NSStatusItem>,
     toggle: Retained<NSMenuItem>,
+    /// "Có bản … — mở trang tải về", hidden while no newer version waits.
+    waiting: Retained<NSMenuItem>,
     guide: Retained<NSWindow>,
     guide_status: Retained<NSTextField>,
 }
@@ -57,18 +59,63 @@ define_class!(
             guarded(|| show_guide(self.mtm()));
         }
 
-        #[unsafe(method(copyDiagnostics:))]
-        fn copy_diagnostics(&self, _sender: Option<&AnyObject>) {
-            guarded(|| copy_diagnostics(self.mtm()));
+        #[unsafe(method(showSettings:))]
+        fn show_settings(&self, _sender: Option<&AnyObject>) {
+            guarded(|| settings::show(self.mtm()));
+        }
+
+        #[unsafe(method(settingChanged:))]
+        fn setting_changed(&self, _sender: Option<&AnyObject>) {
+            guarded(settings::changed);
+        }
+
+        #[unsafe(method(toneOld:))]
+        fn tone_old(&self, _sender: Option<&AnyObject>) {
+            guarded(|| settings::tone(false));
+        }
+
+        #[unsafe(method(toneNew:))]
+        fn tone_new(&self, _sender: Option<&AnyObject>) {
+            guarded(|| settings::tone(true));
+        }
+
+        #[unsafe(method(loginChanged:))]
+        fn login_changed(&self, _sender: Option<&AnyObject>) {
+            guarded(settings::login_changed);
+        }
+
+        #[unsafe(method(openFolder:))]
+        fn open_folder(&self, _sender: Option<&AnyObject>) {
+            guarded(|| {
+                if let Some(dir) = app::config_dir().and_then(|d| d.to_str().map(str::to_string)) {
+                    NSWorkspace::sharedWorkspace().openURL(&NSURL::fileURLWithPath(&NSString::from_str(&dir)));
+                }
+            });
+        }
+
+        #[unsafe(method(copyDebug:))]
+        fn copy_debug(&self, _sender: Option<&AnyObject>) {
+            guarded(|| copy_debug(self.mtm()));
+        }
+
+        #[unsafe(method(checkNow:))]
+        fn check_now(&self, _sender: Option<&AnyObject>) {
+            guarded(app::check_now);
+        }
+
+        #[unsafe(method(openDownload:))]
+        fn open_download(&self, _sender: Option<&AnyObject>) {
+            guarded(|| open_url(triokey_shared::RELEASES));
+        }
+
+        #[unsafe(method(openRepository:))]
+        fn open_repository(&self, _sender: Option<&AnyObject>) {
+            guarded(|| open_url(triokey_shared::REPOSITORY));
         }
 
         #[unsafe(method(openSettings:))]
         fn open_settings(&self, _sender: Option<&AnyObject>) {
-            guarded(|| {
-                if let Some(url) = NSURL::URLWithString(&NSString::from_str(text::SETTINGS_URL)) {
-                    NSWorkspace::sharedWorkspace().openURL(&url);
-                }
-            });
+            guarded(|| open_url(text::SETTINGS_URL));
         }
 
         #[unsafe(method(quit:))]
@@ -132,8 +179,11 @@ pub fn build(mtm: MainThreadMarker) -> Result<(), String> {
     let menu = NSMenu::new(mtm);
     let toggle = item(mtm, text::MENU_TOGGLE, Some(sel!(toggle:)), &target);
     menu.addItem(&toggle);
+    menu.addItem(&item(mtm, text::MENU_SETTINGS, Some(sel!(showSettings:)), &target));
     menu.addItem(&item(mtm, text::MENU_GUIDE, Some(sel!(showGuide:)), &target));
-    menu.addItem(&item(mtm, text::MENU_DIAG, Some(sel!(copyDiagnostics:)), &target));
+    let waiting = item(mtm, &text::menu_waiting(""), Some(sel!(openDownload:)), &target);
+    waiting.setHidden(true);
+    menu.addItem(&waiting);
     menu.addItem(&NSMenuItem::separatorItem(mtm));
     // no action: the menu shows it disabled
     menu.addItem(&item(mtm, &text::menu_version(), None, &target));
@@ -175,7 +225,8 @@ pub fn build(mtm: MainThreadMarker) -> Result<(), String> {
     guide.setContentView(Some(&stack));
     guide.setContentSize(stack.fittingSize());
     guide.center();
-    UI.set(Some(Ui { target, item: item_, toggle, guide, guide_status }));
+    settings::build(mtm, &target);
+    UI.set(Some(Ui { target, item: item_, toggle, waiting, guide, guide_status }));
     Ok(())
 }
 
@@ -216,7 +267,24 @@ pub fn show_state(s: State, on: bool, has_permission: bool) {
     });
 }
 
-fn activate(mtm: MainThreadMarker) {
+pub fn show_waiting(version: Option<&str>) {
+    UI.with_borrow(|u| {
+        let Some(u) = u else { return };
+        u.waiting.setHidden(version.is_none());
+        if let Some(v) = version {
+            u.waiting.setTitle(&NSString::from_str(&text::menu_waiting(v)));
+        }
+    });
+}
+
+/// Opens a fixed address (the releases page, the repository, the Accessibility settings) in the default handler.
+fn open_url(url: &str) {
+    if let Some(url) = NSURL::URLWithString(&NSString::from_str(url)) {
+        NSWorkspace::sharedWorkspace().openURL(&url);
+    }
+}
+
+pub fn activate(mtm: MainThreadMarker) {
     // `activate` exists only from macOS 14; this one still works on 11 to 26
     #[allow(deprecated)]
     NSApplication::sharedApplication(mtm).activateIgnoringOtherApps(true);
@@ -232,8 +300,8 @@ pub fn show_guide(mtm: MainThreadMarker) {
     }
 }
 
-/// Works without permission and without a tap.
-fn copy_diagnostics(mtm: MainThreadMarker) {
+/// "Chép thông tin debug": works without permission and without a tap.
+fn copy_debug(mtm: MainThreadMarker) {
     let d = app::diagnostics().render();
     let pb = NSPasteboard::generalPasteboard();
     pb.clearContents();

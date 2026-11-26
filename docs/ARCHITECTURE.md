@@ -15,8 +15,9 @@ never been tried by hand. The updater has installed one update by itself (the ow
 with `triokey.old.exe` left next to it). The other checklist rows (among them hook reinstall, admin mode, the
 rows of the update checklist, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
 
-Sections 1 to 11 describe the Windows app. The macOS app shares only the engine and is described
-in section 12; none of it has ever run on a Mac.
+Sections 1 to 11 describe the Windows app. The macOS app shares the engine and `triokey-shared`
+and is described in section 12; the owner installed its first build on a Mac, granted the
+permission and typed with it, and nothing added since has run on a Mac.
 
 ## 1. Goals and constraints
 
@@ -70,7 +71,8 @@ higher integrity level needs an elevated copy (section 8).
 | `crates/triokey/src/inject.rs` | Builds `SendInput` records, the own-event marker |
 | `crates/triokey/src/ime.rs` | Pure rules: when to yield to a CJK IME |
 | `crates/triokey/src/ime_watch.rs` | Watcher thread: IME state, password flag, focus changes, timer duties |
-| `crates/triokey/src/config.rs` | `config.txt` format |
+| `crates/triokey-shared/src/config.rs` | `config.txt` format (the Windows app uses it as `crate::config`) |
+| `crates/triokey-shared/src/lib.rs` | Shared by both apps, no OS calls: credit and addresses, `mask_home` for the debug information |
 | `crates/triokey/src/tray.rs`, `icon.rs`, `settings_ui.rs` | Tray icon and menu, runtime-drawn tray glyphs, settings window |
 | `crates/triokey/src/admin.rs`, `autostart.rs` | Admin mode (Program Files copy, scheduled task), Run value |
 | `crates/triokey/src/update.rs` | Signed self-update |
@@ -136,8 +138,8 @@ character resets the word.
 
 The budget is a p99 below 1 ms for keys that pass through, checked by hand in checklist row AT7.
 The code only measures: two rings of the last 1024 callback times (keys that called `SendInput`,
-time included, and keys that did not), shown in the settings window under the developer mode box while developer
-mode is on (section 2.6); they are recorded whether it is on or not. A key that
+time included, and keys that did not), reported in the debug information that the settings window's
+`Chép thông tin debug` button (developer mode, section 2.6) copies; they are recorded whether it is on or not. A key that
 waited for a fresh IME read (section 3.3) is not recorded.
 
 ### 2.5 Warm-up
@@ -165,7 +167,7 @@ goes through `app::update` (saved to `config.txt`, applied at once).
 - Else `AppsUseLightTheme = 0` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`: the dark palette.
 - Else the light palette.
 
-One `Palette` struct is the only source of colour: background, text, dim (credit, timing line),
+One `Palette` struct is the only source of colour: background, text, dim (credit),
 disabled, line (hairline and window border), link. Light `#F3F3F3`, `#1A1A1A`, `#5C5C5C`, `#A0A0A0`,
 `#D0D0D0`, link `#3565B8` (the tray icon's deep blue); dark `#202020`, `#F2F2F2`, `#ABABAB`,
 `#6E6E6E`, `#3D3D3D`, link `#8AB4F8` (the tray icon's light blue). A unit test checks WCAG
@@ -190,13 +192,15 @@ by the window's DPI: 11 px margins, 17 px check boxes, 23 px buttons and combo b
 below the top of a 23 px control, 7 px between related rows, 15 px before a section heading.
 Headings (`Gõ`, `Hệ thống`, `Cập nhật`) are the message font in semibold; `Chế độ phát triển` is the
 last box of `Hệ thống`. The update status under `Tự động cập nhật` takes the lines its text needs
-in the 378 px column (`DrawText` with `DT_CALCRECT | DT_WORDBREAK` in the window's font), none when
-it is empty; while a version waits (`update::waiting()`) the link `Cập nhật tại đây` follows the
+in the 378 px column (`DrawText` with `DT_CALCRECT | DT_WORDBREAK` in the window's font), and always
+at least one, also when it is empty: the ordinary answers of `Kiểm tra bản mới` (`Đang kiểm tra…`,
+`Đang dùng bản mới nhất.`, `Có bản mới vX.` with its link, `Chưa kiểm tra được: không tải được từ GitHub.`)
+fit one line and never change the window size; only a longer text grows it; while a version waits (`update::waiting()`) the link `Cập nhật tại đây` follows the
 text on its line, or goes on a line of its own when both do not fit. One hairline in the line
 colour (in the system look `COLOR_BTNTEXT`, so it stays visible in every high-contrast scheme)
 separates the footer: the credit `TrioKey vX.Y.Z · © 2026 ved0el` in the dim colour on the left
-(one constant, version from `CARGO_PKG_VERSION`) and the link `GitHub` to `CARGO_PKG_REPOSITORY` on
-the right, on the same baseline. The window is as tall as its content.
+(`triokey_shared::credit`, version from the app's `CARGO_PKG_VERSION`) and the link `GitHub` to
+`triokey_shared::REPOSITORY` on the right, on the same baseline. The window is as tall as its content.
 
 **Links.** Push buttons (`BS_PUSHBUTTON`: a tab stop, Space and a click activate them, and the
 button's text is its accessible name) drawn whole through `NM_CUSTOMDRAW` as text in the message
@@ -206,14 +210,26 @@ dot below of `ạ` and `ậ`. Each is as wide as its text plus one pixel each si
 taller than the line, so the focus rectangle (drawn while the keyboard is in use) hugs the words.
 The hand cursor comes from `WM_SETCURSOR`. A plain window is not a dialog, so `IsDialogMessageW`
 asks it for the default button on Enter (`DM_GETDEFID`); the window answers with the focused push
-button, so Enter activates a link, `Kiểm tra bản mới` or the folder button like Space does.
+button, so Enter activates a link, `Kiểm tra bản mới` or a developer button like Space does.
 `Cập nhật tại đây` calls `update::click()` (install, or the download page); `GitHub` goes through
 `open_url`, which in the elevated copy shows the address instead (section 8.3).
 
-**Developer mode** (`dev_mode`, off by default). Only while it is on do the config folder button
-and the timing line exist, directly under its box, their left edge on the box's label (the glyph
-width from `GetThemePartSize` plus a quarter, where `draw_check` puts the label); the one-second
-timer that refreshes the line runs only then. Display only: `hook.rs` records timings either way.
+**Developer mode** (`dev_mode`, off by default). Only while it is on do two push buttons exist, side
+by side on one row directly under its box, 160 px wide each and 7 px apart, the first one's left
+edge on the box's label (the glyph width from `GetThemePartSize` plus a quarter, where `draw_check`
+puts the label): `Mở thư mục cấu hình…` (Explorer; elevated, the path in a message box, section 8.3)
+and `Chép thông tin debug`. The second puts a plain English text on the clipboard (`CF_UNICODETEXT`,
+`OpenClipboard` / `EmptyClipboard` / `SetClipboardData`) and confirms with a message box
+(`Đã chép thông tin debug vào clipboard.`, or a warning when a clipboard call failed). One pure
+function, `debug_text`, makes it from plain values, one fact per line: version, Windows version,
+normal or elevated copy and whether it is the admin-mode copy, exe path, config folder and whether
+`config.txt` was readable, every setting in file order, on/off, the IME decision and the primary
+language of the foreground layout at the watcher's last read, the hook p99 of both rings with their
+key counts (section 2.4), the update status and a waiting version, the number of remembered words
+and of force file entries, and the window's look and DPI. It never holds typed text or a
+remembered word, and the profile folder (`FOLDERID_Profile`) is replaced by `~` over the whole text
+(`triokey_shared::mask_home`), so paths under it do not name the user. The counts come from what
+`app::run` read at startup: the click reads no file. Timings are recorded either way.
 
 **One rebuild path.** `rebuild` destroys the controls and makes them again from `app::settings()`
 for a DPI change, a look change, the developer-mode switch and an update status that needs other
@@ -233,12 +249,15 @@ foreground; the caption pixel must equal the client background), light and dark,
 off and on, with the status `Đang dùng bản mới nhất.` and with a waiting version and its
 link; one 144 DPI image per look and the system look once. Files named `states-…` hold the
 artificial states (disabled controls, simulated keyboard focus on a check box and on the links, the
-longest status, a wide timing line). The look is forced by parameter and the status is set
-directly; nothing is checked, fetched or opened. The test asserts the heights (no room for an empty
-status, then one line, then two, then developer mode), drives the rebuild triggers through
+longest status). The look is forced by parameter and the status is set
+directly; nothing is checked, fetched, copied or opened. The test asserts the heights (one value
+at 96 DPI and one at 144 DPI, developer mode off and on, for an empty status and each ordinary
+answer of the version check; then two lines, then developer mode), that the two developer buttons
+share a row and a size 7 px apart, drives the rebuild triggers through
 messages sent to that hidden window alone (the developer-mode rebuild message, `WM_SETTINGCHANGE`
 with `ImmersiveColorSet`, a status needing another line through `sync_update`, `WM_DPICHANGED`) and
-checks that a second, unchanged theme notice, or a status of the same room, does not rebuild. The "system" image is the system look
+checks that a second, unchanged theme notice, or a status of the same room (also from an empty one),
+does not rebuild or resize. The "system" image is the system look
 with normal colours, not a contrast theme. A hidden combo box draws no text, the DWM border is
 not in the capture, and at 144 DPI on a 96 DPI monitor the themed controls draw at 96 DPI scale:
 the 144 images show layout and fonts only. Nothing in this section has been seen on a desktop, including Tab, Space, Enter,
@@ -603,7 +622,7 @@ Each file is optional; TrioKey runs on defaults without any of them.
 
 | File | Format | Read | Written |
 |---|---|---|---|
-| `config.txt` | `key = value` lines: `enabled`, `tone_new`, `auto_english`, `yield_cjk`, `hotkey` (`ctrl_shift`, `alt_z`, `ctrl_space`, `none`), `run_at_startup`, `run_as_admin`, `auto_update`, `last_update_check` (Unix seconds), `dev_mode` (settings window shows the config folder button and the hook timing line). Unknown keys, bad values and a BOM are tolerated | once at start | created with defaults when missing (not by an elevated copy); rewritten on every settings change (tray thread) and after every answered update check (updater thread, unelevated only) |
+| `config.txt` | `key = value` lines: `enabled`, `tone_new`, `auto_english`, `yield_cjk`, `hotkey` (`ctrl_shift`, `alt_z`, `ctrl_space`, `none`), `run_at_startup`, `run_as_admin`, `auto_update`, `last_update_check` (Unix seconds), `dev_mode` (settings window shows the config folder and debug information buttons). Unknown keys, bad values and a BOM are tolerated | once at start | created with defaults when missing (not by an elevated copy); rewritten on every settings change (tray thread) and after every answered update check (updater thread, unelevated only) |
 | `force_vi.txt`, `force_en.txt` | one word per line as typed keys (`this`, not `thí`), `#` comments, case ignored; a word in both counts as English | once at start; editing needs a restart | never |
 | `learned.txt` | section 5.5 | once at start (at most 256 KB, UTF-8) | created with the header when missing (not by an elevated copy); about 2 s after the last change (watcher tick), at exit and at logoff/shutdown (`WM_ENDSESSION`) |
 
@@ -620,6 +639,9 @@ Rules:
 - First start only: if `%APPDATA%\triokey` does not exist but `%APPDATA%\evj` does (an older
   folder name), the three files `config.txt`, `force_vi.txt`, `force_en.txt` are copied (regular
   files only, `run_as_admin` reset). Never done by an elevated copy.
+
+The macOS app keeps the same files, in the same formats, in `~/Library/Application Support/triokey`
+(section 12.13); its only file outside that folder is the login item (12.14).
 
 Outside that folder TrioKey writes only: the Run value `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\TrioKey`
 (start with Windows, normal mode), the scheduled task `TrioKey` and `%ProgramFiles%\TrioKey\`
@@ -819,15 +841,23 @@ cover the parts with no macOS call. The macOS workflow is separate (section 12.1
 `.github/workflows/release.yml` runs when a tag `vX.Y.Z` is pushed. There is no manual approval.
 
 - `build` (read-only, no secret): the tagged commit must be on `origin/main`, the tag must be `v`
-  plus the version of the `triokey` crate; then tests and the release build. All build scripts
+  plus the version of the `triokey` crate and of the `triokey-mac` crate; then tests and the release build. All build scripts
   and tests of the shipped exe run here, away from the key. The publish job compiles only `xtask`
   and its dependencies, before the step that receives the key.
-- `publish` (environment `release`, which holds `TRIOKEY_SIGN_KEY`): builds `xtask` itself (a
+- `macos` (`uses: ./.github/workflows/macos.yml`, read-only, no secret, no environment; section
+  12.10): builds and checks `TrioKey-X.Y.Z-macos.dmg` from the same commit, next to `build`, and
+  uploads it as the artifact `TrioKey-macos-dmg`. Its concurrency group is `macos-<ref>`, apart
+  from the release's, and a tag run is never cancelled.
+- `publish` (environment `release`, which holds `TRIOKEY_SIGN_KEY`; needs `build` and `macos`): builds `xtask` itself (a
   binary from the build job never runs next to the key), signs with the key in one step's
   environment only, verifies the signature against the committed public key and the expected
-  version (which also refuses a build with no key), packages a zip and `SHA256SUMS.txt`, attests
-  build provenance (best effort), and publishes the release with the two bare asset names the
-  updater fetches. The release must not be a draft or pre-release.
+  version (which also refuses a build with no key), packages a zip, downloads the dmg artifact
+  (only hashed and uploaded, never opened or run) and checks that it carries the version in its
+  name, writes `SHA256SUMS.txt` over the exe, the signature, the zip and the dmg, attests build
+  provenance of the exe (best effort), and publishes the release with all five files in one
+  `gh release create`, among them the two bare asset names the updater fetches. The release must
+  not be a draft or pre-release. The dmg is not signed with the update key: installed macOS copies
+  download nothing (12.15).
 
 Trade-off: a release needs no second person, so whoever can push a `v*` tag can publish a signed
 update to every installed copy. The "on main" check catches a tag on the wrong commit, not an
@@ -846,14 +876,19 @@ edited workflow under a tag; the protection is who has push access. Steps and re
   `realtext.rs` and `vielotus.rs` (tone-position equivalence, line planning, cost and armed
   counting, CSV quoting);
 - app: pure parts of each module (tray tooltip, icon geometry and WCAG contrast of the tray
-  colours, settings window DPI scaling and WCAG contrast of its palettes, `ime::decide`, key classification, hotkey state machine,
+  colours, settings window DPI scaling and WCAG contrast of its palettes, the debug text (one fact per line, no user name, paths outside the profile folder hidden), the force file and remembered word counts, `ime::decide`, key classification, hotkey state machine,
   Enter/Tab split, hook-liveness test, latency ring, `SendInput` records, config round trip,
   password class test, task XML, Run value, the elevated checked writes and reads on real
   temporary folders with junctions and links, version comparison, trusted comment, host list,
   placeholder key, signature refusal cases, the swap);
 - macOS app (`triokey-mac`, the parts with no macOS call): key classification, the post plan
   (Return/Tab split, 20-unit chunks that keep surrogate pairs whole), the input source rule,
-  the state order and interface text, the diagnostics text;
+  the state order and interface text, the diagnostics text, the hotkey state machine, the files
+  on real temporary folders (config created, read and an unreadable one left alone, learned.txt
+  saved when still and capped, force file counts), the login item's text and its strict parser,
+  the version rule and the check schedule;
+- shared (`triokey-shared`): `mask_home` (both slash directions, any case, a longer name left
+  alone), the credit and the addresses;
 - `xtask`: key generation, sign and verify round trip, refusals.
 
 ### 11.2 Typing benchmark
@@ -913,14 +948,16 @@ the first key after a toggle (AT1 to AT3, AT2-CK for Chinese and Korean), autoco
 (AT5), the language list left unchanged (AT6), hook latency (AT7), Win32 password fields (AT8),
 tray, settings window, autostart, admin mode (AT9), updates (AT10), mixed English and Vietnamese
 typing with the frequency engine (AT11) and remembering kept swaps in `learned.txt` (AT12). Its
-macOS part (rows M1 to M20) is the first run of the macOS app.
+macOS part (rows M1 to M32) is the run of the macOS app on a Mac; M21 to M32 cover 12.13 to 12.15.
 
 ## 12. macOS app
 
-`crates/triokey-mac`, version 0.3.0 (its own number, separate from the Windows `triokey`). Nothing
-in this section has been run on a Mac: the code was written on Windows and type-checked there for
-`aarch64-apple-darwin` (12.12 lists what is unverified). It is built only from the `macos` branch
-and is not part of any release.
+`crates/triokey-mac`, version 0.3.0 (its own crate version, which a release tag must match as it
+must match the Windows `triokey`'s; 10.3). The code was written on Windows and type-checked there
+for `aarch64-apple-darwin`. The owner installed the first build on a Mac, granted the permission
+and typed with it: opening, granting and typing work. The settings, files, hotkey, login item,
+version check and debug button (12.7, 12.13 to 12.15) were added after that and have not run on a
+Mac yet (12.12 lists what is unverified). From 0.3.0 the dmg is published with each release.
 
 ### 12.1 Model: an event tap and synthetic keys
 
@@ -930,8 +967,9 @@ TrioKey is an agent app (`LSUIElement`, activation policy Accessory): no Dock ic
 item showing `V` (typing Vietnamese) or `E` (everything else; the tooltip says why).
 
 - **Reading keys.** One session event tap (`CGEvent::tap_create`, `SessionEventTap`,
-  `HeadInsertEventTap`, `Default` options, so it can swallow events) for key-down and the three
-  mouse-down types, added to the main run loop in the common modes. A mouse-down resets the word.
+  `HeadInsertEventTap`, `Default` options, so it can swallow events) for key-down, modifier changes
+  (`FlagsChanged`, only for the hotkey, 12.13; always passed unchanged) and the three mouse-down
+  types, added to the main run loop in the common modes. A mouse-down resets the word.
 - **Classifying** (`keymap.rs`, the classes of the Windows `keymap.rs`): the character comes from
   `CGEventKeyboardGetUnicodeString`. Modifier key codes are ignored. Command or Control, Option+Delete,
   Escape, the arrows, Home/End/Page Up/Page Down, Forward Delete and the function keys break the
@@ -954,14 +992,18 @@ item showing `V` (typing Vietnamese) or `E` (everything else; the tooltip says w
 
 ### 12.2 Everything on the main thread
 
-AppKit (the menu bar item, the menu, the guide window, the alert), the tap's run loop source, every
-TIS call and the `Engine` all live on the main thread, in thread-locals (`app.rs` `APP`, `tap.rs`
-`TAP`, `ui.rs` `UI`). Reasons: TIS must be called on the main thread (newer macOS releases crash
+AppKit (the menu bar item, the menu, the guide and settings windows, the alerts), the tap's run
+loop source, every TIS call, the `Engine` and every file access all live on the main thread, in
+thread-locals (`app.rs` `APP`, `tap.rs` `TAP`, `ui.rs` `UI`, `settings.rs` `WIN`). The one
+exception is the version check (12.15): a thread started for each check runs `/usr/bin/curl` and
+hands its answer back through a channel that the 2-second timer drains; it touches no AppKit, TIS
+or engine state. Reasons: TIS must be called on the main thread (newer macOS releases crash
 off it), and with one thread there are no locks and no messages between threads, unlike Windows
 (section 2.2). The cost: anything slow on the main thread delays keys, and if the callback is too
 slow macOS disables the tap (`kCGEventTapDisabledByTimeout`). TrioKey re-enables it at once and
-counts it for the diagnostics. The alert of the diagnostics item spins the run loop, so the tap can
-run during it; no borrow of the app state is held there.
+counts it for the diagnostics. Alerts spin the run loop, so the tap can run during them; no borrow
+of the app state or the windows is held there, and the windows' thread-locals are only borrowed
+shared after they are built (the hotkey refreshes them from inside the tap).
 
 Before the tap exists, `app::run` warms the engine as `hook::spawn` does (section 2.5): one
 throwaway word and one `Lexicon::rates` call.
@@ -1042,16 +1084,19 @@ off, then yielding, then Vietnamese.
 
 ### 12.7 Diagnostics
 
-The menu item `Chẩn đoán (chép vào clipboard)` puts a plain-text report on the clipboard and says
-so in an alert; it works without the permission and without a tap. It exists because this build
-has never run on a Mac: the report is what the owner pastes back after trying it, and it answers
-the questions this section leaves open. Contents (`diag.rs`): version, macOS version and
+The button `Chép thông tin debug` (settings window, developer mode, as on Windows; it replaced the
+menu item `Chẩn đoán (chép vào clipboard)`) puts a plain-text report on the clipboard and says so
+in an alert; it works without the permission and without a tap. The report is what a person pastes
+into a bug report, and it answers the questions this section leaves open. Contents (`diag.rs`): version, macOS version and
 architecture; the bundle path with the home folder written as `~`, and whether it runs under App
 Translocation; whether the tap was created and is enabled, and `AXIsProcessTrusted`; Secure Input;
 the state; the current input source and every source seen since launch (ID, type, mode, ASCII
 capable, and the decision); counters (key events, replacements, characters and Deletes posted,
-re-enables after timeout or user input, panics caught); the last error. It never holds typed text.
-Nothing is written to a file and nothing is sent: the clipboard is the only output.
+re-enables after timeout or user input, panics caught); the last error; the config folder and
+whether config.txt was readable; every config key with its value; the number of remembered words
+and of entries in the two force files (never the words); the login item's state; the version
+check's answer and the waiting version. The home folder is written as `~` over the whole text
+(`triokey_shared::mask_home`). It never holds typed text or the user's name.
 
 ### 12.8 Bundle identifier
 
@@ -1073,18 +1118,27 @@ Developer ID signature and no notarization, so the first open needs Open Anyway.
 
 ### 12.10 Branch workflow and self-test
 
-`.github/workflows/macos.yml` runs on pushes to the `macos` branch only, on `macos-15`, with no
-secrets and read-only permissions; it never tags or releases. Steps: `cargo fmt`, then clippy and
-tests with `-p triokey-engine -p triokey-mac` (never `--workspace`: `crates/triokey/build.rs`
+`.github/workflows/macos.yml` runs on pushes to `main` and `macos`, on pull requests, and when
+`release.yml` calls it for a tag (`workflow_call`, 10.3), on `macos-15`, with no secrets and
+read-only permissions; it never tags or publishes by itself (a tag run's `publish` job takes the
+dmg it uploads). Steps: `cargo fmt`, then clippy and
+tests with `-p triokey-engine -p triokey-shared -p triokey-mac` (never `--workspace`: `crates/triokey/build.rs`
 refuses any toolchain but `x86_64-pc-windows-gnu`), `package.sh`, checks of the bundle and the dmg
 (`plutil -lint`, `codesign --verify`, both architectures in the binary, the dmg's contents), then
 the self-test twice: on the packaged universal app and on a debug build, where objc2 checks every
-message's argument and return types against the Objective-C runtime. Each self-test is killed after
+message's argument and return types against the Objective-C runtime, then a third time on the
+packaged app's Intel slice under Rosetta (`arch -x86_64`; when Rosetta cannot be installed on the
+runner the step warns and passes, a crash or hang fails it). Each self-test is killed after
 30 seconds. The dmg is uploaded as the artifact `TrioKey-macos-dmg`, also when a self-test fails.
 
 `--self-test` builds everything a normal start builds (the engine, the state, the menu bar item,
-the menu, the guide window, the timer and the notification observer), shows nothing, creates no tap,
-asks for nothing, prints the diagnostics and exits without running the run loop. It shows a crash
+the menu, the guide and settings windows, the timer and the notification observer), shows nothing,
+creates no tap, asks for nothing, prints the diagnostics and exits without running the run loop. It
+also lays the settings window out with developer mode off and on and every answer of the version
+check in the reserved line (one height per mode, or it fails), round-trips a config text through
+the shared parser, renders the login item for a sample path and reads it back with the strict
+parser, and runs the version rule on sample addresses. Its files go to a temporary folder (removed
+at the end), never to `~/Library`; it starts no curl and touches no pasteboard. It shows a crash
 at start-up or a wrong message type, the likeliest failures of AppKit code that never ran. It cannot
 show the tap, posting, the permission or typing. ("Shows nothing" means no window: the menu bar item is created
 as in a normal start, and the process ends right after.)
@@ -1096,22 +1150,17 @@ aarch64-apple-darwin` (the target must be installed); it cannot be linked or run
 
 ### 12.11 Not in this build
 
-- No settings window and no settings: the engine runs with `Config::default()`. On/off only from
-  the menu (`Tiếng Việt`), not saved.
-- No hotkey.
-- No start at login.
-- Remembered words are not saved: a kept swap is remembered while TrioKey runs and forgotten when
-  it quits. No `learned.txt`, no force files; TrioKey reads and writes no file at all.
-- No updater and no network access of any kind.
+- No installing of updates: the version check only says that a version waits and links to the
+  releases page (12.15).
+- No admin mode (`run_as_admin` is kept in config.txt but means nothing on macOS).
 - No reading of a CJK input method's open or closed state (12.5), no password field detection
   beyond Secure Input.
 
 ### 12.12 Never run, and unverified
 
-Never run on a Mac: all of it. That includes start-up outside the CI self-test, the menu bar item
-and menu, the guide window, the permission flow, the tap, posting Deletes and text, the input source
-rule, Secure Input, the diagnostics, quitting, the single-instance check, the package script and
-the dmg, and the workflow itself. No result of the workflow is recorded here.
+Run by the owner on a Mac: opening the app, granting the permission and typing. Never run on a Mac:
+everything added in 12.13 to 12.15 (settings window, files, hotkey, login item, version check, the
+debug button), and of the first build anything beyond opening, granting and typing.
 
 Unverified facts the code relies on:
 
@@ -1134,7 +1183,92 @@ Unverified facts the code relies on:
   about);
 - the Open Anyway steps on macOS 14 and 26 (only Sequoia's were found), and that moving the app to
   Applications ends App Translocation;
-- whether browser password fields turn Secure Input on.
+- whether browser password fields turn Secure Input on;
+- that `FlagsChanged` events reach an active tap with the Accessibility grant alone, and that their
+  flags carry Control and Shift as documented;
+- that `kVK_ANSI_Z` is the key the person thinks of as Z (it is the key at that position: on
+  AZERTY or QWERTZ the hotkey sits on another letter);
+- that a borderless button's `contentTintColor` colours its title, and the layout of the settings window
+  on screen in light and dark;
+- that launchd starts the program named in the LaunchAgent at login with the bundle's identity
+  (so the Accessibility grant applies), and the "Background Items Added" notice;
+- curl's `%{redirect_url}` on the releases address, and `-q` skipping `.curlrc`.
+
+### 12.13 Settings, files and the window
+
+**Files**, all in `~/Library/Application Support/triokey` (from `$HOME`; created on first start;
+`store.rs`): `config.txt` in the Windows format through the shared parser
+(`triokey_shared::config`; `run_as_admin` is read and written back, nothing more), `learned.txt`
+(`Learned::parse` / `render`, at most 256 KB read; saved when its change counter moved and has been
+still for 2 seconds, checked by the 2-second timer, and once more at quit), `force_vi.txt` and
+`force_en.txt` (read once at start through `Lexicon::with_user`). Every write goes to a temporary
+file in the same folder that is then renamed over the old one. A `config.txt` that exists but is
+not UTF-8 is never written: defaults apply for the run and the settings window says so once, in an
+alert when it first opens. A `learned.txt` that cannot be used is never written either. Write
+errors are ignored. No file is touched inside the tap callback.
+
+**Settings apply at once**: `enabled` (the check box; the menu item and the hotkey switch only the
+running copy, as on Windows), `tone_new` and `auto_english` (a new `Engine` with the same lexicon),
+`yield_cjk` (off: the input-source decision of 12.5 is ignored and TrioKey types under any source;
+`App::decision`, the one change inside the typing path).
+
+**The window** (`settings.rs`), opened from `Cài đặt…`, built once at start (so the self-test builds
+it too) and brought forward when already open. Fixed size, not resizable, standard controls and
+system colours only, so it follows light and dark by itself. The texts and order of the Windows
+window (2.6): `Bật gõ tiếng Việt` with `Phím tắt` and its pop-up; `Gõ`: tone style, `Tự giữ nguyên
+từ tiếng Anh`, `Nhường khi bộ gõ Nhật/Trung/Hàn đang bật`; `Hệ thống`: `Khởi động cùng máy`
+(12.14), `Chế độ phát triển` and, while on, `Mở thư mục cấu hình…` (Finder) and `Chép thông tin
+debug` (12.7); `Cập nhật`: `Tự động kiểm tra bản mới` (config key `auto_update`; named so because
+nothing is installed) with `Kiểm tra bản mới`, and one reserved line for the answer, of fixed
+height with its link kept in place while hidden, so the window never changes size for an answer;
+a separator, then `TrioKey v<version> · © 2026 ved0el` and the `GitHub` link. Only developer mode
+changes the window's height (the top edge stays). No admin-mode row.
+
+Menu, top to bottom: `Tiếng Việt` (check mark), `Cài đặt…`, `Hướng dẫn cấp quyền…`, `Có bản
+<version> — mở trang tải về` while a version waits, a separator, the disabled `TrioKey <version>`,
+`Thoát` (disables the tap first and saves learned.txt).
+
+**Hotkey** (`hotkey.rs`, a tested state machine; `config.txt` key `hotkey`). The pop-up offers
+`Control+Shift` (`ctrl_shift`, default), `Option+Z` (`alt_z`) and `Không dùng` (`none`). Control+Space
+is macOS's own input-source switch and is not offered; a stored `ctrl_space` acts as none, shows
+as `Không dùng` and stays in the file until another choice is made. Only Shift, Control, Option
+and Command are compared (the flags also carry Caps Lock, Fn, the non-coalesced bit and left/right
+bits). Control+Shift fires when one of the two is released after exactly those two were held, with
+no other modifier, key or click while any modifier was down; the modifier events always pass.
+Option+Z fires on the key-down of `kVK_ANSI_Z` with exactly Option held and that key-down is
+swallowed; its auto-repeats are swallowed without toggling again. In the tap both are branches of
+their own before the typing path, so the hotkey also switches TrioKey back on.
+
+### 12.14 Start at login
+
+`Khởi động cùng máy` writes `~/Library/LaunchAgents/io.github.ved0el.triokey.plist` (`login.rs`):
+`Label` (the bundle identifier), `ProgramArguments` (the running executable, canonical path),
+`RunAtLoad` true, and **no `KeepAlive`**: launchd would restart a quit TrioKey, and TrioKey must be
+quit before its Accessibility entry is touched (12.4). `launchctl` is not called; the file takes
+effect at the next login. The check box is ticked when the file exists and is exactly what TrioKey
+writes for the running executable (a strict parser compares the file with its own rendering);
+ticking writes it, unticking deletes it, and `run_at_startup` in config.txt follows. The default
+`run_at_startup = true` never creates the file. The check box is enabled only when TrioKey runs
+from `/Applications`; elsewhere (Downloads, App Translocation) it is disabled with the note `Chỉ dùng
+được khi TrioKey nằm trong Applications`. No SMAppService: it is reported to misbehave for unsigned
+builds.
+
+### 12.15 Version check
+
+Never an installation. `Kiểm tra bản mới`, and with `Tự động kiểm tra bản mới` on, once a day (first
+try a minute after start, then when `last_update_check` is a day old; after a failure at most once
+an hour; at most one check runs) TrioKey starts a thread that runs `/usr/bin/curl -q --silent
+--proto =https --max-time 20 --user-agent TrioKey-updater --output /dev/null --write-out
+%{redirect_url} https://github.com/ved0el/triokey/releases/latest` (no shell, `.curlrc` not read,
+no redirect followed, no body, no query, nothing about the user, the machine or the running
+version). The answer reaches the main thread through a channel the 2-second timer drains; a check
+without an answer after 60 seconds counts as failed. `version.rs` `answer` accepts only
+`https://github.com/ved0el/triokey/releases/tag/v` followed by digits and dots and compares the
+numbers part by part with the running version. The reserved line shows `Đang kiểm tra…`, `Đang
+dùng bản mới nhất.`, `Có bản mới v<version>.` with the link `Tải tại đây` (the fixed releases
+address), or `Chưa kiểm tra được: không tải được từ GitHub.` (also when curl is missing or fails; a
+version found earlier stays). While a version waits the menu shows `Có bản <version> — mở trang
+tải về`. An answered check writes `last_update_check` (unless config.txt was unreadable).
 
 ## 13. Known limits and non-goals
 

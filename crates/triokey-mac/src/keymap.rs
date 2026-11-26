@@ -1,5 +1,7 @@
 //! Classify a macOS key-down for the engine (same classes as crates/triokey/src/keymap.rs).
 
+/// `kCGEventFlagMaskShift`.
+pub const FLAG_SHIFT: u64 = 1 << 17;
 /// `kCGEventFlagMaskControl` and `kCGEventFlagMaskCommand` (CGEventTypes.h).
 pub const FLAG_CONTROL: u64 = 1 << 18;
 pub const FLAG_COMMAND: u64 = 1 << 20;

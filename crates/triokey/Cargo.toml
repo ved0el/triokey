@@ -1,6 +1,6 @@
 [package]
 name = "triokey"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/ved0el/triokey"
@@ -8,6 +8,7 @@ description = "Vietnamese Telex typing for Windows that leaves English words alo
 
 [dependencies]
 triokey-engine = { path = "../triokey-engine" }
+triokey-shared = { path = "../triokey-shared" }
 windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
@@ -34,6 +35,9 @@ windows-sys = { version = "0.59", features = [
     "Win32_UI_Accessibility",
     # update check: system TLS and proxy, no HTTP crate
     "Win32_Networking_WinHttp",
+    # settings window, developer mode: the debug information on the clipboard
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
 ] }
 # update signatures (Ed25519); no dependencies of its own
 minisign-verify = "0.2"

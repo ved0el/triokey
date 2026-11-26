@@ -12,7 +12,7 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
-A Vietnamese input method for Windows (a first macOS build exists as an experiment that has not yet run on a Mac; see [macOS (experimental)](#macos-experimental)), made for people who type English, Vietnamese and a CJK language (Chinese, Japanese or Korean) every day. In everyday mixed typing you do not toggle Vietnamese on or off: the only switch you touch is your CJK IME's own on/off.
+A Vietnamese input method for Windows (a first macOS build exists as an experiment; see [macOS (experimental)](#macos-experimental)), made for people who type English, Vietnamese and a CJK language (Chinese, Japanese or Korean) every day. In everyday mixed typing you do not toggle Vietnamese on or off: the only switch you touch is your CJK IME's own on/off.
 
 ```text
 keys typed          what appears
@@ -23,7 +23,7 @@ the songs␣          the songs    (after an English word)
 this␣⌫              thí          (one Backspace swaps a word the engine was unsure of)
 ```
 
-Early version: 0.2.1 is released and signed, and the examples on this page describe its engine. Much of the Windows app has not been checked on a real machine; the updater, which is on by default, has installed one update by itself (0.2.0 to 0.2.1 on the author's machine). Read [Status](#status) first.
+Early version: 0.3.0 is released and signed, and the examples on this page describe its engine. Much of the Windows app has not been checked on a real machine; the updater, which is on by default, has installed one update by itself (0.2.0 to 0.2.1 on the author's machine). Read [Status](#status) first.
 
 ## Why
 
@@ -41,11 +41,11 @@ TrioKey adds no keyboard layout, registers no text service (TSF) and leaves your
 A normal-privilege input method cannot type into elevated windows. TrioKey has an optional admin mode: one UAC prompt, a logon task, and the exe copied to a folder only administrators can write. (Not yet run on a real machine.)
 
 **5. Small on purpose.**
-No macros, no per-app memory, no cloud, no telemetry, no typing log. The only network use is a check for signed updates on GitHub, and you can switch it off. One small settings window and plain-text files.
+No macros, no per-app memory, no cloud, no telemetry, no typing log. The only network use is a check for new versions on GitHub (on Windows it also installs signed updates), and you can switch it off. One small settings window and plain-text files.
 
 ## Status
 
-- **Released:** [0.2.1](https://github.com/ved0el/triokey/releases), built and signed by CI ([CHANGELOG.md](CHANGELOG.md)). 0.2.0 brought the engine described on this page (word frequencies and the line's language), remembering kept swaps, and the red/blue tray icons and new app icon; 0.2.1 reworked the settings window. 0.1.0 and 0.1.1 had an earlier engine, which decided words from a word list and the word before.
+- **Released:** [0.3.0](https://github.com/ved0el/triokey/releases), built and signed by CI ([CHANGELOG.md](CHANGELOG.md)). 0.2.0 brought the engine described on this page (word frequencies and the line's language), remembering kept swaps, and the red/blue tray icons and new app icon; 0.2.1 reworked the settings window. 0.1.0 and 0.1.1 had an earlier engine, which decided words from a word list and the word before.
 - **Typed with by the author:** the 0.2.0 build was used for ordinary mixed English and Vietnamese typing on one Windows 11 machine and found good enough to release; a few words still came out wrong. No swap was remembered in that session, and no row of the checklist was run except one timing reading (AT7).
 - **Hand-tested:** an earlier build with Japanese (Microsoft IME, in Notepad and Brave) passed AT1 and AT2 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). Neither has been repeated with 0.2.0.
 - **Not checked on a real machine** (no checklist row has a recorded result), only compiled and unit-tested where possible: the tray icon and menu, the app icon, the hotkeys, the settings window (its light and dark looks have been seen only as images rendered by a test at 96 DPI, never on a desktop; the high-contrast look has never been seen with a contrast theme on), start-with-Windows, admin mode, the updater beyond one automatic update from 0.2.0 to 0.2.1 on the author's machine (the rows of AT10 in [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) are still open), saving of remembered words, the uninstall steps and the skipping of Win32 password fields. The sections below describe them as written in the code. If you would rather not have a barely tested updater replace the exe, untick `Tự động cập nhật` in Settings.
@@ -55,7 +55,7 @@ No macros, no per-app memory, no cloud, no telemetry, no typing log. The only ne
 - Terminals get no special handling. Fields that insert suggestions after the cursor (browser address bar, Excel cells) get none either.
 - Password fields in browsers and Electron apps cannot be detected; see [Privacy and security](#privacy-and-security).
 - Some apps hide the IME state. When it cannot be read, TrioKey keeps the window's last known state, and on a CJK layout steps aside when there is none.
-- **macOS:** a first build is on the `macos` branch; a workflow builds it on each push to that branch (no result is recorded yet), and it has never run on a real Mac. It is not released. See [macOS (experimental)](#macos-experimental). Linux is not started.
+- **macOS:** an experimental build, published in each release from 0.3.0 on as a dmg. The owner installed the first macOS build on a Mac, granted the permission and typed with it; everything added since (settings window, config and saved remembered words, hotkey, start at login, version check) has not run on a real Mac. See [macOS (experimental)](#macos-experimental). Linux is not started.
 
 ## How it behaves
 
@@ -161,12 +161,12 @@ The exe is not code-signed. SmartScreen or antivirus software may warn about it,
 
 ## Usage
 
-The interface is in Vietnamese only, so the Vietnamese labels are given next to the English names. This section describes 0.2.1 (the settings window looked different in 0.2.0); the red/blue icon, the current Backspace rules and remembered words are not in 0.1.0 and 0.1.1. Most of it has not been checked on a real machine (see [Status](#status)).
+The interface is in Vietnamese only, so the Vietnamese labels are given next to the English names. This section describes 0.3.0 on Windows (the settings window looked different before 0.2.1, and the two developer buttons are new in 0.3.0); the red/blue icon, the current Backspace rules and remembered words are not in 0.1.0 and 0.1.1. Most of it has not been checked on a real machine (see [Status](#status)).
 
 - **Tray icon.** A red `V` means TrioKey is typing Vietnamese. A blue `E` means keys pass through, either because you switched it off or because it is stepping aside for a CJK IME; the tooltip says which (`Tiếng Anh — đã tắt` = switched off, `Tiếng Anh — đang nhường IME Nhật` = stepping aside for the Japanese IME; `IME Trung` and `IME Hàn` are Chinese and Korean). The letters sit on a transparent background, in deep shades on a light taskbar and light shades on a dark one, and are redrawn when the Windows theme changes.
 - **Left click** the icon to switch TrioKey on or off. **Right click** for the menu: `Tiếng Việt` (on/off), `Cài đặt…` (Settings), `Thoát` (Quit).
 - **Hotkey** for on/off: Ctrl+Shift (default; press and release with no other key), Alt+Z, Ctrl+Space, or none (`Không dùng`). Switching with the hotkey or the tray is not saved; the on/off box in Settings is the one that is saved.
-- **Settings** (`Cài đặt…`): on/off (`Bật gõ tiếng Việt`), hotkey (`Phím tắt`), tone placement (`Kiểu bỏ dấu`: `hòa, thúy` or `hoà, thuý`), deciding English words automatically (`Tự giữ nguyên từ tiếng Anh`; off means plain Telex for every word), step aside for CJK IMEs (`Nhường khi IME Nhật/Trung/Hàn đang bật`), start with Windows (`Khởi động cùng Windows`), admin mode (`Chạy quyền admin (gõ được trong cửa sổ admin)`), automatic updates (`Tự động cập nhật`) with a check-now button (`Kiểm tra bản mới`), and developer mode (`Chế độ phát triển`, off by default), which adds a button that opens the config folder (`Mở thư mục cấu hình…`) and the hook timing line under it. While a newer version waits, the line under the update box reads `Có bản mới vX.Y.Z.` with a link `Cập nhật tại đây` that installs it or opens the download page. The footer credits the author (`TrioKey vX.Y.Z · © 2026 ved0el`) and links to this repository (`GitHub`); the admin-mode copy shows that address in a message box instead of opening a browser. Changes apply at once. The window follows the Windows app mode (light or dark; on Windows 11 its title bar is the same colour as the rest) and keeps the plain system look when high contrast is on; switching either while it is open recolours it.
+- **Settings** (`Cài đặt…`): on/off (`Bật gõ tiếng Việt`), hotkey (`Phím tắt`), tone placement (`Kiểu bỏ dấu`: `hòa, thúy` or `hoà, thuý`), deciding English words automatically (`Tự giữ nguyên từ tiếng Anh`; off means plain Telex for every word), step aside for CJK IMEs (`Nhường khi IME Nhật/Trung/Hàn đang bật`), start with Windows (`Khởi động cùng Windows`), admin mode (`Chạy quyền admin (gõ được trong cửa sổ admin)`), automatic updates (`Tự động cập nhật`) with a check-now button (`Kiểm tra bản mới`), and developer mode (`Chế độ phát triển`, off by default), which adds two buttons under it: one opens the config folder (`Mở thư mục cấu hình…`), the other copies debug information (versions, settings, timings and counts, no typed text, your user folder shown as `~`) to the clipboard (`Chép thông tin debug`). One line under the update box is always kept for the answer of the check, so the usual answers of `Kiểm tra bản mới` do not change the window size; while a newer version waits, it reads `Có bản mới vX.Y.Z.` with a link `Cập nhật tại đây` that installs it or opens the download page. The footer credits the author (`TrioKey vX.Y.Z · © 2026 ved0el`) and links to this repository (`GitHub`); the admin-mode copy shows that address in a message box instead of opening a browser. Changes apply at once. The window follows the Windows app mode (light or dark; on Windows 11 its title bar is the same colour as the rest) and keeps the plain system look when high contrast is on; switching either while it is open recolours it.
 - **Telex**: inside a word, `aa aw ee oo ow uw dd` → `â ă ê ô ơ ư đ` (`caan` → `cân`, `ddi` → `đi`); `s f r x j` → tone marks; `z` removes the tone. The tone key may come right after the vowel or at the end of the word (`tieesng`, `tieengs` → `tiếng`). A lone `w` shows `ư` while you type it but becomes `w` when the word ends (`w␣` → `w`, then `⌫` → `ư`). Pressing a tone key twice cancels the mark (`mixx␣` → `mix`); English words with doubled letters stay as typed.
 - **Remembering a swap.** If you swap a word with one Backspace and then type a space, Tab or Enter, TrioKey remembers the swap at once and uses it from then on. A letter or punctuation right after the swap stores nothing. Swapping a remembered word back with one Backspace changes or forgets the entry. One exception protects Vietnamese words: in the middle of a line that has already turned Vietnamese, a remembered English reading never replaces the Vietnamese word; it stays one Backspace away, and keeping that swap leaves the entry as it is. Each step below starts a new line, in this order:
 
@@ -201,9 +201,9 @@ If you never turned on either option, steps 2 and 3 are the whole uninstall. Tri
 
 ## macOS (experimental)
 
-**This build has never run on a real Mac.** It was written and type-checked on Windows and is built by CI on the `macos` branch; whether it starts, asks for the permission correctly and types correctly is not known yet. It is not a release and has no automatic update. Design and the list of unverified facts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 12. Steps to try it: the macOS part of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) (in Vietnamese).
+**This build is experimental.** It was written and type-checked on Windows. The owner installed the first macOS build on a Mac, granted the permission and typed with it: opening, granting and typing worked. Everything added since then has not run on a real Mac yet: the settings window, `config.txt`, saving remembered words, the force files, the hotkey, start at login, the version check and the debug information. It never installs anything by itself. Design and the list of unverified facts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 12. Steps to try it: the macOS part of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) (in Vietnamese).
 
-**Getting it.** For now only as a workflow artifact: the repository's Actions page, workflow `macOS`, the latest run on the `macos` branch, artifact `TrioKey-macos-dmg` (you must be signed in to GitHub). Unzip it to get `TrioKey-X.Y.Z-macos.dmg`. It is one app for Apple silicon and Intel, macOS 11 or later.
+**Getting it.** From 0.3.0 on, each release carries `TrioKey-X.Y.Z-macos.dmg` next to the Windows files: download it from the [latest release](https://github.com/ved0el/triokey/releases/latest). Its checksum is in `SHA256SUMS.txt` of the same release (`shasum -a 256 TrioKey-X.Y.Z-macos.dmg`). It is one app for Apple silicon and Intel, macOS 11 or later.
 
 **Installing and opening.**
 
@@ -218,16 +218,20 @@ If you never turned on either option, steps 2 and 3 are the whole uninstall. Tri
 
 1. Quit TrioKey (menu > `Thoát`).
 2. Copy the new `TrioKey` over the one in Applications.
-3. In Accessibility, remove TrioKey (−) and add it again (+).
+3. In Accessibility, remove TrioKey (−) and add it again (+). Never do this while TrioKey is running.
 4. Open TrioKey.
 
-**What it does.** The same engine as on Windows, so the same words. The menu bar item shows `V` while it types Vietnamese and `E` otherwise; its menu has `Tiếng Việt` (on/off), `Hướng dẫn cấp quyền…` (permission guide), `Chẩn đoán (chép vào clipboard)` (copies a report to paste into a bug report; it contains no typed text) and `Thoát` (quit). It types only while the current input source is a plain Latin keyboard layout (ABC, U.S. and the like). With any other input method selected, including a Japanese one in its Latin mode, it steps aside; on macOS you switch input sources to get back to Vietnamese. It stops while Secure Input is on (some password fields, Terminal's Secure Keyboard Entry), because macOS then hides every key from it.
+The version check only tells you that a new version is out and links to the releases page; replacing the app is always these four steps by hand. Your settings and remembered words stay in their folder.
 
-**What it does not do yet.** No settings window and no settings, no hotkey, no start at login, no updater. Remembered swaps last until you quit; nothing is saved, and the force files are not read. It reads and writes no files and uses no network.
+**What it does.** The same engine as on Windows, so the same words. The menu bar item shows `V` while it types Vietnamese and `E` otherwise; its menu has `Tiếng Việt` (on/off), `Cài đặt…` (settings), `Hướng dẫn cấp quyền…` (permission guide), `Có bản … — mở trang tải về` while a newer version waits, and `Thoát` (quit). The settings window has the same options as on Windows except admin mode: on/off and the hotkey (`Control+Shift`, `Option+Z` or none; Control+Space is macOS's own input-source switch), tone style, keeping English words, stepping aside for CJK input methods (turn it off to type Vietnamese under any input source), `Khởi động cùng máy` (start at login, only when TrioKey is in Applications), developer mode with `Mở thư mục cấu hình…` (config folder) and `Chép thông tin debug` (copies a report to paste into a bug report; it contains no typed text and no user name), and `Tự động kiểm tra bản mới` / `Kiểm tra bản mới` (only says that a newer version waits and links to the releases page). It types only while the current input source is a plain Latin keyboard layout (ABC, U.S. and the like). With any other input method selected, including a Japanese one in its Latin mode, it steps aside; on macOS you switch input sources to get back to Vietnamese. It stops while Secure Input is on (some password fields, Terminal's Secure Keyboard Entry), because macOS then hides every key from it.
+
+**Files.** `~/Library/Application Support/triokey` holds `config.txt`, `learned.txt`, `force_vi.txt` and `force_en.txt`, in the same formats as on Windows. Start at login is the file `~/Library/LaunchAgents/io.github.ved0el.triokey.plist`. To remove TrioKey: untick start at login (or delete that file), quit, remove TrioKey from Accessibility, then delete the app and, if you want, that folder.
+
+**What it does not do.** It installs no update by itself, has no admin mode, and does not read whether a CJK input method is composing (it steps aside for the whole input source instead).
 
 ## Privacy and security
 
-This section describes the Windows app. The macOS build needs the Accessibility permission, which lets it see every key you press while it runs; it writes no files, connects to nothing, and its only output besides the keys is the diagnostics text it puts on the clipboard when you ask.
+This section describes the Windows app. The macOS build needs the Accessibility permission, which lets it see every key you press while it runs. It writes only its own folder `~/Library/Application Support/triokey` (typed text only in `learned.txt`, as on Windows) and, if you tick start at login, one file in `~/Library/LaunchAgents`. Its only network use is the version check, once a day while `Tự động kiểm tra bản mới` is on and when you press `Kiểm tra bản mới`: `/usr/bin/curl` sends one HTTPS request to `https://github.com/ved0el/triokey/releases/latest` and reads only where it redirects. The request carries the fixed `User-Agent: TrioKey-updater` and nothing else: no typed text, no remembered words, nothing about you or your Mac, not even the running version. GitHub sees your IP address. Nothing is downloaded or installed. The time of the last answered check is kept in `config.txt`.
 
 What it does:
 
@@ -243,7 +247,7 @@ What it does:
 
 What it never does:
 
-- Keep a typing log. Apart from the swapped words in `learned.txt`, no keys or typed text are written to disk. The timing figure shown in Settings (developer mode) is kept in memory only.
+- Keep a typing log. Apart from the swapped words in `learned.txt`, no keys or typed text are written to disk. The timing figures are kept in memory only; `Chép thông tin debug` in Settings (developer mode) copies them, with counts but no words, to the clipboard when you press it.
 - Connect to anything but GitHub (`github.com` and the host its release downloads redirect to), or for anything but that update check. With `Tự động cập nhật` off, TrioKey uses no network at all unless you press `Kiểm tra bản mới`, which checks once and, in a normal copy, also installs what it finds. A build without an update key has both controls greyed out and never connects. There is no telemetry or crash reporting. Its direct third-party dependencies are the `vi`, `windows-sys` and `minisign-verify` crates, plus `embed-manifest` at build time only (it generates the application manifest, which the build script writes into the exe with the icon; none of its code runs).
 - Register a text service, add a keyboard layout or change the input-language list.
 
@@ -256,11 +260,12 @@ Things to know:
 
 ## How it works
 
-Three crates:
+Four crates:
 
 - **`triokey-engine`**: pure Rust with no operating-system calls. It keeps the raw keys of the word being typed and, after every key, recomputes from scratch what those keys should look like, compares that with what is on screen and returns one edit: delete N characters, insert a string. Between words it keeps little: the line's lean, a few flags about the current run of text (code or not), the Backspace swap on offer and the remembered words. It does not read the screen back, so the real text can still differ in fields that insert suggestions. Telex composition and tone placement come from the [`vi`](https://github.com/ZeroX-DG/vi-rs) crate; the syllable check, the frequency tables, the code rules and the per-word decision are TrioKey's. It has its own test suite and a typing benchmark.
-- **`triokey-mac`**: the macOS menu bar app (experimental, never run on a Mac): a CoreGraphics event tap instead of the hook, the same edits posted as synthetic key events. See [macOS (experimental)](#macos-experimental).
-- **`triokey`**: the Windows tray app. The hook callback asks the engine and, when the text must change, swallows the key and sends Backspaces plus the new text with `SendInput` from inside the callback, so no later key can slip in between. Keys that change nothing pass through untouched. TrioKey's own injected keys are marked and ignored. The hook callback's p99 time is shown in the settings window, under the developer mode box, while developer mode (`Chế độ phát triển`) is on. The only reading so far, on the author's machine with 0.2.0: 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys.
+- **`triokey-shared`**: what the two apps share without operating-system calls: the `config.txt` format, the credit line and addresses, and hiding your home folder in the debug information.
+- **`triokey-mac`**: the macOS menu bar app (experimental): a CoreGraphics event tap instead of the hook, the same edits posted as synthetic key events. See [macOS (experimental)](#macos-experimental).
+- **`triokey`**: the Windows tray app. The hook callback asks the engine and, when the text must change, swallows the key and sends Backspaces plus the new text with `SendInput` from inside the callback, so no later key can slip in between. Keys that change nothing pass through untouched. TrioKey's own injected keys are marked and ignored. The hook callback's p99 time is in the debug information that `Chép thông tin debug` copies (Settings, developer mode `Chế độ phát triển`). The only reading so far, on the author's machine with 0.2.0: 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys.
 
 IME state is read from the focused window's default IME window (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): the open status for Japanese, and the open status plus conversion mode for Chinese and Korean. A separate thread keeps the value fresh, so the key path only reads a cached value.
 
@@ -274,7 +279,7 @@ Not in a fixed order:
 - Fields that insert suggestions (browser address bar, Excel cells).
 - Hand-test Chinese and Korean IMEs.
 - VNI.
-- Run the macOS build on a real Mac (rows M1 to M20 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)), then release it.
+- Run the macOS build on a real Mac (rows M1 to M32 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)); M21 to M32 cover the settings window, hotkey, files, start at login and version check.
 - A Linux front-end on the same engine.
 
 Not planned: macros, per-app memory, legacy code tables, cloud features.

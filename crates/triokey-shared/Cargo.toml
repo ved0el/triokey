@@ -1,0 +1,9 @@
+[package]
+name = "triokey-shared"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ved0el/triokey"
+description = "Settings format and small helpers shared by the TrioKey apps for Windows and macOS"
+
+[dependencies]

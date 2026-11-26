@@ -1,7 +1,8 @@
 //! The macOS app (docs/ARCHITECTURE.md, 12. macOS app). Everything runs on the main thread: AppKit, the event tap's run
-//! loop source, every TIS call and the engine.
+//! loop source, every TIS call, the engine and the files; only the version check's curl runs on a thread of its own.
 
 pub mod app;
+mod settings;
 mod tap;
 mod tis;
 mod ui;

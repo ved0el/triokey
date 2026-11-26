@@ -3,7 +3,7 @@
 mod admin;
 mod app;
 mod autostart;
-mod config;
+use triokey_shared::config;
 mod hook;
 mod icon;
 mod ime;

@@ -41,15 +41,18 @@ jobs:
           fi
       - name: Install the Rust toolchain
         run: rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal --no-self-update
-      - name: Tag matches the crate version
+      - name: Tag matches the crate versions
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          version=$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name == "triokey") | .version')
-          if [ "v$version" != "$TAG" ]; then
-            echo "::error::tag $TAG does not match the triokey crate version $version"
-            exit 1
-          fi
+          meta=$(cargo metadata --no-deps --format-version 1 --locked)
+          for crate in triokey triokey-mac; do
+            version=$(jq -r --arg c "$crate" '.packages[] | select(.name == $c) | .version' <<< "$meta")
+            if [ "v$version" != "$TAG" ]; then
+              echo "::error::tag $TAG does not match the $crate crate version $version"
+              exit 1
+            fi
+          done
       # no cache in this workflow: a release is built from the checkout and crates.io only
       - name: Test
         run: cargo test --workspace --locked
@@ -62,12 +65,19 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # The macOS dmg (docs/ARCHITECTURE.md, 12. macOS app), from the same commit: no secret, no environment, read only. It
+  # runs next to 'build'; only 'publish', which needs both, puts the dmg in a release.
+  macos:
+    uses: ./.github/workflows/macos.yml
+    permissions:
+      contents: read
+
   # Holds the signing key (a secret of the `release` environment, usable from v* tags only)
-  # and the write permissions. It starts by itself once the build job passes. The only code built
+  # and the write permissions. It starts by itself once the build and macos jobs pass. The only code built
   # here is xtask and its dependencies, which handle the key anyway. xtask is not taken from
   # the build job: a file from there must not be run next to the key.
   publish:
-    needs: build
+    needs: [build, macos]
     runs-on: windows-latest
     timeout-minutes: 30
     environment: release
@@ -101,6 +111,13 @@ jobs:
         with:
           name: triokey-exe
           path: dist
+      # only hashed and uploaded here, never opened or run
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: TrioKey-macos-dmg
+          path: dist
+      - name: The dmg is there under its version
+        run: test -f "dist/TrioKey-$VERSION-macos.dmg"
       # The secret is in this step's environment only, and only the already built xtask runs
       # in it: no file on disk, no build script, nothing echoed.
       - name: Sign
@@ -116,7 +133,7 @@ jobs:
         run: |
           cp ../LICENSE ../NOTICE.md ../README.md ../README.vi.md .
           7z a "triokey-$VERSION-windows-x64.zip" triokey.exe triokey.exe.minisig LICENSE NOTICE.md README.md README.vi.md
-          sha256sum triokey.exe triokey.exe.minisig "triokey-$VERSION-windows-x64.zip" > SHA256SUMS.txt
+          sha256sum triokey.exe triokey.exe.minisig "triokey-$VERSION-windows-x64.zip" "TrioKey-$VERSION-macos.dmg" > SHA256SUMS.txt
           cat SHA256SUMS.txt
       # extra, not what the updater relies on: a failure here does not stop the release
       - name: Attest build provenance
@@ -124,10 +141,11 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/triokey.exe
+      # One call for every file, so a release never exists with only part of them.
       # The updater fetches releases/latest/download/triokey.exe(.minisig): the two bare asset
       # names must stay exactly these, and the release must not be a draft or a pre-release.
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" dist/triokey.exe dist/triokey.exe.minisig "dist/triokey-$VERSION-windows-x64.zip" dist/SHA256SUMS.txt --title "TrioKey $VERSION" --generate-notes --verify-tag
+        run: gh release create "$TAG" dist/triokey.exe dist/triokey.exe.minisig "dist/triokey-$VERSION-windows-x64.zip" "dist/TrioKey-$VERSION-macos.dmg" dist/SHA256SUMS.txt --title "TrioKey $VERSION" --generate-notes --verify-tag

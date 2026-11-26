@@ -138,6 +138,11 @@ pub fn roaming_appdata() -> Option<PathBuf> {
     known_folder(&FOLDERID_RoamingAppData)
 }
 
+/// The user's profile folder (`C:\Users\<name>`), masked in the debug information.
+pub fn profile_dir() -> Option<PathBuf> {
+    known_folder(&FOLDERID_Profile)
+}
+
 pub fn admin_exe() -> Option<PathBuf> {
     admin_dir().map(|d| d.join("triokey.exe"))
 }

@@ -12,7 +12,7 @@
 
 [English](README.md) · **Tiếng Việt**
 
-Bộ gõ tiếng Việt cho Windows (đã có một bản macOS đầu tiên, còn là bản thử nghiệm và chưa từng chạy trên máy Mac; xem [macOS (thử nghiệm)](#macos-thử-nghiệm)), dành cho người ngày nào cũng gõ cả tiếng Anh, tiếng Việt và một trong ba thứ tiếng Trung, Nhật, Hàn (CJK). Khi gõ trộn hằng ngày, bạn không phải bật/tắt bộ gõ tiếng Việt: nút duy nhất cần bấm là nút bật/tắt của chính IME CJK.
+Bộ gõ tiếng Việt cho Windows (đã có một bản macOS, còn là bản thử nghiệm; xem [macOS (thử nghiệm)](#macos-thử-nghiệm)), dành cho người ngày nào cũng gõ cả tiếng Anh, tiếng Việt và một trong ba thứ tiếng Trung, Nhật, Hàn (CJK). Khi gõ trộn hằng ngày, bạn không phải bật/tắt bộ gõ tiếng Việt: nút duy nhất cần bấm là nút bật/tắt của chính IME CJK.
 
 ```text
 phím gõ             chữ hiện ra
@@ -23,7 +23,7 @@ the songs␣          the songs    (sau một từ tiếng Anh)
 this␣⌫              thí          (một lần Backspace đổi từ mà bộ gõ còn phân vân)
 ```
 
-Bản đầu: 0.2.1 đã phát hành và có chữ ký, các ví dụ trên trang này mô tả lõi gõ của bản đó. Nhiều phần của ứng dụng Windows chưa được kiểm trên máy thật; phần tự cập nhật, vốn bật sẵn, đã tự cài được một bản (0.2.0 lên 0.2.1 trên máy của tác giả). Xin đọc mục [Tình trạng](#tình-trạng) trước.
+Bản đầu: 0.3.0 đã phát hành và có chữ ký, các ví dụ trên trang này mô tả lõi gõ của bản đó. Nhiều phần của ứng dụng Windows chưa được kiểm trên máy thật; phần tự cập nhật, vốn bật sẵn, đã tự cài được một bản (0.2.0 lên 0.2.1 trên máy của tác giả). Xin đọc mục [Tình trạng](#tình-trạng) trước.
 
 ## Vì sao có TrioKey
 
@@ -41,11 +41,11 @@ TrioKey không thêm layout bàn phím, không đăng ký text service (TSF), kh
 Bộ gõ chạy quyền thường không gõ được vào cửa sổ quyền admin. TrioKey có chế độ admin tuỳ chọn: một lần đồng ý UAC, một tác vụ chạy lúc đăng nhập, và file exe được chép vào thư mục chỉ admin ghi được. (Chưa từng chạy trên máy thật.)
 
 **5. Cố ý giữ nhỏ.**
-Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, không thu thập dữ liệu, không nhật ký gõ. Chỗ duy nhất dùng mạng là việc kiểm tra bản cập nhật có chữ ký trên GitHub, và bạn tắt được. Một cửa sổ cài đặt nhỏ và vài file văn bản thường.
+Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, không thu thập dữ liệu, không nhật ký gõ. Chỗ duy nhất dùng mạng là việc kiểm tra bản mới trên GitHub (trên Windows nó còn cài bản cập nhật có chữ ký), và bạn tắt được. Một cửa sổ cài đặt nhỏ và vài file văn bản thường.
 
 ## Tình trạng
 
-- **Đã phát hành:** [0.2.1](https://github.com/ved0el/triokey/releases), do CI build và ký ([CHANGELOG.md](CHANGELOG.md)). Bản 0.2.0 đưa vào lõi gõ mô tả trên trang này (tần suất từ và ngôn ngữ của dòng), việc nhớ các lần đổi đã giữ, biểu tượng khay đỏ/xanh dương và biểu tượng ứng dụng mới; bản 0.2.1 làm lại cửa sổ cài đặt. 0.1.0 và 0.1.1 dùng lõi gõ cũ, quyết định từ theo một danh sách từ và từ đứng trước.
+- **Đã phát hành:** [0.3.0](https://github.com/ved0el/triokey/releases), do CI build và ký ([CHANGELOG.md](CHANGELOG.md)). Bản 0.2.0 đưa vào lõi gõ mô tả trên trang này (tần suất từ và ngôn ngữ của dòng), việc nhớ các lần đổi đã giữ, biểu tượng khay đỏ/xanh dương và biểu tượng ứng dụng mới; bản 0.2.1 làm lại cửa sổ cài đặt. 0.1.0 và 0.1.1 dùng lõi gõ cũ, quyết định từ theo một danh sách từ và từ đứng trước.
 - **Tác giả đã gõ thử:** bản 0.2.0 đã được dùng để gõ văn bản trộn Anh/Việt thông thường trên một máy Windows 11 và được coi là đủ tốt để phát hành; vẫn còn vài từ ra sai. Trong lần gõ đó không có lần đổi nào được nhớ, và không dòng nào của bảng kiểm được chạy, trừ một lần đọc thời gian (AT7).
 - **Đã gõ thử bằng tay:** một bản dựng trước đây với tiếng Nhật (Microsoft IME, trong Notepad và Brave) đạt AT1 và AT2 của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md). Cả hai chưa được làm lại với 0.2.0.
 - **Chưa được kiểm trên máy thật** (chưa dòng nào của bảng kiểm có kết quả ghi lại), mới chỉ biên dịch và unit test ở chỗ làm được: biểu tượng khay và menu, biểu tượng ứng dụng, các phím tắt, cửa sổ cài đặt (giao diện sáng và tối mới chỉ được xem qua ảnh do một test vẽ ra ở 96 DPI, chưa từng trên màn hình thật; giao diện tương phản cao chưa từng được xem khi bật một chủ đề tương phản), khởi động cùng Windows, chế độ admin, phần tự cập nhật ngoài một lần tự lên từ 0.2.0 tới 0.2.1 trên máy của tác giả (các dòng của AT10 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) vẫn chưa làm), việc lưu các từ đã nhớ, các bước gỡ bỏ và việc bỏ qua ô mật khẩu Win32. Các mục bên dưới mô tả chúng theo mã nguồn. Nếu không muốn một phần tự cập nhật mới được thử rất ít thay file exe của bạn, hãy bỏ chọn `Tự động cập nhật` trong Cài đặt.
@@ -55,7 +55,7 @@ Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, khô
 - Terminal không có xử lý riêng. Các ô tự chèn gợi ý sau con trỏ (thanh địa chỉ trình duyệt, ô Excel) cũng vậy.
 - Không nhận ra được ô mật khẩu trong trình duyệt và ứng dụng Electron; xem [Riêng tư và bảo mật](#riêng-tư-và-bảo-mật).
 - Một số ứng dụng giấu trạng thái IME. Khi không đọc được, TrioKey dùng trạng thái đọc được gần nhất của cửa sổ đó; nếu chưa có thì trên layout CJK nó nhường.
-- **macOS:** bản đầu tiên nằm trên nhánh `macos`; một workflow build nó mỗi lần có push lên nhánh đó (chưa có kết quả nào được ghi lại); nó chưa từng chạy trên máy Mac thật và chưa phát hành. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm). Linux chưa bắt đầu.
+- **macOS:** bản thử nghiệm, từ 0.3.0 có trong mỗi bản phát hành dưới dạng file dmg. Chủ dự án đã cài bản dựng macOS đầu tiên trên máy Mac, cấp quyền và gõ bằng nó; mọi thứ thêm vào sau đó (cửa sổ cài đặt, cấu hình và lưu các từ đã nhớ, phím tắt, khởi động cùng máy, kiểm tra bản mới) chưa chạy trên máy Mac thật. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm). Linux chưa bắt đầu.
 
 ## TrioKey gõ ra gì trong từng trường hợp
 
@@ -161,12 +161,12 @@ File exe chưa được ký số. SmartScreen hoặc phần mềm diệt virus c
 
 ## Cách dùng
 
-Mục này mô tả bản 0.2.1 (ở bản 0.2.0 cửa sổ cài đặt trông khác); biểu tượng đỏ/xanh dương, các luật Backspace hiện tại và việc nhớ từ chưa có trong 0.1.0 và 0.1.1. Phần lớn chưa được kiểm trên máy thật (xem [Tình trạng](#tình-trạng)).
+Mục này mô tả bản 0.3.0 trên Windows (trước 0.2.1 cửa sổ cài đặt trông khác, và hai nút của chế độ phát triển mới có từ 0.3.0); biểu tượng đỏ/xanh dương, các luật Backspace hiện tại và việc nhớ từ chưa có trong 0.1.0 và 0.1.1. Phần lớn chưa được kiểm trên máy thật (xem [Tình trạng](#tình-trạng)).
 
 - **Biểu tượng khay.** Chữ `V` màu đỏ là TrioKey đang gõ tiếng Việt. Chữ `E` màu xanh dương là phím đi thẳng, vì bạn đã tắt hoặc vì nó đang nhường IME CJK; di chuột lên để xem lý do (`Tiếng Anh — đã tắt` hoặc `Tiếng Anh — đang nhường IME Nhật`; với IME Trung và Hàn là `IME Trung`, `IME Hàn`). Chữ nằm trên nền trong suốt, màu đậm khi thanh tác vụ sáng và màu nhạt khi thanh tác vụ tối, và được vẽ lại khi bạn đổi chủ đề sáng/tối của Windows.
 - **Nhấp trái** vào biểu tượng để bật/tắt TrioKey. **Nhấp phải** để mở menu: `Tiếng Việt` (bật/tắt), `Cài đặt…`, `Thoát`.
 - **Phím tắt** bật/tắt: Ctrl+Shift (mặc định; bấm rồi nhả, không kèm phím nào khác), Alt+Z, Ctrl+Space, hoặc `Không dùng`. Bật/tắt bằng phím tắt hay ở khay không được lưu lại; chỉ ô `Bật gõ tiếng Việt` trong Cài đặt mới được lưu.
-- **Cài đặt** (`Cài đặt…`): `Bật gõ tiếng Việt`, `Phím tắt`, `Kiểu bỏ dấu` (`hòa, thúy` hoặc `hoà, thuý`), `Tự giữ nguyên từ tiếng Anh` (tắt đi thì mọi từ đều gõ Telex thuần), `Nhường khi IME Nhật/Trung/Hàn đang bật`, `Khởi động cùng Windows`, `Chạy quyền admin (gõ được trong cửa sổ admin)` (chế độ admin), `Tự động cập nhật` kèm nút `Kiểm tra bản mới`, và `Chế độ phát triển` (mặc định tắt), bật lên thì ngay bên dưới có thêm nút `Mở thư mục cấu hình…` và dòng đo thời gian của hook. Khi có bản mới đang chờ, dòng dưới ô cập nhật ghi `Có bản mới vX.Y.Z.` kèm liên kết `Cập nhật tại đây` để cài bản đó hoặc mở trang tải về. Dòng cuối ghi tên tác giả (`TrioKey vX.Y.Z · © 2026 ved0el`) và liên kết `GitHub` tới repo này; bản chạy quyền admin hiện địa chỉ đó trong một hộp thoại thay vì mở trình duyệt. Thay đổi có hiệu lực ngay. Cửa sổ theo chế độ màu của ứng dụng trong Windows (sáng hoặc tối; trên Windows 11 thanh tiêu đề cùng màu với phần còn lại) và giữ giao diện hệ thống khi bật tương phản cao; đổi một trong hai khi cửa sổ đang mở thì cửa sổ đổi màu theo.
+- **Cài đặt** (`Cài đặt…`): `Bật gõ tiếng Việt`, `Phím tắt`, `Kiểu bỏ dấu` (`hòa, thúy` hoặc `hoà, thuý`), `Tự giữ nguyên từ tiếng Anh` (tắt đi thì mọi từ đều gõ Telex thuần), `Nhường khi IME Nhật/Trung/Hàn đang bật`, `Khởi động cùng Windows`, `Chạy quyền admin (gõ được trong cửa sổ admin)` (chế độ admin), `Tự động cập nhật` kèm nút `Kiểm tra bản mới`, và `Chế độ phát triển` (mặc định tắt), bật lên thì ngay bên dưới có thêm hai nút: `Mở thư mục cấu hình…` và `Chép thông tin debug` (chép vào clipboard thông tin phiên bản, cấu hình, thời gian đo và các con số đếm, không có chữ đã gõ, thư mục người dùng ghi là `~`). Dưới ô cập nhật luôn giữ sẵn một dòng cho câu trả lời của việc kiểm tra, nên các câu trả lời thường gặp của `Kiểm tra bản mới` không làm cửa sổ đổi kích thước; khi có bản mới đang chờ, dòng đó ghi `Có bản mới vX.Y.Z.` kèm liên kết `Cập nhật tại đây` để cài bản đó hoặc mở trang tải về. Dòng cuối ghi tên tác giả (`TrioKey vX.Y.Z · © 2026 ved0el`) và liên kết `GitHub` tới repo này; bản chạy quyền admin hiện địa chỉ đó trong một hộp thoại thay vì mở trình duyệt. Thay đổi có hiệu lực ngay. Cửa sổ theo chế độ màu của ứng dụng trong Windows (sáng hoặc tối; trên Windows 11 thanh tiêu đề cùng màu với phần còn lại) và giữ giao diện hệ thống khi bật tương phản cao; đổi một trong hai khi cửa sổ đang mở thì cửa sổ đổi màu theo.
 - **Telex**: trong một từ, `aa aw ee oo ow uw dd` → `â ă ê ô ơ ư đ` (`caan` → `cân`, `ddi` → `đi`); `s f r x j` → dấu thanh; `z` xoá dấu thanh. Phím dấu gõ ngay sau nguyên âm hay ở cuối từ đều được (`tieesng`, `tieengs` → `tiếng`). Chữ `w` đứng riêng hiện thành `ư` trong lúc gõ nhưng trở lại `w` khi từ kết thúc (`w␣` → `w`, rồi `⌫` → `ư`). Gõ một phím dấu thanh hai lần thì huỷ dấu (`mixx␣` → `mix`); từ tiếng Anh có chữ cái gõ đôi thì giữ nguyên như đã gõ.
 - **Nhớ lần đổi.** Nếu bạn đổi một từ bằng một lần Backspace rồi gõ dấu cách, Tab hoặc Enter, TrioKey nhớ lần đổi đó ngay và dùng nó từ đó về sau. Gõ một chữ cái hay dấu câu ngay sau lần đổi thì không lưu gì. Đổi một từ đã nhớ trở lại bằng một lần Backspace sẽ sửa hoặc xoá mục đó. Có một ngoại lệ để bảo vệ chữ tiếng Việt: ở giữa một dòng đã nghiêng về tiếng Việt, cách đọc tiếng Anh đã nhớ không bao giờ thay từ tiếng Việt; nó chỉ nằm cách một lần Backspace, và giữ lần đổi đó thì mục đã nhớ vẫn như cũ. Mỗi bước dưới đây bắt đầu ở một dòng mới, theo đúng thứ tự:
 
@@ -201,9 +201,9 @@ Nếu chưa từng bật hai tuỳ chọn trên thì bước 2 và 3 là toàn b
 
 ## macOS (thử nghiệm)
 
-**Bản này chưa từng chạy trên máy Mac thật.** Nó được viết và kiểm kiểu trên Windows, do CI build trên nhánh `macos`; nó có mở được không, xin quyền có đúng không, gõ có đúng không thì chưa ai biết. Đây không phải bản phát hành và không có tự cập nhật. Thiết kế và danh sách những điều chưa kiểm chứng: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), mục 12 (bằng tiếng Anh). Các bước gõ thử: phần macOS của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md).
+**Đây là bản thử nghiệm.** Nó được viết và kiểm kiểu trên Windows. Chủ dự án đã cài bản dựng macOS đầu tiên trên máy Mac, cấp quyền và gõ bằng nó: mở, cấp quyền và gõ đều chạy được. Mọi thứ thêm vào sau đó chưa chạy trên máy Mac thật: cửa sổ cài đặt, `config.txt`, việc lưu các từ đã nhớ, các file ép từ, phím tắt, khởi động cùng máy, kiểm tra bản mới và thông tin debug. Nó không bao giờ tự cài gì. Thiết kế và danh sách những điều chưa kiểm chứng: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), mục 12 (bằng tiếng Anh). Các bước gõ thử: phần macOS của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md).
 
-**Lấy bản dựng.** Tạm thời chỉ có dưới dạng artifact của workflow: trang Actions của repo, workflow `macOS`, lần chạy mới nhất trên nhánh `macos`, artifact `TrioKey-macos-dmg` (cần đăng nhập GitHub). Giải nén để có `TrioKey-X.Y.Z-macos.dmg`. Một ứng dụng chạy được cả trên Apple silicon lẫn Intel, macOS 11 trở lên.
+**Lấy bản dựng.** Từ 0.3.0, mỗi bản phát hành có file `TrioKey-X.Y.Z-macos.dmg` bên cạnh các file cho Windows: tải ở [bản phát hành mới nhất](https://github.com/ved0el/triokey/releases/latest). Mã kiểm tra của nó nằm trong `SHA256SUMS.txt` của cùng bản phát hành (`shasum -a 256 TrioKey-X.Y.Z-macos.dmg`). Một ứng dụng chạy được cả trên Apple silicon lẫn Intel, macOS 11 trở lên.
 
 **Cài và mở.**
 
@@ -218,16 +218,20 @@ Nếu chưa từng bật hai tuỳ chọn trên thì bước 2 và 3 là toàn b
 
 1. Thoát TrioKey (menu → `Thoát`).
 2. Chép TrioKey mới đè lên bản trong Applications.
-3. Trong Trợ năng, xoá TrioKey (−) rồi thêm lại (+).
+3. Trong Trợ năng, xoá TrioKey (−) rồi thêm lại (+). Không bao giờ làm bước này khi TrioKey đang chạy.
 4. Mở TrioKey.
 
-**Bản này làm gì.** Cùng lõi gõ với bản Windows, nên cùng kết quả cho từng từ. Mục trên thanh menu hiện `V` khi đang gõ tiếng Việt và `E` trong mọi trường hợp khác; menu của nó có `Tiếng Việt` (bật/tắt), `Hướng dẫn cấp quyền…`, `Chẩn đoán (chép vào clipboard)` (chép một đoạn thông tin để dán vào báo lỗi; không chứa chữ bạn đã gõ) và `Thoát`. Nó chỉ gõ khi nguồn nhập đang chọn là một bàn phím Latin thường (ABC, U.S. và tương tự). Khi chọn bất kỳ bộ gõ nào khác, kể cả bộ gõ tiếng Nhật ở chế độ Latin, nó nhường; trên macOS bạn chuyển nguồn nhập để quay lại gõ tiếng Việt. Nó ngừng khi Secure Input bật (một số ô mật khẩu, `Secure Keyboard Entry` của Terminal), vì khi đó macOS giấu mọi phím khỏi nó.
+Kiểm tra bản mới chỉ báo là đã có bản mới và đưa link trang phát hành; thay ứng dụng luôn là bốn bước tay ở trên. Thiết lập và các từ đã nhớ vẫn nằm nguyên trong thư mục của chúng.
 
-**Chưa làm.** Không có cửa sổ cài đặt và không có tuỳ chọn nào, không phím tắt, không khởi động cùng máy, không tự cập nhật. Các lần đổi đã giữ chỉ được nhớ tới khi thoát; không có gì được lưu, và các file ép từ không được đọc. Nó không đọc, không ghi file nào và không dùng mạng.
+**Bản này làm gì.** Cùng lõi gõ với bản Windows, nên cùng kết quả cho từng từ. Mục trên thanh menu hiện `V` khi đang gõ tiếng Việt và `E` trong mọi trường hợp khác; menu của nó có `Tiếng Việt` (bật/tắt), `Cài đặt…`, `Hướng dẫn cấp quyền…`, `Có bản … — mở trang tải về` khi có bản mới, và `Thoát`. Cửa sổ cài đặt có các tùy chọn như bản Windows trừ chế độ admin: bật/tắt và phím tắt (`Control+Shift`, `Option+Z` hoặc không dùng; Control+Space là phím chuyển nguồn nhập của chính macOS), kiểu bỏ dấu, giữ nguyên từ tiếng Anh, nhường bộ gõ CJK (tắt đi thì gõ tiếng Việt dưới mọi nguồn nhập), `Khởi động cùng máy` (chỉ khi TrioKey nằm trong Applications), chế độ phát triển với `Mở thư mục cấu hình…` và `Chép thông tin debug` (chép một đoạn thông tin để dán vào báo lỗi; không chứa chữ bạn đã gõ và tên người dùng), và `Tự động kiểm tra bản mới` / `Kiểm tra bản mới` (chỉ báo có bản mới và đưa link trang tải về). Nó chỉ gõ khi nguồn nhập đang chọn là một bàn phím Latin thường (ABC, U.S. và tương tự). Khi chọn bất kỳ bộ gõ nào khác, kể cả bộ gõ tiếng Nhật ở chế độ Latin, nó nhường; trên macOS bạn chuyển nguồn nhập để quay lại gõ tiếng Việt. Nó ngừng khi Secure Input bật (một số ô mật khẩu, `Secure Keyboard Entry` của Terminal), vì khi đó macOS giấu mọi phím khỏi nó.
+
+**File.** `~/Library/Application Support/triokey` chứa `config.txt`, `learned.txt`, `force_vi.txt` và `force_en.txt`, cùng định dạng với bản Windows. Khởi động cùng máy là file `~/Library/LaunchAgents/io.github.ved0el.triokey.plist`. Muốn gỡ TrioKey: bỏ tích khởi động cùng máy (hoặc xoá file đó), thoát, xoá TrioKey khỏi Trợ năng, rồi xoá ứng dụng và, nếu muốn, cả thư mục kia.
+
+**Không làm.** Không tự cài bản cập nhật, không có chế độ admin, và không đọc xem bộ gõ CJK có đang soạn chữ không (thay vào đó nó nhường cho cả nguồn nhập).
 
 ## Riêng tư và bảo mật
 
-Mục này mô tả bản Windows. Bản macOS cần quyền Trợ năng, quyền này cho nó thấy mọi phím bạn bấm khi nó chạy; nó không ghi file nào, không kết nối đi đâu, và ngoài các phím ra thì thứ duy nhất nó xuất ra là đoạn chẩn đoán chép vào clipboard khi bạn yêu cầu.
+Mục này mô tả bản Windows. Bản macOS cần quyền Trợ năng, quyền này cho nó thấy mọi phím bạn bấm khi nó chạy. Nó chỉ ghi vào thư mục riêng `~/Library/Application Support/triokey` (chữ đã gõ chỉ nằm trong `learned.txt`, như bản Windows) và, nếu bạn tích khởi động cùng máy, một file trong `~/Library/LaunchAgents`. Kết nối mạng duy nhất là kiểm tra bản mới, mỗi ngày một lần khi `Tự động kiểm tra bản mới` đang bật và khi bạn bấm `Kiểm tra bản mới`: `/usr/bin/curl` gửi một yêu cầu HTTPS tới `https://github.com/ved0el/triokey/releases/latest` và chỉ đọc xem nó chuyển hướng tới đâu. Yêu cầu chỉ mang một `User-Agent: TrioKey-updater` cố định và không gì khác: không có chữ bạn gõ, không có từ đã nhớ, không có gì về bạn hay máy bạn, kể cả số phiên bản đang chạy cũng không. GitHub thấy địa chỉ IP của bạn. Không tải hay cài gì. Thời điểm của lần kiểm tra gần nhất có trả lời được ghi trong `config.txt`.
 
 Những gì nó làm:
 
@@ -243,7 +247,7 @@ Những gì nó làm:
 
 Những gì nó không bao giờ làm:
 
-- Ghi nhật ký gõ. Ngoài các từ đã đổi trong `learned.txt`, không phím hay nội dung gõ nào được ghi ra đĩa. Con số đo thời gian hiện trong Cài đặt (chế độ phát triển) chỉ nằm trong bộ nhớ.
+- Ghi nhật ký gõ. Ngoài các từ đã đổi trong `learned.txt`, không phím hay nội dung gõ nào được ghi ra đĩa. Con số đo thời gian chỉ nằm trong bộ nhớ; nút `Chép thông tin debug` trong Cài đặt (chế độ phát triển) chép chúng, cùng các con số đếm nhưng không có từ nào, vào clipboard khi bạn bấm.
 - Kết nối tới nơi nào khác ngoài GitHub (`github.com` và máy chủ mà đường tải bản phát hành của nó chuyển hướng tới), hay kết nối vì việc gì khác ngoài việc kiểm tra cập nhật nói trên. Khi `Tự động cập nhật` tắt, TrioKey hoàn toàn không dùng mạng, trừ khi bạn bấm `Kiểm tra bản mới`; nút này kiểm tra một lần và, ở bản thường, cài luôn bản tìm được. Ở bản build không có khoá cập nhật, cả hai ô này bị mờ đi và nó không bao giờ kết nối. Không thu thập dữ liệu, không gửi báo cáo lỗi. Thư viện bên thứ ba mà nó phụ thuộc trực tiếp chỉ có ba crate `vi`, `windows-sys` và `minisign-verify`, cộng `embed-manifest` chỉ dùng lúc build (nó tạo manifest, rồi script build ghi manifest cùng biểu tượng vào file exe; không có mã nào của nó chạy).
 - Đăng ký text service, thêm layout bàn phím hay đổi danh sách bàn phím của Windows.
 
@@ -256,11 +260,12 @@ Những gì nó không bao giờ làm:
 
 ## Cách hoạt động
 
-Ba crate:
+Bốn crate:
 
 - **`triokey-engine`**: Rust thuần, không gọi hệ điều hành. Nó giữ dãy phím gốc của từ đang gõ và, sau mỗi phím, tính lại từ đầu xem dãy phím ấy nên hiện thành gì, so với chữ đang có trên màn hình rồi trả về một lệnh sửa: xoá N ký tự, chèn một chuỗi. Giữa hai từ, lõi giữ rất ít: độ nghiêng của dòng, vài cờ về đoạn chữ đang gõ (có phải mã hay không), lần đổi bằng Backspace đang chờ và các từ đã nhớ. Lõi không đọc lại màn hình, nên chữ thật vẫn có thể khác ở những ô tự chèn gợi ý. Phần ghép Telex và đặt dấu thanh dùng crate [`vi`](https://github.com/ZeroX-DG/vi-rs); phần kiểm tra âm tiết, các bảng tần suất, các luật về mã và quyết định cho từng từ là của TrioKey. Lõi có bộ test riêng và một bài đo gõ chữ.
-- **`triokey-mac`**: ứng dụng trên thanh menu cho macOS (thử nghiệm, chưa từng chạy trên máy Mac): dùng một event tap của CoreGraphics thay cho hook, gửi cùng các lệnh sửa dưới dạng phím giả lập. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm).
-- **`triokey`**: ứng dụng khay cho Windows. Callback của hook hỏi lõi gõ và, khi chữ cần đổi, chặn phím rồi gửi Backspace cùng chữ mới bằng `SendInput` ngay trong callback, để không phím nào gõ sau chen vào giữa. Phím không làm đổi chữ thì đi thẳng, không bị đụng tới. Phím do chính TrioKey gửi được đánh dấu và bỏ qua. Thời gian p99 của callback được hiện trong cửa sổ cài đặt, ngay dưới ô `Chế độ phát triển`, khi ô đó được chọn. Lần đọc duy nhất tới nay, trên máy của tác giả với bản 0.2.0: 314 µs với phím đi thẳng và 5.600 µs với phím thay chữ, trên 502 phím.
+- **`triokey-shared`**: những gì hai ứng dụng dùng chung mà không gọi hệ điều hành: định dạng `config.txt`, dòng ghi công và các địa chỉ, và việc giấu thư mục người dùng trong thông tin debug.
+- **`triokey-mac`**: ứng dụng trên thanh menu cho macOS (thử nghiệm): dùng một event tap của CoreGraphics thay cho hook, gửi cùng các lệnh sửa dưới dạng phím giả lập. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm).
+- **`triokey`**: ứng dụng khay cho Windows. Callback của hook hỏi lõi gõ và, khi chữ cần đổi, chặn phím rồi gửi Backspace cùng chữ mới bằng `SendInput` ngay trong callback, để không phím nào gõ sau chen vào giữa. Phím không làm đổi chữ thì đi thẳng, không bị đụng tới. Phím do chính TrioKey gửi được đánh dấu và bỏ qua. Thời gian p99 của callback nằm trong thông tin debug mà nút `Chép thông tin debug` chép ra (Cài đặt, khi chọn ô `Chế độ phát triển`). Lần đọc duy nhất tới nay, trên máy của tác giả với bản 0.2.0: 314 µs với phím đi thẳng và 5.600 µs với phím thay chữ, trên 502 phím.
 
 Trạng thái IME được đọc từ cửa sổ IME mặc định của cửa sổ đang gõ (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): open status với tiếng Nhật, open status cùng conversion mode với tiếng Trung và tiếng Hàn. Một luồng riêng giữ cho giá trị này luôn mới, nên đường xử lý phím chỉ đọc một giá trị đã lưu sẵn.
 
@@ -274,7 +279,7 @@ Không theo thứ tự cố định:
 - Các ô tự chèn gợi ý (thanh địa chỉ trình duyệt, ô Excel).
 - Gõ thử bằng tay với IME tiếng Trung và tiếng Hàn.
 - VNI.
-- Chạy bản macOS trên máy Mac thật (các dòng M1 tới M20 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)), rồi phát hành.
+- Chạy bản macOS trên máy Mac thật (các dòng M1 tới M32 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)); M21 tới M32 dành cho cửa sổ cài đặt, phím tắt, file, khởi động cùng máy và kiểm tra bản mới.
 - Bản Linux dùng chung lõi gõ.
 
 Không định làm: gõ tắt, nhớ chế độ theo ứng dụng, bảng mã cũ, tính năng cloud.

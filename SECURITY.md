@@ -12,25 +12,32 @@ reporting on this repository: the **Security** tab, then **Report a vulnerabilit
 (https://github.com/ved0el/triokey/security/advisories/new).
 
 Include what you found, the TrioKey version, the Windows or macOS version, and the steps to
-reproduce. For the macOS build, the text of its `Chẩn đoán` menu item helps; it holds no typed text.
+reproduce. For the macOS build, the text of `Chép thông tin debug` (settings window, developer mode) helps; it holds no typed text.
 A proof of concept helps but is not required.
 
 ## The macOS build
 
-The macOS build is experimental: it has never run on a real Mac and is not a release (it is a
-workflow artifact of the `macos` branch). What to know before running it:
+The macOS build is experimental. From 0.3.0 on it is part of each release (`TrioKey-X.Y.Z-macos.dmg`,
+listed in `SHA256SUMS.txt`). Its first build was installed, granted the permission and typed with on a
+real Mac; what was added since has not run on one. What to know before running it:
 
 - **Not signed with a Developer ID and not notarized.** The app carries only an ad-hoc signature,
   which proves nothing about who built it. Apple has not scanned it, macOS blocks the first open,
-  and you allow it with Open Anyway. Download it only from this repository's own workflow runs.
+  and you allow it with Open Anyway. Download it only from this repository's releases page.
   Each build has a different signature, so macOS treats every new build as a new app and the
   Accessibility permission must be removed and granted again (quit TrioKey first).
 - **It needs the Accessibility permission.** That lets it see every key you press while it runs
-  and post keys of its own, as every input method of this kind must. It keeps no log, writes no
-  files and has no network code; the only thing it outputs besides keys is the diagnostics text it
-  copies to the clipboard when you ask. Removing the permission while TrioKey runs is reported to
-  freeze the keyboard and mouse until a restart: quit TrioKey first.
-- **No updater.** It never checks for or installs updates; you replace the app by hand.
+  and post keys of its own, as every input method of this kind must. It keeps no log. It writes
+  only `~/Library/Application Support/triokey` (settings, the force files, and in `learned.txt`
+  the words you swapped and kept, as on Windows) and, if you tick start at login, one file in
+  `~/Library/LaunchAgents`. Removing the permission while TrioKey runs is reported to freeze the
+  keyboard and mouse until a restart: quit TrioKey first.
+- **A version check, no updater.** Once a day if `Tự động kiểm tra bản mới` is on, and when you
+  press `Kiểm tra bản mới`, it runs `/usr/bin/curl` for one HTTPS request to the fixed address
+  `https://github.com/ved0el/triokey/releases/latest` and reads only where it redirects. The
+  request carries the fixed user agent `TrioKey-updater` and nothing else: no typed text, nothing
+  about you, your Mac or the running version. It never downloads or installs anything; you
+  replace the app by hand.
 
 ## Scope
 
@@ -40,7 +47,8 @@ In scope:
   TrioKey run code, write or read files it should not, or turn injected keys into text.
 - **The update path**: anything that gets an installed TrioKey to accept or run a file that was
   not signed with the project's update key, to downgrade, or to send data beyond the two fixed
-  requests to GitHub.
+  requests to GitHub; on macOS, anything that makes the version check send more than its one fixed
+  request or open an address other than the releases page.
 - **The keyboard hook** (or, on macOS, the event tap): typed text leaking to disk (beyond the remembered words in
   `learned.txt`, which are stored by design), to the network or to another process, or input that
   makes TrioKey type something other than what was typed.
