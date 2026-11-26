@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### macOS app (`triokey-mac`, experimental, 0.3.0)
+
+A first macOS build. **It has never run on a real Mac:** it was written and type-checked on Windows. The workflow on the `macos` branch builds it, runs a start-up self-test and uploads the dmg as an artifact; no result of that workflow is recorded yet. It is not released. The Windows app and the engine are unchanged.
+
+- **Same engine, macOS front-end.** A session event tap reads key-downs and mouse-downs; for an edit the key is swallowed and TrioKey posts Deletes, the text as Unicode key events (at most 20 UTF-16 units each) and, after a word ended with Return or Tab, the real key with the original Shift and Option. No input source or keyboard layout is registered. A panic or an internal error in the tap turns the tap off for the rest of the run and lets the key through.
+- **Menu bar item** `V`/`E` with a menu: `Tiếng Việt` (on/off), `Hướng dẫn cấp quyền…`, `Chẩn đoán (chép vào clipboard)`, `Thoát`. No Dock icon.
+- **Accessibility permission** with a guide window written to open the Accessibility page of System Settings, to notice the grant within about 2 seconds without a restart (unverified), and to warn never to remove the permission while TrioKey runs.
+- **Steps aside** whenever the input source is anything but a plain ASCII-capable keyboard layout (every input method, including a Japanese one in its Latin mode), and while Secure Input is on.
+- **Diagnostics** copied to the clipboard on request: macOS version, bundle path, tap and permission state, input sources seen, counters, last error; never typed text.
+- **Packaging:** one universal app (Apple silicon and Intel, macOS 11 or later) in a dmg, signed ad hoc, not notarized: the first open needs Open Anyway, and each new build needs the Accessibility entry removed and added again.
+- **Not in this build:** settings, hotkey, start at login, saving remembered words (kept until quit only), updater. It reads and writes no files and uses no network.
+
 ## 0.2.1 (2026-11-26)
 
 The owner reviewed images of the window rendered by a test at 96 DPI (hidden or cloaked, never on screen) and asked for the footer and the notice as they are now. The window itself has not been checked on a desktop (rows 2n to 2x in `docs/HANDS_ON_TEST.md`).

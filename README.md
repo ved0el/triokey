@@ -12,7 +12,7 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
-A Vietnamese input method for Windows, made for people who type English, Vietnamese and a CJK language (Chinese, Japanese or Korean) every day. In everyday mixed typing you do not toggle Vietnamese on or off: the only switch you touch is your CJK IME's own on/off.
+A Vietnamese input method for Windows (a first macOS build exists as an experiment that has not yet run on a Mac; see [macOS (experimental)](#macos-experimental)), made for people who type English, Vietnamese and a CJK language (Chinese, Japanese or Korean) every day. In everyday mixed typing you do not toggle Vietnamese on or off: the only switch you touch is your CJK IME's own on/off.
 
 ```text
 keys typed          what appears
@@ -55,7 +55,7 @@ No macros, no per-app memory, no cloud, no telemetry, no typing log. The only ne
 - Terminals get no special handling. Fields that insert suggestions after the cursor (browser address bar, Excel cells) get none either.
 - Password fields in browsers and Electron apps cannot be detected; see [Privacy and security](#privacy-and-security).
 - Some apps hide the IME state. When it cannot be read, TrioKey keeps the window's last known state, and on a CJK layout steps aside when there is none.
-- macOS and Linux are not started.
+- **macOS:** a first build is on the `macos` branch; a workflow builds it on each push to that branch (no result is recorded yet), and it has never run on a real Mac. It is not released. See [macOS (experimental)](#macos-experimental). Linux is not started.
 
 ## How it behaves
 
@@ -199,7 +199,35 @@ These steps follow the code; they have not been run on a real machine yet. If on
 
 If you never turned on either option, steps 2 and 3 are the whole uninstall. TrioKey registers nothing else: no keyboard layout, no language-list entry, nothing under `HKCU\Keyboard Layout`.
 
+## macOS (experimental)
+
+**This build has never run on a real Mac.** It was written and type-checked on Windows and is built by CI on the `macos` branch; whether it starts, asks for the permission correctly and types correctly is not known yet. It is not a release and has no automatic update. Design and the list of unverified facts: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 12. Steps to try it: the macOS part of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md) (in Vietnamese).
+
+**Getting it.** For now only as a workflow artifact: the repository's Actions page, workflow `macOS`, the latest run on the `macos` branch, artifact `TrioKey-macos-dmg` (you must be signed in to GitHub). Unzip it to get `TrioKey-X.Y.Z-macos.dmg`. It is one app for Apple silicon and Intel, macOS 11 or later.
+
+**Installing and opening.**
+
+1. Quit every other Vietnamese input method, and switch to a plain layout such as ABC or U.S.
+2. Open the dmg and drag `TrioKey` into `Applications`. Always run it from there, not from the dmg or Downloads.
+3. The app is not signed with an Apple Developer ID and not notarized, so macOS blocks the first open: open it once, click Done, then System Settings > Privacy & Security, scroll down, click Open Anyway, and Open in the next prompt. (These are the steps on macOS 15; other versions may differ.)
+4. TrioKey shows `E` in the menu bar and a window `Hướng dẫn cấp quyền` (permission guide). It needs the **Accessibility** permission to see and change the keys you type: click `Mở cài đặt Accessibility` (open Accessibility settings) and turn TrioKey on; if it is not listed, click + and choose it in Applications. The status line should change to `Đã có quyền, TrioKey đang chạy` (permission granted, running) and the menu bar to `V` within about 2 seconds; if it does not, quit TrioKey and open it again.
+
+**Never turn off or remove TrioKey in the Accessibility list while TrioKey is running.** Developers report that this can freeze the keyboard and mouse until the Mac restarts. Always quit TrioKey first.
+
+**Updating** (each build is signed ad hoc, so the old permission does not carry over), in this order:
+
+1. Quit TrioKey (menu > `Thoát`).
+2. Copy the new `TrioKey` over the one in Applications.
+3. In Accessibility, remove TrioKey (−) and add it again (+).
+4. Open TrioKey.
+
+**What it does.** The same engine as on Windows, so the same words. The menu bar item shows `V` while it types Vietnamese and `E` otherwise; its menu has `Tiếng Việt` (on/off), `Hướng dẫn cấp quyền…` (permission guide), `Chẩn đoán (chép vào clipboard)` (copies a report to paste into a bug report; it contains no typed text) and `Thoát` (quit). It types only while the current input source is a plain Latin keyboard layout (ABC, U.S. and the like). With any other input method selected, including a Japanese one in its Latin mode, it steps aside; on macOS you switch input sources to get back to Vietnamese. It stops while Secure Input is on (some password fields, Terminal's Secure Keyboard Entry), because macOS then hides every key from it.
+
+**What it does not do yet.** No settings window and no settings, no hotkey, no start at login, no updater. Remembered swaps last until you quit; nothing is saved, and the force files are not read. It reads and writes no files and uses no network.
+
 ## Privacy and security
+
+This section describes the Windows app. The macOS build needs the Accessibility permission, which lets it see every key you press while it runs; it writes no files, connects to nothing, and its only output besides the keys is the diagnostics text it puts on the clipboard when you ask.
 
 What it does:
 
@@ -228,9 +256,10 @@ Things to know:
 
 ## How it works
 
-Two crates:
+Three crates:
 
 - **`triokey-engine`**: pure Rust with no operating-system calls. It keeps the raw keys of the word being typed and, after every key, recomputes from scratch what those keys should look like, compares that with what is on screen and returns one edit: delete N characters, insert a string. Between words it keeps little: the line's lean, a few flags about the current run of text (code or not), the Backspace swap on offer and the remembered words. It does not read the screen back, so the real text can still differ in fields that insert suggestions. Telex composition and tone placement come from the [`vi`](https://github.com/ZeroX-DG/vi-rs) crate; the syllable check, the frequency tables, the code rules and the per-word decision are TrioKey's. It has its own test suite and a typing benchmark.
+- **`triokey-mac`**: the macOS menu bar app (experimental, never run on a Mac): a CoreGraphics event tap instead of the hook, the same edits posted as synthetic key events. See [macOS (experimental)](#macos-experimental).
 - **`triokey`**: the Windows tray app. The hook callback asks the engine and, when the text must change, swallows the key and sends Backspaces plus the new text with `SendInput` from inside the callback, so no later key can slip in between. Keys that change nothing pass through untouched. TrioKey's own injected keys are marked and ignored. The hook callback's p99 time is shown in the settings window, under the developer mode box, while developer mode (`Chế độ phát triển`) is on. The only reading so far, on the author's machine with 0.2.0: 314 µs for keys passed through and 5,600 µs for keys that replace text, over 502 keys.
 
 IME state is read from the focused window's default IME window (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): the open status for Japanese, and the open status plus conversion mode for Chinese and Korean. A separate thread keeps the value fresh, so the key path only reads a cached value.
@@ -245,7 +274,8 @@ Not in a fixed order:
 - Fields that insert suggestions (browser address bar, Excel cells).
 - Hand-test Chinese and Korean IMEs.
 - VNI.
-- macOS and Linux front-ends on the same engine.
+- Run the macOS build on a real Mac (rows M1 to M20 of [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)), then release it.
+- A Linux front-end on the same engine.
 
 Not planned: macros, per-app memory, legacy code tables, cloud features.
 

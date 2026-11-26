@@ -1,0 +1,72 @@
+name: macOS
+
+# Builds and checks the macOS dmg (docs/ARCHITECTURE.md, 12. macOS app). Only from the macos branch; no release, no tag,
+# no secrets: the app is signed ad hoc.
+on:
+  push:
+    branches: [macos]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # mise.toml pins the Windows toolchain for local builds; this job uses plain stable
+  RUSTUP_TOOLCHAIN: stable
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component rustfmt,clippy --target aarch64-apple-darwin,x86_64-apple-darwin --no-self-update
+      - name: Format
+        run: cargo fmt --all -- --check
+      # never --workspace: crates/triokey's build.rs refuses any toolchain but x86_64-pc-windows-gnu
+      - name: Clippy
+        run: cargo clippy -p triokey-engine -p triokey-mac --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test -p triokey-engine -p triokey-mac --locked
+      - name: Package
+        run: bash tools/mac/package.sh
+      - name: Check the bundle and the dmg
+        run: |
+          set -euo pipefail
+          app=target/mac/TrioKey.app
+          plutil -lint "$app/Contents/Info.plist"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          archs=$(lipo -archs "$app/Contents/MacOS/TrioKey")
+          echo "architectures: $archs"
+          [[ " $archs " == *" arm64 "* && " $archs " == *" x86_64 "* ]]
+          dmg=$(ls target/mac/TrioKey-*-macos.dmg)
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          ls -la "$mnt"
+          test -d "$mnt/TrioKey.app"
+          test -L "$mnt/Applications"
+          compgen -G "$mnt/DOC TRUOC - READ FIRST*" > /dev/null
+          hdiutil detach "$mnt"
+      # the likeliest failure of AppKit code that has never run is a crash at start-up: this shows it. macOS has no
+      # `timeout`; perl's alarm survives exec and kills the app if it hangs
+      - name: Self-test
+        run: perl -e 'alarm shift; exec @ARGV or die "exec: $!"' 30 target/mac/TrioKey.app/Contents/MacOS/TrioKey --self-test
+      # objc2 checks every message's argument and return types against the Objective-C runtime only in debug builds
+      - name: Self-test (debug build, message types checked)
+        run: |
+          cargo build -p triokey-mac --locked
+          perl -e 'alarm shift; exec @ARGV or die "exec: $!"' 30 target/debug/triokey-mac --self-test
+      # also when a self-test fails: the dmg is still worth trying on a real Mac
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: success() || failure()
+        with:
+          name: TrioKey-macos-dmg
+          path: target/mac/TrioKey-*-macos.dmg
+          if-no-files-found: error

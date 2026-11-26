@@ -12,7 +12,7 @@
 
 [English](README.md) · **Tiếng Việt**
 
-Bộ gõ tiếng Việt cho Windows, dành cho người ngày nào cũng gõ cả tiếng Anh, tiếng Việt và một trong ba thứ tiếng Trung, Nhật, Hàn (CJK). Khi gõ trộn hằng ngày, bạn không phải bật/tắt bộ gõ tiếng Việt: nút duy nhất cần bấm là nút bật/tắt của chính IME CJK.
+Bộ gõ tiếng Việt cho Windows (đã có một bản macOS đầu tiên, còn là bản thử nghiệm và chưa từng chạy trên máy Mac; xem [macOS (thử nghiệm)](#macos-thử-nghiệm)), dành cho người ngày nào cũng gõ cả tiếng Anh, tiếng Việt và một trong ba thứ tiếng Trung, Nhật, Hàn (CJK). Khi gõ trộn hằng ngày, bạn không phải bật/tắt bộ gõ tiếng Việt: nút duy nhất cần bấm là nút bật/tắt của chính IME CJK.
 
 ```text
 phím gõ             chữ hiện ra
@@ -55,7 +55,7 @@ Không gõ tắt, không nhớ chế độ theo ứng dụng, không cloud, khô
 - Terminal không có xử lý riêng. Các ô tự chèn gợi ý sau con trỏ (thanh địa chỉ trình duyệt, ô Excel) cũng vậy.
 - Không nhận ra được ô mật khẩu trong trình duyệt và ứng dụng Electron; xem [Riêng tư và bảo mật](#riêng-tư-và-bảo-mật).
 - Một số ứng dụng giấu trạng thái IME. Khi không đọc được, TrioKey dùng trạng thái đọc được gần nhất của cửa sổ đó; nếu chưa có thì trên layout CJK nó nhường.
-- macOS và Linux chưa bắt đầu.
+- **macOS:** bản đầu tiên nằm trên nhánh `macos`; một workflow build nó mỗi lần có push lên nhánh đó (chưa có kết quả nào được ghi lại); nó chưa từng chạy trên máy Mac thật và chưa phát hành. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm). Linux chưa bắt đầu.
 
 ## TrioKey gõ ra gì trong từng trường hợp
 
@@ -199,7 +199,35 @@ Các bước này viết theo mã nguồn; chưa từng được chạy trên m�
 
 Nếu chưa từng bật hai tuỳ chọn trên thì bước 2 và 3 là toàn bộ việc gỡ. TrioKey không đăng ký gì khác: không layout bàn phím, không mục nào trong danh sách bàn phím của Windows, không gì dưới `HKCU\Keyboard Layout`.
 
+## macOS (thử nghiệm)
+
+**Bản này chưa từng chạy trên máy Mac thật.** Nó được viết và kiểm kiểu trên Windows, do CI build trên nhánh `macos`; nó có mở được không, xin quyền có đúng không, gõ có đúng không thì chưa ai biết. Đây không phải bản phát hành và không có tự cập nhật. Thiết kế và danh sách những điều chưa kiểm chứng: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), mục 12 (bằng tiếng Anh). Các bước gõ thử: phần macOS của [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md).
+
+**Lấy bản dựng.** Tạm thời chỉ có dưới dạng artifact của workflow: trang Actions của repo, workflow `macOS`, lần chạy mới nhất trên nhánh `macos`, artifact `TrioKey-macos-dmg` (cần đăng nhập GitHub). Giải nén để có `TrioKey-X.Y.Z-macos.dmg`. Một ứng dụng chạy được cả trên Apple silicon lẫn Intel, macOS 11 trở lên.
+
+**Cài và mở.**
+
+1. Thoát mọi bộ gõ tiếng Việt khác, và chuyển sang một bàn phím Latin thường như ABC hoặc U.S.
+2. Mở dmg, kéo `TrioKey` vào `Applications`. Luôn chạy từ đó, không chạy thẳng từ dmg hay thư mục Downloads.
+3. Ứng dụng không có chữ ký Apple Developer ID và chưa được Apple công chứng (notarize), nên macOS chặn lần mở đầu: mở một lần, bấm Xong, rồi vào Cài đặt hệ thống → Quyền riêng tư & Bảo mật, kéo xuống, bấm `Vẫn mở` (Open Anyway), và bấm `Mở` ở hộp thoại tiếp theo. (Đây là các bước trên macOS 15; bản macOS khác có thể khác.)
+4. TrioKey hiện chữ `E` trên thanh menu và cửa sổ `Hướng dẫn cấp quyền`. Nó cần quyền **Trợ năng (Accessibility)** để thấy và sửa phím bạn gõ: bấm `Mở cài đặt Accessibility` rồi bật TrioKey; nếu không thấy trong danh sách thì bấm + và chọn TrioKey trong Applications. Trong khoảng 2 giây, dòng trạng thái phải đổi thành `Đã có quyền, TrioKey đang chạy` và thanh menu thành `V`; nếu không, hãy thoát TrioKey rồi mở lại.
+
+**Không bao giờ tắt hoặc xoá TrioKey khỏi danh sách Trợ năng khi TrioKey đang chạy.** Theo báo cáo của các lập trình viên, việc đó có thể làm bàn phím và chuột đứng cho tới khi khởi động lại máy. Luôn thoát TrioKey trước.
+
+**Cài bản mới** (mỗi bản dựng được ký ad hoc nên quyền cũ không dùng được cho bản mới), theo đúng thứ tự:
+
+1. Thoát TrioKey (menu → `Thoát`).
+2. Chép TrioKey mới đè lên bản trong Applications.
+3. Trong Trợ năng, xoá TrioKey (−) rồi thêm lại (+).
+4. Mở TrioKey.
+
+**Bản này làm gì.** Cùng lõi gõ với bản Windows, nên cùng kết quả cho từng từ. Mục trên thanh menu hiện `V` khi đang gõ tiếng Việt và `E` trong mọi trường hợp khác; menu của nó có `Tiếng Việt` (bật/tắt), `Hướng dẫn cấp quyền…`, `Chẩn đoán (chép vào clipboard)` (chép một đoạn thông tin để dán vào báo lỗi; không chứa chữ bạn đã gõ) và `Thoát`. Nó chỉ gõ khi nguồn nhập đang chọn là một bàn phím Latin thường (ABC, U.S. và tương tự). Khi chọn bất kỳ bộ gõ nào khác, kể cả bộ gõ tiếng Nhật ở chế độ Latin, nó nhường; trên macOS bạn chuyển nguồn nhập để quay lại gõ tiếng Việt. Nó ngừng khi Secure Input bật (một số ô mật khẩu, `Secure Keyboard Entry` của Terminal), vì khi đó macOS giấu mọi phím khỏi nó.
+
+**Chưa làm.** Không có cửa sổ cài đặt và không có tuỳ chọn nào, không phím tắt, không khởi động cùng máy, không tự cập nhật. Các lần đổi đã giữ chỉ được nhớ tới khi thoát; không có gì được lưu, và các file ép từ không được đọc. Nó không đọc, không ghi file nào và không dùng mạng.
+
 ## Riêng tư và bảo mật
+
+Mục này mô tả bản Windows. Bản macOS cần quyền Trợ năng, quyền này cho nó thấy mọi phím bạn bấm khi nó chạy; nó không ghi file nào, không kết nối đi đâu, và ngoài các phím ra thì thứ duy nhất nó xuất ra là đoạn chẩn đoán chép vào clipboard khi bạn yêu cầu.
 
 Những gì nó làm:
 
@@ -228,9 +256,10 @@ Những gì nó không bao giờ làm:
 
 ## Cách hoạt động
 
-Hai crate:
+Ba crate:
 
 - **`triokey-engine`**: Rust thuần, không gọi hệ điều hành. Nó giữ dãy phím gốc của từ đang gõ và, sau mỗi phím, tính lại từ đầu xem dãy phím ấy nên hiện thành gì, so với chữ đang có trên màn hình rồi trả về một lệnh sửa: xoá N ký tự, chèn một chuỗi. Giữa hai từ, lõi giữ rất ít: độ nghiêng của dòng, vài cờ về đoạn chữ đang gõ (có phải mã hay không), lần đổi bằng Backspace đang chờ và các từ đã nhớ. Lõi không đọc lại màn hình, nên chữ thật vẫn có thể khác ở những ô tự chèn gợi ý. Phần ghép Telex và đặt dấu thanh dùng crate [`vi`](https://github.com/ZeroX-DG/vi-rs); phần kiểm tra âm tiết, các bảng tần suất, các luật về mã và quyết định cho từng từ là của TrioKey. Lõi có bộ test riêng và một bài đo gõ chữ.
+- **`triokey-mac`**: ứng dụng trên thanh menu cho macOS (thử nghiệm, chưa từng chạy trên máy Mac): dùng một event tap của CoreGraphics thay cho hook, gửi cùng các lệnh sửa dưới dạng phím giả lập. Xem [macOS (thử nghiệm)](#macos-thử-nghiệm).
 - **`triokey`**: ứng dụng khay cho Windows. Callback của hook hỏi lõi gõ và, khi chữ cần đổi, chặn phím rồi gửi Backspace cùng chữ mới bằng `SendInput` ngay trong callback, để không phím nào gõ sau chen vào giữa. Phím không làm đổi chữ thì đi thẳng, không bị đụng tới. Phím do chính TrioKey gửi được đánh dấu và bỏ qua. Thời gian p99 của callback được hiện trong cửa sổ cài đặt, ngay dưới ô `Chế độ phát triển`, khi ô đó được chọn. Lần đọc duy nhất tới nay, trên máy của tác giả với bản 0.2.0: 314 µs với phím đi thẳng và 5.600 µs với phím thay chữ, trên 502 phím.
 
 Trạng thái IME được đọc từ cửa sổ IME mặc định của cửa sổ đang gõ (`ImmGetDefaultIMEWnd` + `WM_IME_CONTROL`): open status với tiếng Nhật, open status cùng conversion mode với tiếng Trung và tiếng Hàn. Một luồng riêng giữ cho giá trị này luôn mới, nên đường xử lý phím chỉ đọc một giá trị đã lưu sẵn.
@@ -245,7 +274,8 @@ Không theo thứ tự cố định:
 - Các ô tự chèn gợi ý (thanh địa chỉ trình duyệt, ô Excel).
 - Gõ thử bằng tay với IME tiếng Trung và tiếng Hàn.
 - VNI.
-- Bản macOS và Linux dùng chung lõi gõ.
+- Chạy bản macOS trên máy Mac thật (các dòng M1 tới M20 trong [docs/HANDS_ON_TEST.md](docs/HANDS_ON_TEST.md)), rồi phát hành.
+- Bản Linux dùng chung lõi gõ.
 
 Không định làm: gõ tắt, nhớ chế độ theo ứng dụng, bảng mã cũ, tính năng cloud.
 

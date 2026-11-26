@@ -14,6 +14,9 @@ app icons and the save at logoff have so far been checked only by `cargo test` a
 never been tried by hand. The other checklist rows (among them hook reinstall, admin mode and the
 update swap, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
 
+Sections 1 to 11 describe the Windows app. The macOS app shares only the engine and is described
+in section 12; none of it has ever run on a Mac.
+
 ## 1. Goals and constraints
 
 ### 1.1 Goals and hard constraints
@@ -71,6 +74,9 @@ higher integrity level needs an elevated copy (section 8).
 | `crates/triokey/src/admin.rs`, `autostart.rs` | Admin mode (Program Files copy, scheduled task), Run value |
 | `crates/triokey/src/update.rs` | Signed self-update |
 | `crates/triokey/build.rs` | Embeds the app icon and the manifest |
+| `crates/triokey-mac/src/{keymap,plan,source,text,diag}.rs` | macOS app, the parts with no macOS call (tested on every system): key classes, what to post, input source rule, interface text, diagnostics (section 12) |
+| `crates/triokey-mac/src/mac/` | macOS app, built only on macOS: event tap, TIS, menu bar item and guide window, start-up (section 12) |
+| `tools/mac/package.sh` | Builds `TrioKey.app` and the dmg on a Mac (section 12.9) |
 | `crates/xtask` | Release tool: `keygen`, `sign`, `verify` (not shipped) |
 | `tools/corpus` | Builds the frequency tables and the web benchmark sets |
 
@@ -804,7 +810,8 @@ light taskbar and a light shade on a dark one, and the tray redraws them when th
 `.github/workflows/ci.yml`, on pushes to `main` and on pull requests, on a Windows runner with the
 GNU toolchain: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked --
 -D warnings`, `cargo test --workspace --locked`, `cargo build -p triokey --release --locked`. Third-party actions are pinned to commit
-SHAs.
+SHAs. The workspace includes `triokey-mac`; on Windows its binary is an empty stub, and its tests
+cover the parts with no macOS call. The macOS workflow is separate (section 12.10).
 
 ### 10.3 Release flow
 
@@ -843,6 +850,9 @@ edited workflow under a tag; the protection is who has push access. Steps and re
   password class test, task XML, Run value, the elevated checked writes and reads on real
   temporary folders with junctions and links, version comparison, trusted comment, host list,
   placeholder key, signature refusal cases, the swap);
+- macOS app (`triokey-mac`, the parts with no macOS call): key classification, the post plan
+  (Return/Tab split, 20-unit chunks that keep surrogate pairs whole), the input source rule,
+  the state order and interface text, the diagnostics text;
 - `xtask`: key generation, sign and verify round trip, refusals.
 
 ### 11.2 Typing benchmark
@@ -901,9 +911,231 @@ failures.
 the first key after a toggle (AT1 to AT3, AT2-CK for Chinese and Korean), autocomplete fields
 (AT5), the language list left unchanged (AT6), hook latency (AT7), Win32 password fields (AT8),
 tray, settings window, autostart, admin mode (AT9), updates (AT10), mixed English and Vietnamese
-typing with the frequency engine (AT11) and remembering kept swaps in `learned.txt` (AT12).
+typing with the frequency engine (AT11) and remembering kept swaps in `learned.txt` (AT12). Its
+macOS part (rows M1 to M20) is the first run of the macOS app.
 
-## 12. Known limits and non-goals
+## 12. macOS app
+
+`crates/triokey-mac`, version 0.3.0 (its own number, separate from the Windows `triokey`). Nothing
+in this section has been run on a Mac: the code was written on Windows and type-checked there for
+`aarch64-apple-darwin` (12.12 lists what is unverified). It is built only from the `macos` branch
+and is not part of any release.
+
+### 12.1 Model: an event tap and synthetic keys
+
+The same model as Windows (section 1.2), with macOS parts. No input source is registered (no
+Input Method Kit bundle), no keyboard layout is added, and the input source list is not touched.
+TrioKey is an agent app (`LSUIElement`, activation policy Accessory): no Dock icon, one menu bar
+item showing `V` (typing Vietnamese) or `E` (everything else; the tooltip says why).
+
+- **Reading keys.** One session event tap (`CGEvent::tap_create`, `SessionEventTap`,
+  `HeadInsertEventTap`, `Default` options, so it can swallow events) for key-down and the three
+  mouse-down types, added to the main run loop in the common modes. A mouse-down resets the word.
+- **Classifying** (`keymap.rs`, the classes of the Windows `keymap.rs`): the character comes from
+  `CGEventKeyboardGetUnicodeString`. Modifier key codes are ignored. Command or Control, Option+Delete,
+  Escape, the arrows, Home/End/Page Up/Page Down, Forward Delete and the function keys break the
+  word and pass. An auto-repeated key breaks the word, except Delete. Delete is Backspace, Return
+  and keypad Enter are `\n`, Tab is `\t`. One ASCII letter goes to `Engine::key`, one other printable
+  ASCII character or space is a boundary, anything else (a dead key, an Option letter such as `å`,
+  several characters) breaks the word.
+- **Writing text** (`plan.rs`, `tap.rs`): for an `Edit`, the key is swallowed and TrioKey posts N
+  presses of Delete (`kVK_Delete`), then the text as key code 0 events carrying a Unicode string
+  (`CGEventKeyboardSetUnicodeString`), in pieces of at most 20 UTF-16 units that never split a
+  surrogate pair, then, when the word ended with Return or Tab, a real Return (also for keypad Enter) or Tab key. Return and Tab typed
+  as characters do not act as the key in most apps, so the edit's trailing `\n` or `\t` is replaced
+  by the key itself, which keeps the original event's Shift and Option (Shift+Return is a new line
+  in chat apps where Return sends); the Deletes and the text carry no modifiers. Every event is
+  built before the first is posted, so a failure half way leaves nothing half typed.
+- **Own events.** The events are posted from inside the callback with `CGEventTapPostEvent` and the
+  callback's proxy; Apple documents that they then reach only taps after this one, so TrioKey never
+  sees its own events and has no own-event check. Each event still carries `kCGEventSourceUserData`
+  = `0x45564A31` so that another tap could tell them apart; TrioKey itself never reads it.
+
+### 12.2 Everything on the main thread
+
+AppKit (the menu bar item, the menu, the guide window, the alert), the tap's run loop source, every
+TIS call and the `Engine` all live on the main thread, in thread-locals (`app.rs` `APP`, `tap.rs`
+`TAP`, `ui.rs` `UI`). Reasons: TIS must be called on the main thread (newer macOS releases crash
+off it), and with one thread there are no locks and no messages between threads, unlike Windows
+(section 2.2). The cost: anything slow on the main thread delays keys, and if the callback is too
+slow macOS disables the tap (`kCGEventTapDisabledByTimeout`). TrioKey re-enables it at once and
+counts it for the diagnostics. The alert of the diagnostics item spins the run loop, so the tap can
+run during it; no borrow of the app state is held there.
+
+Before the tap exists, `app::run` warms the engine as `hook::spawn` does (section 2.5): one
+throwaway word and one `Lexicon::rates` call.
+
+### 12.3 Callback rules and the fail-open rule
+
+Inside the tap callback (`tap.rs` `callback` and everything it calls): no file or network access,
+nothing slow, nothing that can block. This code swallows keys and was written without a Mac to run
+it on, so it **fails open**: the whole callback runs under `catch_unwind`; a panic or an internal
+error (for example a key event that cannot be created) disables the tap for the rest of the
+process (`app::fail`: `CGEventTapEnable(false)` and the run loop source invalidated), records what
+happened for the diagnostics, shows the error state (`E`, tooltip `TrioKey: lỗi, đã ngừng bắt
+phím`) and lets the event through unchanged. A panic never unwinds into CoreGraphics or AppKit;
+menu actions, the timer and the notification are guarded the same way. The only way back is to quit
+and reopen TrioKey. The panic hook keeps only the file and line of a panic (its message could quote
+typed text); the self-test prints the whole message. Quitting disables the tap before the process
+ends.
+
+`kCGEventTapDisabledByTimeout` and `kCGEventTapDisabledByUserInput` arrive in the callback: the tap
+is re-enabled and the event counted.
+
+### 12.4 Permission
+
+An active tap needs the Accessibility permission. TrioKey asks for that one only, not Input
+Monitoring: developer reports say the Accessibility grant is enough for an active tap (unverified,
+12.12).
+
+- **The check is creating the tap.** `AXIsProcessTrusted` and the preflight calls are reported to
+  keep their old answer while the process runs, so a failed `tap_create` is the only signal used.
+  `AXIsProcessTrusted` is shown in the diagnostics, nothing more.
+- **At start**, if the tap cannot be created, TrioKey calls `AXIsProcessTrustedWithOptions` with
+  the prompt option once (so that macOS lists TrioKey under Accessibility; the answer is ignored)
+  and shows the guide window: why the permission is needed, the steps, a button that opens
+  Privacy & Security > Accessibility (the `x-apple.systempreferences:` address is widely used but
+  not documented by Apple), a status line, and the warnings below. The menu item `Hướng dẫn cấp
+  quyền…` opens it again.
+- **After the grant**, a 2-second timer (and opening the menu) tries to create the tap while there
+  is none and no error has happened. When it succeeds, the status line changes from `Chưa có quyền`
+  to `Đã có quyền, TrioKey đang chạy` and the menu bar item to `V`, without a restart. If it does not,
+  the window says to quit and reopen TrioKey.
+- **Removing the grant while TrioKey runs** is reported (Sequoia and Tahoe) to freeze all keyboard
+  and mouse input until a restart, with no event telling the tap first. TrioKey does not detect a
+  revoked grant; the guide window, the dmg's read-me and the READMEs say to quit TrioKey before
+  turning it off or removing it.
+- **Every new build loses the grant.** The app is signed ad hoc, and an ad-hoc signature's
+  requirement pins the code hash (TN3127), so after an update the old entry no longer matches. The
+  order is: quit, replace the app, remove the entry (−) and add it again (+).
+
+### 12.5 Input source rule
+
+TrioKey types only when the current input source (`TISCopyCurrentKeyboardInputSource`) is a plain
+keyboard layout (`kTISPropertyInputSourceType` = `TISTypeKeyboardLayout`) that is ASCII capable.
+Anything else yields (`E`, tooltip `TrioKey: Tiếng Anh — đang nhường bộ gõ khác`): every input
+method or input mode, including a Japanese input method in its Latin mode, a non-ASCII layout, and
+a source that could not be read (the copy can return NULL with some CJK input methods).
+
+This is deliberately conservative. On Windows TrioKey reads whether the CJK IME is open
+(section 3); this build reads nothing like that, and the source IDs and types that CJK input
+methods report have not been seen on a Mac. Stepping aside when unsure costs a layout switch;
+typing Telex into an input method's composition would mangle it. So on macOS the "one switch"
+of Windows does not hold: to type Vietnamese, switch to a plain layout such as ABC or U.S.
+
+The source is read at start, on the distributed notification
+`kTISNotifySelectedKeyboardInputSourceChanged` (delivered immediately, because an agent app is
+never active; handled only when it arrives on the main thread), on every 2-second tick and when
+the menu opens. A change drops the word. Each distinct source seen since launch (at most 32) is
+kept for the diagnostics, so a less conservative rule can later be built from real IDs. The TIS
+declarations are hand-written from `TextInputSources.h` (`tis.rs`); no maintained crate covers TIS.
+
+### 12.6 Secure Input
+
+While any process has Secure Event Input on (password fields of native apps, some terminals'
+"Secure Keyboard Entry"), no event tap receives keyboard events (TN2150). TrioKey cannot type
+then and cannot see the keys anyway. It reads `IsSecureEventInputEnabled` on every tick and when
+the menu opens and shows `E` with the tooltip `TrioKey: bàn phím đang bị Secure Input chặn`. State
+order (`text.rs` `state`): error, then no permission (no tap), then Secure Input, then switched
+off, then yielding, then Vietnamese.
+
+### 12.7 Diagnostics
+
+The menu item `Chẩn đoán (chép vào clipboard)` puts a plain-text report on the clipboard and says
+so in an alert; it works without the permission and without a tap. It exists because this build
+has never run on a Mac: the report is what the owner pastes back after trying it, and it answers
+the questions this section leaves open. Contents (`diag.rs`): version, macOS version and
+architecture; the bundle path with the home folder written as `~`, and whether it runs under App
+Translocation; whether the tap was created and is enabled, and `AXIsProcessTrusted`; Secure Input;
+the state; the current input source and every source seen since launch (ID, type, mode, ASCII
+capable, and the decision); counters (key events, replacements, characters and Deletes posted,
+re-enables after timeout or user input, panics caught); the last error. It never holds typed text.
+Nothing is written to a file and nothing is sent: the clipboard is the only output.
+
+### 12.8 Bundle identifier
+
+`io.github.ved0el.triokey`, fixed (`lib.rs` `BUNDLE_ID`, written into `Info.plist` by
+`package.sh`). The Accessibility grant and the single-instance check are tied to it: at start, if
+another running application has the same identifier, the new copy exits at once (the self-test
+fails instead).
+
+### 12.9 Packaging
+
+`tools/mac/package.sh`, run on a Mac, takes no secrets: release builds for `aarch64-apple-darwin`
+and `x86_64-apple-darwin` with `MACOSX_DEPLOYMENT_TARGET=11.0`, one universal binary (`lipo`),
+`Info.plist` (version from `crates/triokey-mac/Cargo.toml`, `LSUIElement`,
+`LSMinimumSystemVersion` 11.0), an icon scaled down from `assets/brand/icon-512.png` (there is no
+1024 px source), an ad-hoc signature over the whole bundle (`codesign --force --deep -s -`; arm64
+code must be signed to run), and `TrioKey-<version>-macos.dmg` holding the app, a link to
+`/Applications` and a read-me in Vietnamese and English (`DOC TRUOC - READ FIRST.txt`). There is no
+Developer ID signature and no notarization, so the first open needs Open Anyway.
+
+### 12.10 Branch workflow and self-test
+
+`.github/workflows/macos.yml` runs on pushes to the `macos` branch only, on `macos-15`, with no
+secrets and read-only permissions; it never tags or releases. Steps: `cargo fmt`, then clippy and
+tests with `-p triokey-engine -p triokey-mac` (never `--workspace`: `crates/triokey/build.rs`
+refuses any toolchain but `x86_64-pc-windows-gnu`), `package.sh`, checks of the bundle and the dmg
+(`plutil -lint`, `codesign --verify`, both architectures in the binary, the dmg's contents), then
+the self-test twice: on the packaged universal app and on a debug build, where objc2 checks every
+message's argument and return types against the Objective-C runtime. Each self-test is killed after
+30 seconds. The dmg is uploaded as the artifact `TrioKey-macos-dmg`, also when a self-test fails.
+
+`--self-test` builds everything a normal start builds (the engine, the state, the menu bar item,
+the menu, the guide window, the timer and the notification observer), shows nothing, creates no tap,
+asks for nothing, prints the diagnostics and exits without running the run loop. It shows a crash
+at start-up or a wrong message type, the likeliest failures of AppKit code that never ran. It cannot
+show the tap, posting, the permission or typing. ("Shows nothing" means no window: the menu bar item is created
+as in a normal start, and the process ends right after.)
+
+On Windows the `triokey-mac` binary is an empty `main`, and the macOS-only dependencies are not
+built, so the four gates of section 10.2 build and test the platform-free modules. From Windows the
+macOS code is type-checked with `cargo check` / `cargo clippy -p triokey-mac --target
+aarch64-apple-darwin` (the target must be installed); it cannot be linked or run there.
+
+### 12.11 Not in this build
+
+- No settings window and no settings: the engine runs with `Config::default()`. On/off only from
+  the menu (`Tiếng Việt`), not saved.
+- No hotkey.
+- No start at login.
+- Remembered words are not saved: a kept swap is remembered while TrioKey runs and forgotten when
+  it quits. No `learned.txt`, no force files; TrioKey reads and writes no file at all.
+- No updater and no network access of any kind.
+- No reading of a CJK input method's open or closed state (12.5), no password field detection
+  beyond Secure Input.
+
+### 12.12 Never run, and unverified
+
+Never run on a Mac: all of it. That includes start-up outside the CI self-test, the menu bar item
+and menu, the guide window, the permission flow, the tap, posting Deletes and text, the input source
+rule, Secure Input, the diagnostics, quitting, the single-instance check, the package script and
+the dmg, and the workflow itself. No result of the workflow is recorded here.
+
+Unverified facts the code relies on:
+
+- that the Accessibility grant alone lets an active session tap be created (no Input Monitoring);
+- that `AXIsProcessTrusted` goes stale while the process runs, and that a new tap succeeds within
+  2 seconds of the grant without a restart;
+- the Settings address for Accessibility;
+- that apps accept the Unicode string of a key code 0 event (some translate from the key code
+  instead), and the 20-unit limit per event;
+- that a posted Delete removes exactly one character in every app; browser address bars with
+  inline completion reportedly need one Delete more (the completion is deleted first), terminals
+  and Electron apps were not looked into;
+- that Shift or Option on the posted Return reaches the app as on the real key;
+- the TIS declarations, the notification name and its delivery to an agent app (if it never
+  arrives, up to 2 seconds of keys are handled under the previous source), and the source types and
+  IDs CJK input methods report;
+- that `activateIgnoringOtherApps` (deprecated from macOS 14) still brings the guide window forward;
+- how often macOS disables the tap for a timeout with everything on the main thread;
+- the freeze when the grant is removed while TrioKey runs (reported by developers; only warned
+  about);
+- the Open Anyway steps on macOS 14 and 26 (only Sequoia's were found), and that moving the app to
+  Applications ends App Translocation;
+- whether browser password fields turn Secure Input on.
+
+## 13. Known limits and non-goals
 
 **Not built, on purpose:**
 
@@ -915,7 +1147,8 @@ typing with the frequency engine (AT11) and remembering kept swaps in `learned.t
   (browser address bar, Excel): they get the same Backspace-and-insert edits as everything else,
   and an inserted suggestion after the cursor can make the Backspace count wrong.
 - Detecting password fields outside Win32 edit controls.
-- Registering a text service or keyboard layout (section 1.2). A macOS or Linux shell.
+- Registering a text service or keyboard layout (section 1.2), on Windows or, as an input source,
+  on macOS (section 12). A Linux front-end.
 
 **Known behaviour of the engine** (each fixable with one Backspace unless noted):
 

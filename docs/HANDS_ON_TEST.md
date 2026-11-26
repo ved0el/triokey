@@ -84,7 +84,7 @@ Nếu CK2/CK6 trượt (TrioKey sửa chữ trong lúc IME đang soạn, hoặc 
 
 ## AT5 — Ô có tự điền
 
-TrioKey không có xử lý riêng cho ô tự điền (`docs/ARCHITECTURE.md`, mục 12); lần này chỉ đo hiện trạng.
+TrioKey không có xử lý riêng cho ô tự điền (`docs/ARCHITECTURE.md`, mục 13); lần này chỉ đo hiện trạng.
 
 | Bước | Thao tác | Mong đợi | Kết quả |
 | --- | --- | --- | --- |
@@ -276,6 +276,43 @@ Notepad, bản thường (chưa bật chế độ admin), mỗi bước ở mộ
 | 12h | Bản thường đang chạy: đổi tên `learned.txt` thành tên khác, rồi `Cài đặt…` → chọn `Chạy quyền admin…`, khi UAC hiện thì xem thư mục, bấm **No** | `learned.txt` mới (chỉ có hai dòng `#`) đã có trước khi UAC hiện; bấm No không đổi gì khác. Xoá file mới, đổi tên file cũ lại | |
 | 12i | Bật lại chế độ admin và chạy bản admin (AT9, bước 9c và 9g): làm 12c trong Notepad thường | `thí `; `learned.txt` có dòng `this` + `thí` (bản admin ghi được file có sẵn). Dọn: làm 12e | |
 | 12j | Bản admin đang chạy: đổi tên `learned.txt` thành tên khác; đăng xuất, đăng nhập lại (bản admin tự chạy); làm 12c rồi chờ 3 giây; `Thoát` | trong phiên đó vẫn ra `thí ` lần sau (nhớ trong bộ nhớ); **không** có `learned.txt` nào được tạo, kể cả sau khi Thoát. Đổi tên file cũ lại | |
+
+# macOS (bản thử nghiệm, M1–M20)
+
+**Chưa dòng nào dưới đây được chạy.** Bản macOS được viết trên Windows và chưa từng chạy trên máy Mac thật; mọi cột `Mong đợi` là điều mã nguồn định làm, không phải điều đã thấy. Thiết kế: `docs/ARCHITECTURE.md`, mục 12. Làm lần lượt từ trên xuống, ghi kết quả vào ô `Kết quả`, và ghi phiên bản macOS (menu Apple → Giới thiệu về máy Mac này) cùng loại máy (Apple silicon hay Intel).
+
+**Trước khi bắt đầu**
+
+1. Tải bản dựng: trang Actions của repo, workflow `macOS`, lần chạy mới nhất trên nhánh `macos`, mục Artifacts → `TrioKey-macos-dmg` (cần đăng nhập GitHub). Giải nén ra `TrioKey-0.3.0-macos.dmg`. Ghi lại lần chạy đó có bước `Self-test` xanh hay đỏ: dmg vẫn được tải lên cả khi self-test trượt.
+2. Thoát mọi bộ gõ tiếng Việt khác. Nếu đang dùng nguồn nhập tiếng Việt có sẵn của macOS thì chuyển sang ABC hoặc U.S.: TrioKey chỉ gõ khi nguồn nhập là một bàn phím Latin thường (ABC, U.S.…); với mọi bộ gõ khác (kể cả tiếng Nhật ở chế độ Latin) nó nhường.
+3. Menu bar: `V` = đang gõ tiếng Việt, `E` = mọi trường hợp khác. Di chuột lên chữ để xem lý do (tooltip có thể không hiện với mục menu bar; khi đó mở menu → `Chẩn đoán`, dòng `state:` cho biết).
+
+**Thoát:** bấm chữ `V`/`E` trên menu bar → `Thoát`. Nếu bàn phím loạn mà không bấm được menu: Activity Monitor → chọn TrioKey → nút ⓧ → Buộc thoát. **Không** tắt hay xoá TrioKey trong Trợ năng (Accessibility) khi nó đang chạy: theo các báo cáo của lập trình viên, việc đó có thể làm bàn phím và chuột đứng tới khi khởi động lại máy.
+
+| Bước | Thao tác | Mong đợi | Kết quả |
+| --- | --- | --- | --- |
+| M1 | Mở dmg, kéo `TrioKey` vào lối tắt `Applications` bên cạnh. Mở file `DOC TRUOC - READ FIRST.txt` | TrioKey nằm trong thư mục Applications; file đọc trước có hai phần tiếng Việt và tiếng Anh | |
+| M2 | Mở TrioKey **từ Applications** (không phải từ dmg) | macOS báo không mở được vì chưa kiểm được nhà phát triển; bấm Xong. Ghi lại đúng chữ trong hộp thoại | |
+| M3 | Cài đặt hệ thống → Quyền riêng tư & Bảo mật, kéo xuống, bấm `Vẫn mở` (Open Anyway), rồi `Mở` ở hộp thoại sau. Ghi lại nếu các bước khác đi (macOS 14 và 26 chưa ai xem) | TrioKey chạy: không có biểu tượng ở Dock, chữ `E` hiện trên menu bar | |
+| M4 | Ngay sau M3 | Cửa sổ `Hướng dẫn cấp quyền` hiện ra phía trước, dòng trạng thái in đậm `Chưa có quyền`; có thể kèm hộp thoại của macOS mời mở cài đặt Trợ năng. Menu bar `E`, tooltip `TrioKey: chưa có quyền Accessibility` | |
+| M5 | Bấm nút `Mở cài đặt Accessibility` | Cài đặt hệ thống mở đúng trang Quyền riêng tư & Bảo mật → Trợ năng. Nếu mở trang khác hoặc không mở: ghi lại rồi tự vào trang đó | |
+| M6 | Bật công tắc TrioKey (không thấy trong danh sách thì bấm `+` và chọn TrioKey trong Applications). Nhìn cửa sổ hướng dẫn, không khởi động lại TrioKey | Trong vòng khoảng 2 giây: dòng trạng thái đổi thành `Đã có quyền, TrioKey đang chạy`, menu bar thành `V` (nguồn nhập ABC/U.S.). Nếu sau 10 giây vẫn `Chưa có quyền`: Thoát, mở lại TrioKey từ Applications, ghi lại là phải mở lại | |
+| M7 | Menu → `Chẩn đoán (chép vào clipboard)`, dán vào ô Kết quả hoặc gửi lại | Một hộp thoại báo đã chép; đoạn chữ có `tap: created yes, enabled yes`, `bundle: /Applications/TrioKey.app (AppTranslocation: no)`, `state: TrioKey: Tiếng Việt`, và không chứa chữ nào bạn đã gõ | |
+| M8 | TextEdit (một văn bản mới), mỗi bước một dòng: `tieesng vieejt ` · `DDuowngf ` · `windows terrible ` | `tiếng việt ` · `Đường ` · `windows terrible ` | |
+| M9 | TextEdit, dòng trộn: `tooi caanf test laij ` · `OS naof cungx dduwowcj ` | `tôi cần test lại ` · `OS nào cũng được ` | |
+| M10 | TextEdit, Backspace: `this ` rồi ⌫ · dòng mới `this ` rồi ⌫ ⌫ · dòng mới `tooi ` rồi ⌫ | `thí` · `th` · `tôi` (chỉ xoá dấu cách) | |
+| M11 | TextEdit: gõ `w` (thấy `ư`) rồi Enter · dòng mới `w` rồi Tab | `w` rồi xuống dòng thật · `w` rồi một ký tự Tab. Trong một ứng dụng chat mà Enter là gửi (Messages, Slack…): `w` rồi Shift+Enter thì xuống dòng, không gửi | |
+| M12 | Trang web trong Safari hoặc Chrome (một ô soạn thảo nhiều dòng, không phải thanh địa chỉ): làm lại M8 và M10 | như M8 và M10 | |
+| M13 | Thanh địa chỉ Safari hoặc Chrome: gõ `tieesng vieejt` (xoá trắng ô trước) 5 lần | ghi lại, không chặn: ô có tự điền có thể làm thiếu hoặc thừa một ký tự | / 5 |
+| M14 | Terminal (và iTerm2 nếu có): `echo tieesng vieejt ` | ghi lại, không chặn. Nếu Terminal đang bật `Secure Keyboard Entry` thì TrioKey không gõ được (xem M17) | |
+| M15 | TextEdit: gõ `tiee`, rồi Command+A, Command+C, Command+V, Command+Z; gõ `tiee`, mũi tên trái, gõ `s`; Option+Delete | các phím tắt chạy như khi không có TrioKey, không có chữ thừa; sau mũi tên `s` chỉ chèn chữ `s`; Option+Delete xoá cả từ | |
+| M16 | Thêm nguồn nhập tiếng Nhật (Cài đặt → Bàn phím → Nguồn nhập). Chuyển sang Hiragana từ menu nguồn nhập: gõ `nihongo` rồi Enter. Chuyển sang chế độ Latin của bộ gõ Nhật (英字), gõ `tieesng `. Chuyển lại ABC, gõ `tieesng `. Mỗi lần chuyển, nhìn chữ V/E. Cuối cùng menu → `Chẩn đoán`, dán đoạn chữ vào ô Kết quả | Hiragana: `E` (tooltip `TrioKey: Tiếng Anh — đang nhường bộ gõ khác`), bộ gõ Nhật hoạt động như thường (日本語). Chế độ Latin của bộ gõ Nhật: cũng `E`, ra `tieesng ` (cố ý: bản này nhường mọi bộ gõ). ABC: `V` trong vòng 2 giây, ra `tiếng `. Phần `input sources seen since launch` liệt kê các nguồn đã chuyển qua | |
+| M17 | Secure Input: Terminal → menu Terminal → bật `Secure Keyboard Entry`, rồi đưa Terminal lên trước; sau đó bấm vào một ô mật khẩu của Safari (trang đăng nhập bất kỳ). Tắt lại Secure Keyboard Entry | Khi Secure Keyboard Entry bật và Terminal ở trước: `E` trong vòng 2 giây, tooltip `TrioKey: bàn phím đang bị Secure Input chặn`; tắt thì lại `V`. Ô mật khẩu Safari: ghi lại là `E` (Secure Input) hay vẫn `V` | |
+| M18 | Menu → bỏ dấu tick `Tiếng Việt`, gõ `tieesng `; bấm lại | đã tắt: `E`, tooltip `TrioKey: Tiếng Anh — đã tắt`, ra `tieesng `; bật lại: `V`, ra `tiếng ` | |
+| M19 | Khi TrioKey đang chạy, trong Terminal: `open -n /Applications/TrioKey.app` (mở thêm một bản; chưa chắc `open -n` là cách đúng để thử, Finder thường chỉ đưa bản đang chạy lên trước). Sau đó menu → `Thoát` | bản thứ hai tự thoát ngay: menu bar chỉ có một chữ `V`/`E`, Activity Monitor chỉ có một TrioKey. Sau Thoát: chữ trên menu bar biến mất, bàn phím và chuột vẫn bình thường, gõ `tieesng ` ra `tieesng ` | |
+| M20 | Cài bản mới (khi có bản dựng sau), đúng thứ tự: (1) `Thoát` TrioKey; (2) kéo TrioKey mới vào Applications, chọn Thay thế; (3) Cài đặt → Quyền riêng tư & Bảo mật → Trợ năng: chọn TrioKey, bấm `−`, rồi `+` và chọn lại TrioKey trong Applications; (4) mở TrioKey (có thể phải làm lại M2–M3). **Không bao giờ làm bước (3) khi TrioKey đang chạy** | `V`; `Chẩn đoán` có số phiên bản mới. Mỗi bản dựng được ký ad hoc nên quyền cũ không dùng được cho bản mới; ghi lại nếu bỏ bước (3) thì có còn quyền hay không | |
+
+**Gỡ:** `Thoát`; trong Trợ năng xoá TrioKey (`−`) sau khi đã thoát; xoá `TrioKey` khỏi Applications. TrioKey không ghi file nào khác.
 
 # Gỡ hẳn
 

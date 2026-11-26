@@ -1,0 +1,64 @@
+[package]
+name = "triokey-mac"
+version = "0.3.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/ved0el/triokey"
+description = "Vietnamese Telex typing for macOS that leaves English words alone and yields to other input methods"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "triokey-mac"
+path = "src/main.rs"
+
+[dependencies]
+triokey-engine = { path = "../triokey-engine" }
+
+# macOS only: nothing here is built for the Windows gates (docs/ARCHITECTURE.md, 12. macOS app)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6.5", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSArray",
+    "NSBundle",
+    "NSDistributedNotificationCenter",
+    "NSNotification",
+    "NSProcessInfo",
+    "NSString",
+    "NSTimer",
+    "NSURL",
+    "NSEnumerator",
+] }
+objc2-core-foundation = { version = "0.3.2", default-features = false, features = ["std", "CFDictionary", "CFMachPort", "CFNumber", "CFRunLoop", "CFString"] }
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGEvent", "CGEventTypes", "CGRemoteOperation"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "std",
+    "NSAlert",
+    "NSApplication",
+    "NSButton",
+    "NSCell",
+    "NSColor",
+    "NSControl",
+    "NSFont",
+    "NSGraphics",
+    "NSLayoutConstraint",
+    "NSMenu",
+    "NSMenuItem",
+    "NSPasteboard",
+    "NSResponder",
+    "NSRunningApplication",
+    "NSStackView",
+    "NSStatusBar",
+    "NSStatusBarButton",
+    "NSStatusItem",
+    "NSTextField",
+    "NSUserInterfaceLayout",
+    "NSView",
+    "NSWindow",
+    "NSWorkspace",
+    "objc2-core-foundation",
+    "libc",
+] }
+objc2-application-services = { version = "0.3.2", default-features = false, features = ["std", "HIServices", "AXUIElement"] }
