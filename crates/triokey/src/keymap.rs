@@ -64,7 +64,7 @@ mod tests {
         for vk in [VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_HOME, VK_END, VK_DELETE, VK_ESCAPE] {
             assert_eq!(classify(vk, None, false, false, false), BreakWord, "vk {vk:#x}");
         }
-        // directly typed non-ASCII letter resets the word (Review Focus 4)
+        // directly typed non-ASCII letter resets the word
         assert_eq!(classify(0xBA, Some('ú'), false, false, false), BreakWord);
         // AltGr (Ctrl+Alt) that types a character is a character
         assert_eq!(classify(0x51, Some('@'), true, true, false), Boundary('@'));

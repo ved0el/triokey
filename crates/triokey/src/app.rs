@@ -1,18 +1,20 @@
-//! Startup: settings, engine, threads, tray. Files are read and written only here, never on
-//! the hook thread (spec 5.8).
+//! Startup: settings, engine, threads, tray. User data files are read and written only here, never on
+//! the hook thread (docs/ARCHITECTURE.md, 2.3 What may run inside the hook callback).
 
 use std::fs;
-use std::io::{self, ErrorKind, Write};
-use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+use std::io::{self, ErrorKind, Read, Write};
+use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Mutex, RwLock};
+use std::time::{Duration, Instant};
 
-use triokey_engine::lexicon::Lexicon;
+use triokey_engine::lexicon::{Learned, Lexicon};
 use triokey_engine::{Config, ToneStyle};
 use windows_sys::Win32::Storage::FileSystem::{
-    GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_OPEN_REPARSE_POINT,
+    GetFileInformationByHandle, GetFinalPathNameByHandleW, BY_HANDLE_FILE_INFORMATION, FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT,
+    FILE_FLAG_BACKUP_SEMANTICS, FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_READ, FILE_SHARE_WRITE,
 };
 
 use crate::config::{parse, render, Settings};
@@ -29,6 +31,24 @@ static CONFIG_UNREADABLE: AtomicBool = AtomicBool::new(false);
 /// The last write of config.txt failed (an elevated copy with no file to rewrite, a read-only
 /// file): the settings live in memory only.
 static SAVE_FAILED: AtomicBool = AtomicBool::new(false);
+
+const LEARNED_FILE: &str = "learned.txt";
+/// learned.txt above this is not read, and never overwritten.
+const LEARNED_CAP: u64 = 256 * 1024;
+/// learned.txt is written once the remembered words have not changed for this long.
+const LEARNED_STILL: Duration = Duration::from_secs(2);
+
+/// Writes learned.txt for the remembered words.
+struct Saver {
+    learned: Learned,
+    dir: PathBuf,
+    /// Change count at the last write, the last one seen, and since when it is still.
+    saved: u64,
+    seen: u64,
+    still_since: Instant,
+}
+/// None: no folder, or a learned.txt that must be left alone (not UTF-8, too big).
+static SAVER: Mutex<Option<Saver>> = Mutex::new(None);
 
 pub fn config_unreadable() -> bool {
     CONFIG_UNREADABLE.load(Relaxed)
@@ -64,41 +84,80 @@ pub fn set_enabled(on: bool) {
 }
 
 /// `%APPDATA%\triokey`. An elevated TrioKey reads data from it, writes only through
-/// `write_config`, and never runs or opens anything in it.
+/// `write_file`, and never runs or opens anything in it.
 pub fn config_dir() -> Option<PathBuf> {
     admin::roaming_appdata().map(|a| a.join("triokey"))
 }
 
-/// Write `config.txt`. Unelevated programs of the same user own this folder and can swap it
-/// for a junction into an admin-only place, so an elevated TrioKey creates nothing: it only
-/// rewrites an existing file in a plain existing folder. The file is opened without following
-/// a link and without truncating, and checked on the handle before anything is written: a
-/// regular file, no reparse point, and no second name (a hard link to another file).
-/// shortcut: a swap of the folder between its check and the open is still possible; closing
-/// that needs handle-relative opens. Upgrade if the elevated copy ever writes more than this
-/// fixed text, or writes without the user changing a setting.
 fn write_config(dir: &Path, text: &str, elevated: bool) -> io::Result<()> {
-    let path = dir.join("config.txt");
+    write_file(dir, "config.txt", text, elevated)
+}
+
+/// Write `dir\name`; elevated, only through `open_checked`, in place (no truncating open).
+fn write_file(dir: &Path, name: &str, text: &str, elevated: bool) -> io::Result<()> {
     if !elevated {
         fs::create_dir_all(dir)?;
-        return fs::write(path, text);
+        return fs::write(dir.join(name), text);
     }
-    if !fs::symlink_metadata(dir).is_ok_and(|m| m.is_dir() && m.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT == 0) {
-        return Err(ErrorKind::PermissionDenied.into());
-    }
-    let mut f = fs::OpenOptions::new().write(true).custom_flags(FILE_FLAG_OPEN_REPARSE_POINT).open(path)?;
-    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
-    if unsafe { GetFileInformationByHandle(f.as_raw_handle(), &mut info) } == 0
-        || info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY) != 0
-        || info.nNumberOfLinks != 1
-    {
-        return Err(ErrorKind::PermissionDenied.into());
-    }
+    // the folder stays held through the write
+    let (_folder, mut f) = open_checked(dir, name, true)?;
     f.set_len(0)?;
     f.write_all(text.as_bytes())
 }
 
-/// One-time carry-over from the working name (`%APPDATA%\evj`): copy the three data files when
+/// `dir\name` for an elevated TrioKey. Unelevated programs of the same user own this folder
+/// and can swap it, the file, or a folder on the way for a link into an admin-only place, so
+/// this opens only an existing plain file in a plain existing folder, checked on handles: the
+/// folder is held open (no delete sharing, so it cannot be renamed or replaced meanwhile), is
+/// no reparse point and really is `dir` (a junction or object link higher up the path ends
+/// elsewhere); the file is opened without following a link or truncating, is a regular file
+/// with one name, and its final path is `dir\name`. Returns (folder, file); refused:
+/// PermissionDenied; missing: NotFound.
+// shortcut: `dir` comes from the user's AppData setting (HKCU), which can name another real
+// folder called triokey that has these files; only a per-machine data folder would close it.
+fn open_checked(dir: &Path, name: &str, write: bool) -> io::Result<(fs::File, fs::File)> {
+    let refused = || io::Error::from(ErrorKind::PermissionDenied);
+    let folder = hold_dir(dir)?;
+    let f = fs::OpenOptions::new().read(!write).write(write).custom_flags(FILE_FLAG_OPEN_REPARSE_POINT).open(dir.join(name))?;
+    let info = file_info(&f).ok_or_else(refused)?;
+    if info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY) != 0 || info.nNumberOfLinks != 1 {
+        return Err(refused());
+    }
+    let (Some(d), Some(p), Some(asked)) = (final_path(&folder), final_path(&f), dir.to_str()) else { return Err(refused()) };
+    let is_dir = d.strip_prefix(r"\\?\").is_some_and(|d| d.eq_ignore_ascii_case(asked.trim_end_matches('\\')));
+    if !is_dir || !p.strip_prefix(&d).and_then(|r| r.strip_prefix('\\')).is_some_and(|n| n.eq_ignore_ascii_case(name)) {
+        return Err(refused());
+    }
+    Ok((folder, f))
+}
+
+/// `dir` itself (not what a link points to), open with read and write sharing but not delete,
+/// so nobody can rename or replace it while the handle lives; refused unless a plain folder.
+fn hold_dir(dir: &Path) -> io::Result<fs::File> {
+    let h = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT)
+        .open(dir)?;
+    match file_info(&h) {
+        Some(i) if i.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0 && i.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT == 0 => Ok(h),
+        _ => Err(ErrorKind::PermissionDenied.into()),
+    }
+}
+
+fn file_info(f: &fs::File) -> Option<BY_HANDLE_FILE_INFORMATION> {
+    let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    (unsafe { GetFileInformationByHandle(f.as_raw_handle(), &mut info) } != 0).then_some(info)
+}
+
+/// Where the handle really points, as `\\?\C:\...`.
+fn final_path(f: &fs::File) -> Option<String> {
+    let mut buf = vec![0u16; 1024];
+    let n = unsafe { GetFinalPathNameByHandleW(f.as_raw_handle(), buf.as_mut_ptr(), buf.len() as u32, 0) } as usize;
+    (n > 0 && n < buf.len()).then(|| String::from_utf16_lossy(&buf[..n]))
+}
+
+/// One-time carry-over from the older folder name (`%APPDATA%\evj`): copy the three data files when
 /// `new` does not exist yet; `old` is left in place. `run_as_admin` is reset because the old
 /// task and Program Files copy carry the old name, so no TrioKey task stands behind it.
 fn migrate(old: &Path, new: &Path) {
@@ -125,8 +184,8 @@ fn store(f: impl FnOnce(&mut Settings)) -> Settings {
 
 /// Updater thread: remember when GitHub last answered. Nothing is applied live, and a failed
 /// write is not reported: the only cost is one more check after the next start.
-/// An elevated copy keeps the time in memory only: it writes under the user-writable
-/// `%APPDATA%` when the user changes a setting, never by itself on a timer.
+/// An elevated copy keeps the time in memory only: it rewrites config.txt only when the user
+/// changes a setting.
 pub fn set_last_update_check(t: u64) {
     let _saving = SAVE.lock().unwrap_or_else(|e| e.into_inner());
     let s = store(|s| s.last_update_check = t);
@@ -166,7 +225,9 @@ pub fn run() {
     // no file after a successful load: it was missing and could not be created
     SAVE_FAILED.store(readable && !dir.as_ref().is_some_and(|d| d.join("config.txt").is_file()), Relaxed);
     let read = |name: &str| dir.as_ref().and_then(|d| fs::read_to_string(d.join(name)).ok()).unwrap_or_default();
-    let lexicon = Lexicon::builtin().with_user(&read("force_vi.txt"), &read("force_en.txt"));
+    let (learned, saver) = load_learned(dir.as_deref(), elevated);
+    let lexicon = Lexicon::builtin().with_user(&read("force_vi.txt"), &read("force_en.txt")).with_learned(learned);
+    *SAVER.lock().unwrap_or_else(|e| e.into_inner()) = saver;
     ENABLED.store(s.enabled, Relaxed);
     *SETTINGS.write().unwrap_or_else(|e| e.into_inner()) = s;
     ime_watch::spawn();
@@ -174,6 +235,61 @@ pub fn run() {
     update::spawn();
     // returns on "Thoát"; leaving main ends the process, which removes both hooks
     tray::run();
+    save_learned(true);
+}
+
+/// learned.txt, read after `load_settings` (migrate needs the folder not to exist before).
+/// Missing: created with the header only, when not elevated. Unusable (not UTF-8, over the
+/// cap, locked, refused by `open_checked`): the words live in memory only and the file is never
+/// written. Elevated, the read is checked too: a link must not pull admin-only text into the
+/// map, which the next save would write where the user can read it.
+fn load_learned(dir: Option<&Path>, elevated: bool) -> (Learned, Option<Saver>) {
+    let Some(dir) = dir else { return (Learned::default(), None) };
+    let mut buf = Vec::new();
+    let file = if elevated { open_checked(dir, LEARNED_FILE, false).map(|(_, f)| f) } else { fs::File::open(dir.join(LEARNED_FILE)) };
+    let learned = match file.and_then(|f| f.take(LEARNED_CAP + 1).read_to_end(&mut buf)) {
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            let learned = Learned::default();
+            if !elevated {
+                let _ = write_file(dir, LEARNED_FILE, &learned.render(), false);
+            }
+            learned
+        }
+        Ok(n) if n as u64 <= LEARNED_CAP => match String::from_utf8(buf) {
+            Ok(text) => Learned::parse(&text),
+            Err(_) => return (Learned::default(), None),
+        },
+        _ => return (Learned::default(), None),
+    };
+    let saver = Saver { learned: learned.clone(), dir: dir.to_path_buf(), saved: 0, seen: 0, still_since: Instant::now() };
+    (learned, Some(saver))
+}
+
+/// Watcher tick, and once at exit (`now`): write learned.txt when the remembered words changed
+/// and have been still for `LEARNED_STILL`. A failed write (an elevated copy refusing the
+/// folder or file) is not retried until the next change.
+pub fn save_learned(now: bool) {
+    let mut g = SAVER.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(s) = g.as_mut() else { return };
+    let changes = s.learned.changes();
+    if changes != s.seen {
+        (s.seen, s.still_since) = (changes, Instant::now());
+    }
+    if changes != s.saved && (now || s.still_since.elapsed() >= LEARNED_STILL) {
+        s.saved = changes;
+        let _ = write_file(&s.dir, LEARNED_FILE, &s.learned.render(), admin::is_elevated());
+    }
+}
+
+/// Settings window, right before the normal copy starts the elevated installer: an elevated
+/// copy creates no file, so learned.txt must already exist when it runs.
+pub fn create_learned_file() {
+    let g = SAVER.lock().unwrap_or_else(|e| e.into_inner());
+    if let (Some(s), false) = (g.as_ref(), admin::is_elevated()) {
+        if !s.dir.join(LEARNED_FILE).exists() {
+            let _ = write_file(&s.dir, LEARNED_FILE, &s.learned.render(), false);
+        }
+    }
 }
 
 /// `%APPDATA%\triokey\config.txt`, created with defaults only when it does not exist yet.
@@ -197,7 +313,10 @@ mod tests {
     use super::*;
 
     fn temp(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("triokey-{name}-test-{}", std::process::id()));
+        // the long, real path: open_checked compares the folder's final path with it (TEMP may be 8.3)
+        let base = fs::canonicalize(std::env::temp_dir()).unwrap();
+        let base = PathBuf::from(base.to_str().unwrap().trim_start_matches(r"\\?\"));
+        let root = base.join(format!("triokey-{name}-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         root
     }
@@ -247,6 +366,72 @@ mod tests {
         fs::hard_link(&cfg, root.join("second-name.txt")).unwrap();
         assert!(write_config(&dir, "third", true).is_err());
         assert_eq!(fs::read_to_string(&cfg).unwrap(), "second");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn elevated_write_holds_the_folder_and_writes_learned() {
+        let root = temp("hold");
+        let (dir, file) = (root.join("triokey"), root.join("triokey").join(LEARNED_FILE));
+        fs::create_dir_all(&dir).unwrap();
+        assert!(write_file(&dir, LEARNED_FILE, "x", true).is_err());
+        assert!(!file.exists());
+        write_file(&dir, LEARNED_FILE, "first text", false).unwrap();
+        write_file(&dir, "config.txt", "c", false).unwrap();
+        write_file(&dir, LEARNED_FILE, "second", true).unwrap();
+        write_file(&dir, "config.txt", "d", true).unwrap();
+        assert_eq!((fs::read_to_string(&file).unwrap(), fs::read_to_string(dir.join("config.txt")).unwrap()), ("second".into(), "d".into()));
+        // while held, the folder cannot be renamed away (and so not replaced); afterwards it can
+        let held = hold_dir(&dir).unwrap();
+        assert!(fs::rename(&dir, root.join("moved")).is_err());
+        drop(held);
+        fs::rename(&dir, root.join("moved")).unwrap();
+        // a junction as the folder is refused, file name and all
+        let junction = root.join("junction");
+        let made = std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).args([&junction, &root.join("moved")]).output();
+        assert!(made.is_ok_and(|o| o.status.success()) && junction.join(LEARNED_FILE).is_file());
+        assert!(hold_dir(&junction).is_err() && write_file(&junction, LEARNED_FILE, "through the link", true).is_err());
+        // a junction higher up the path: the folder itself is plain, but not the one asked for;
+        // neither written nor read (its text would be saved where the user reads it)
+        let up = root.join("up");
+        let made = std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).args([&up, &root]).output();
+        assert!(made.is_ok_and(|o| o.status.success()) && up.join("moved").join(LEARNED_FILE).is_file());
+        assert!(write_file(&up.join("moved"), LEARNED_FILE, "through the link", true).is_err());
+        assert!(load_learned(Some(&up.join("moved")), true).1.is_none());
+        // the real path is fine, with a trailing backslash and in other case
+        let upper = PathBuf::from(format!("{}\\", root.join("moved").to_str().unwrap().to_uppercase()));
+        assert!(load_learned(Some(&upper), true).1.is_some());
+        let hard = root.join("hard");
+        fs::create_dir_all(&hard).unwrap();
+        fs::hard_link(root.join("moved").join(LEARNED_FILE), hard.join(LEARNED_FILE)).unwrap();
+        assert!(write_file(&hard, LEARNED_FILE, "through the link", true).is_err());
+        assert_eq!(fs::read_to_string(root.join("moved").join(LEARNED_FILE)).unwrap(), "second");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn learned_file_is_created_read_capped_and_left_alone() {
+        let root = temp("learned");
+        let file = root.join(LEARNED_FILE);
+        // missing and elevated: nothing created, but remembered in memory and saved later
+        fs::create_dir_all(&root).unwrap();
+        assert!(load_learned(Some(&root), true).1.is_some() && !file.exists());
+        // missing: header only
+        let (l, saver) = load_learned(Some(&root), false);
+        assert!(saver.is_some() && fs::read_to_string(&file).unwrap() == l.render() && l.render().lines().all(|x| x.starts_with('#')));
+        // round trip through the file
+        l.set("this", Some("thí"));
+        write_file(&root, LEARNED_FILE, &l.render(), true).unwrap();
+        let (back, _) = load_learned(Some(&root), true);
+        assert_eq!((back.get("this").as_deref(), back.render()), (Some("thí"), l.render()));
+        // over the cap or not UTF-8: nothing read, no saver, bytes untouched
+        let big = format!("this\tthí\n{}", "#".repeat(LEARNED_CAP as usize));
+        fs::write(&file, &big).unwrap();
+        let (l, saver) = load_learned(Some(&root), false);
+        assert!(saver.is_none() && l.get("this").is_none());
+        let utf16: Vec<u8> = "\u{FEFF}this\tthí\n".encode_utf16().flat_map(u16::to_le_bytes).collect();
+        fs::write(&file, &utf16).unwrap();
+        assert!(load_learned(Some(&root), false).1.is_none() && fs::read(&file).unwrap() == utf16);
         fs::remove_dir_all(&root).unwrap();
     }
 

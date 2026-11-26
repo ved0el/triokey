@@ -1,0 +1,320 @@
+Hi Daniel, thanks for the quick reply. I pushed the fix to the feature branch, could you take another look when you have time?
+Run passwd as root if the user forgot their password, then force a change on next login with chage -d 0.
+LGTM, just one nit: rename tmp_buf to scratch_buf so it matches the rest of the module.
+The nginx config was missing a trailing slash in proxy_pass, which is why every request ended up at /api/api/.
+kubectl get pods -n staging shows two replicas stuck in CrashLoopBackOff, checking the logs now.
+Fix race condition in session cache by holding the mutex across the read and the insert.
+Could we move the standup to 10am on Thursday? I have a dentist appointment in the morning.
+This regex is too greedy, use .*? or anchor it with ^ and $ so it does not swallow the whole line.
+Reading from stdin is fine for small files, but for anything over a few MB please pass a path instead.
+async functions here return a Future that does nothing until you await it, so the log line never fires.
+Hi team, the release is postponed to Monday because the migration script failed on the replica.
+Please avoid unwrap() in library code, return a Result and let the caller decide.
+To rotate the logs manually, run logrotate -f /etc/logrotate.d/app and check that the old file is gzipped.
+I think getUserById should return Option<User> instead of panicking when the id is missing.
+The CI job times out because cargo test runs all the integration tests in one thread.
+Thanks for the detailed review, Sarah. I addressed most comments, the rest I left replies on.
+Refactor config loading so env vars override the values in config.toml, not the other way around.
+Use git rebase -i HEAD~3 to squash the fixup commits before we merge.
+Docker build cache is invalidated every time because we COPY the whole repo before installing deps.
+Could you share the exact error message? Without it I am just guessing.
+The cron entry runs at 0 3 * * *, which is 3am server time, not local time.
+Add retry with exponential backoff to the HTTP client, capped at five attempts.
+I tested on Ubuntu 24.04 and Windows 11, both pass. Not sure about macOS yet.
+Why do we clone the vector here? A slice reference should be enough for this loop.
+Set RUST_LOG=debug before running the binary if you want to see the request trace.
+Sorry for the late reply, I was out sick yesterday. Catching up on the thread now.
+chmod 600 ~/.ssh/id_ed25519 or ssh will refuse to use the key.
+The parse_header function does not handle CRLF, so files saved on Windows fail the check.
+Bump axum to 0.7.9 and regenerate Cargo.lock.
+Please do not force push to main, open a PR even for one line changes.
+We should document that the timeout flag takes seconds, not milliseconds. Two people got bitten by this already.
+I left a few comments inline. Overall the approach looks good, mostly naming and error handling.
+grep -rn "TODO" src/ | wc -l gives 47, so maybe we schedule a cleanup sprint.
+Hi Mark, attached is the draft of the API spec. Happy to jump on a call if anything is unclear.
+The deadlock happens when thread A holds lock_a and waits on lock_b while thread B does the opposite.
+Use a BufReader around the file handle, otherwise every read_line call is a syscall.
+Our Postgres connection pool is set to 10 but the service spawns 32 workers, so most of them wait.
+Remove the debug println before merging, please.
+Make sure the .env file is in .gitignore, I almost committed my local token last week.
+Add unit tests for the edge cases: empty input, a single char, and input with only whitespace.
+The function name isValid is misleading because it also mutates the object. Maybe normalizeAndValidate?
+I will be on vacation from the 20th to the 27th, Linh will cover on-call while I am away.
+journalctl -u nginx --since "1 hour ago" is the fastest way to see what went wrong.
+The memory leak came from a closure that captured the whole response buffer and was stored in a global map.
+Switch the default branch from master to main and update the CI triggers accordingly.
+Did you mean to commit the node_modules folder? The diff is 80k lines.
+We can probably drop the Python 3.8 support, it reached end of life a while ago.
+Thanks, that fixed it. The issue was a stale DNS entry in /etc/hosts.
+The tests are flaky because they depend on the system clock. Inject a clock trait instead.
+kubectl rollout undo deployment/api -n prod rolls back to the previous ReplicaSet.
+Hi Anna, could you grant me read access to the staging bucket? I need it for the log analysis.
+This PR adds pagination to the /users endpoint, default page size is 50 and max is 200.
+I prefer snake_case for JSON keys here since the rest of the API already uses it.
+Please squash and merge, the intermediate commits are not useful in the history.
+Avoid holding the mutex while doing network IO, it blocks every other request.
+The Makefile target build-release assumes GNU make, it breaks on BSD make.
+Can we add a CHANGELOG entry for this? Users will notice the behavior change.
+tar -czf backup.tar.gz --exclude=target . is what I use before risky refactors.
+Good catch, I missed that the iterator is consumed after the first pass.
+Let me know if Friday 2pm works for the design review, otherwise I can do Monday.
+Rename the struct field from usr_nm to username, abbreviations like that only save two characters.
+We hit the GitHub API rate limit during the nightly job, so I added caching for the release list.
+Use std::sync::Arc instead of Rc because the handle is shared across threads.
+The README still says to run npm install, but the project moved to pnpm months ago.
+Mostly looks fine, but the error message should tell the user what to do next, not just what failed.
+Hi all, quick reminder that the office will be closed on Friday for maintenance.
+curl -sSL -o /dev/null -w "%{http_code}" https://localhost:8443/health returns 503 right now.
+Rewrite the shell script in Python, it grew to 400 lines and nobody wants to touch it.
+Is there a reason we use a HashMap here? The keys are small integers, a Vec would be faster.
+I added a feature flag called enable_new_parser, off by default until we finish testing.
+Lower keepalive_timeout in nginx, idle connections are eating all the worker slots.
+Thanks for testing on the old hardware, that is really helpful.
+The integration test spins up a container, so make sure Docker is running before cargo test.
+I would extract this into a helper function, the same three lines appear in five places.
+Fix the pagination cursor so the last item of every page is no longer skipped.
+Hi Peter, I am still waiting on the credentials for the test environment. Any update?
+ps aux | grep python shows three zombie processes from the old deploy.
+Use --dry-run first to see which files would be deleted.
+I think the timeout should be configurable per route rather than global.
+Please add a doc comment explaining why we skip the first byte, it is not obvious at all.
+The build fails on ARM because of an inline assembly block that only targets x86_64.
+Should we pin the base image to a digest instead of the latest tag?
+Our staging cluster has three nodes, each with 8 vCPU and 32 GB of RAM.
+Let us keep this PR small and move the refactor to a follow-up.
+export PATH="$HOME/.local/bin:$PATH" in your .bashrc and reopen the shell.
+The importer now skips blank rows instead of failing on them.
+I am not convinced the cache is worth the complexity here. Do we have numbers?
+Updated the onboarding doc with the steps to set up the VPN and the local database.
+When the queue is full, the producer should block instead of dropping messages silently.
+Can you split the migration into two steps? Add the column first, backfill later.
+Merge conflict in src/lib.rs, I will resolve it after lunch.
+Hi Tom, I reviewed the contract draft and left two questions about the support hours.
+The goroutine leaks because nobody closes the done channel when the request is cancelled.
+Use pathlib instead of os.path.join, it reads better and handles Windows paths.
+The service logs the full request body including passwords, we need to mask that field.
+I reproduced the bug locally, it only happens when the file name contains a space.
+Add a healthcheck to docker-compose.yml so the app waits for the database to be ready.
+Nice work on the benchmark, the new allocator cuts p99 latency by almost half.
+Please run cargo fmt and cargo clippy before pushing, the CI checks both.
+The token expires after 15 minutes, so the client must refresh it before that.
+Do we really need a separate microservice for this? A cron job and a table would do.
+sudo systemctl restart docker fixed the network issue, but I do not know why yet.
+I renamed fetchData to loadOrders because it only ever loads orders.
+Hi Minh, can you check whether the backup job ran last night? The dashboard shows no data.
+Use a const instead of the magic number 86400, call it SECONDS_PER_DAY.
+The function returns early on error but forgets to roll back the transaction.
+We should switch from polling every second to a websocket, the server load is too high.
+Added a --verbose flag that prints each step of the sync.
+Thanks for your patience, the outage is resolved and all services are back to normal.
+I would rather not add another dependency just for left padding a string.
+Docs: explain the difference between soft delete and hard delete in the admin panel.
+The ssh tunnel drops after a few minutes, add ServerAliveInterval 60 to your config.
+This test asserts on the exact error string, it will break as soon as someone fixes a typo.
+Can we agree on a naming convention for database tables? Right now we have both plural and singular names.
+The Kafka consumer lag grew to two million messages overnight, we need more partitions.
+Please use early returns here, the nested if blocks are hard to follow.
+I added a small script under scripts/seed_db.py to populate the local database with test data.
+Hi Huy, I saw your question in the channel. The answer is yes, the endpoint is idempotent.
+find . -name "*.log" -mtime +7 -delete cleans up old log files.
+The default value should be None, not an empty list, because mutable defaults are shared.
+I measured the cold start at around 1.8 seconds, most of it is loading the model weights.
+Revert the last commit, it broke the login flow on Safari.
+We need to handle SIGTERM gracefully so Kubernetes can drain the pod before killing it.
+The variable name data2 does not tell me anything. What does it hold?
+Could you add a screenshot of the new settings page to the PR description?
+Use a RwLock instead of a Mutex since reads are far more common than writes.
+Postmortem draft is in the shared folder, please add your notes before Wednesday.
+The certificate for the internal domain expires in nine days, I opened a ticket to renew it.
+I like the idea, but let us discuss it in the architecture meeting before writing code.
+Hi Linh, just checking in on the invoice export feature. Is it still on track for this sprint?
+The script assumes bash, but the container only has sh, so the [[ ]] syntax fails.
+Prefer composition over inheritance here, the base class already has too many responsibilities.
+Add an index on orders.created_at, the monthly report does a full table scan.
+I cannot reproduce it on my machine. Which version of Node are you using?
+The CLI now prints a helpful message when the config file is missing instead of a stack trace.
+Move the constants to a separate file so the main module is easier to read.
+The upload fails only on the office network, I suspect the corporate proxy strips the auth header.
+Let us not merge on a Friday afternoon, it can wait until Monday morning.
+Use serde rename_all = "camelCase" so the Rust structs match the frontend JSON.
+Fix panic when the input file is empty by checking the length before indexing.
+Hi Daniel, thanks for the intro. I would love to learn more about how your team runs incident reviews.
+du -sh * | sort -h shows that the target folder takes 14 GB.
+I think we are overengineering this. A plain function would be fine.
+The test passes locally but fails in CI because CI runs as a non-root user.
+Please write the commit message in the imperative mood, like Add, Fix, Remove.
+Add a size limit to the import endpoint, a 2 GB upload took the service down last night.
+The memory usage climbs slowly over a few days, I suspect the in-memory cache has no eviction.
+Could you clarify whether the deadline is end of day Pacific or end of day our time?
+Running kubectl describe pod shows the image pull failed due to a wrong registry secret.
+I split the 900 line file into three modules: parser, validator and writer.
+This is a breaking change for anyone who calls the old function, please bump the major version.
+Thanks Trang, I merged your PR and tagged it for the next release.
+Use a channel to send results back to the main thread instead of sharing a Vec behind a mutex.
+The YAML indentation is off by two spaces, which is why the service does not pick up the env var.
+Set ulimit -n 65535 before starting the load test, otherwise we run out of file descriptors.
+Does this handle the case where the user has no email on file?
+Hi Emma, sorry for the confusion earlier. The correct staging URL is the one in the wiki.
+The README needs a section on how to run the app without Docker.
+We should log the request id at every layer so we can trace a single call end to end.
+The fallback path silently swallows the error, at least log it at warn level.
+I added a devcontainer config so the toolchain versions match what CI uses.
+git bisect found the commit that introduced the slowdown, it is the one that changed the hashing.
+The setTimeout callback captures the old state value, use a ref or the functional update form.
+Please avoid abbreviations in public API names, cfg is fine internally but not in the docs.
+I am going to be offline for about two hours this afternoon, ping me on the phone if it is urgent.
+The worker crashes when the payload is larger than 1 MB, we need to stream it instead.
+Write the temp file next to the target and rename it, so a crash never leaves a half written file.
+I would prefer if we kept the old endpoint for one more release and marked it deprecated.
+Hi Nam, the dashboard looks great. One question: where does the conversion rate number come from?
+Replace the hand rolled argument parsing with clap, it handles help text and errors for free.
+The deploy pipeline has a manual approval step for prod, Huy and I are the approvers.
+Let us use UTC everywhere in the backend and convert to local time only in the UI.
+Our load balancer health check hits /, which renders the whole homepage. Point it to /healthz.
+Can we get a second reviewer on this? It touches the billing code.
+Fix the typo in the error message, it says recieve instead of receive.
+docker system prune -a frees a lot of space, but it also deletes images you might still need.
+The query uses LIKE with a leading wildcard, so the index is never used.
+I left the old code commented out for now, will remove it once the new path is stable.
+Thanks everyone for joining the call today. Notes and action items are in the doc.
+Use Option::map instead of a match with Some and None arms that do the same thing.
+We still have three services on Java 8, upgrading them is on the roadmap for next quarter.
+Add a timeout to the database connection, right now it hangs forever if the host is down.
+The API returns 200 with an error field in the body, which breaks every client that checks the status code.
+Hi Kevin, the build artifacts are uploaded to the release page, the checksum file is next to them.
+Use lsof -i :8080 to see which process is holding the port.
+I moved the secrets from the config file to environment variables injected by the orchestrator.
+This loop is O(n squared) because of the contains check on a Vec, use a HashSet.
+Please keep the line length under 100 characters, the formatter will do it for you.
+Can you add an example to the docstring? It is hard to tell what format the date should be.
+The service account only needs read permission on the bucket, not admin.
+Hi Minh, great question. The short answer is that we cache at the edge, not in the app.
+I tried both approaches and the streaming one uses ten times less memory.
+Remove the unused import of std::collections::BTreeMap.
+We should alert on error rate, not on raw error count, the traffic varies too much.
+The script fails on paths with spaces, quote the variable like "$file" everywhere.
+Sorry, I misread the ticket. I will rework the PR to match the actual requirement.
+The CHANGELOG follows Keep a Changelog, please add your entry under Unreleased.
+I set up a read replica for the analytics queries so they do not slow down the main database.
+Use a builder pattern for this struct, the constructor has eight parameters now.
+Hi Linh, would it be okay if I took Friday off? I have finished my tasks for the sprint.
+The cookie is missing the Secure and HttpOnly flags, please add both.
+ln -sf /opt/app/current/bin/app /usr/local/bin/app makes the new version the default.
+I agree with your point about naming, but let us not block the PR on it.
+Implement graceful shutdown: stop accepting new connections, finish in-flight requests, then exit.
+The job retries forever on a permanent error, add a max retry count and a dead letter queue.
+Can you check if the timezone is set correctly in the container? The timestamps are seven hours off.
+Use matches! instead of a match that only returns true or false.
+I rewrote the README intro to explain what the project does in two sentences.
+The flag --no-cache is needed here, otherwise pip reuses a broken wheel.
+Thanks for flagging this. I will add a test that covers the unicode case.
+Our p95 response time doubled after the last deploy, I am looking at the traces now.
+Please do not catch Exception broadly, catch the specific errors you expect.
+Hi Sarah, I updated the estimate in the ticket. It is closer to five days than three.
+The background thread never stops because the loop does not check the shutdown flag.
+Generate the client from the OpenAPI spec instead of writing it by hand.
+wc -l src/**/*.rs counts about 12 thousand lines, half of which are tests.
+This could overflow on 32 bit targets, use u64 or checked_add.
+I documented the release process in docs/RELEASING.md, step by step.
+Add a confirmation prompt before the delete command, or at least require --force.
+Should the retry logic live in the client or in the caller? I lean toward the client.
+The config reload signal is SIGHUP, not SIGUSR1.
+Hi team, the new laptop policy is in the handbook. Please read it before ordering hardware.
+Avoid string concatenation in SQL, use parameterized queries.
+I benchmarked serde_json against simd-json, the gain is small for our payload size.
+Can you rebase on top of main? There were some changes to the error types.
+The healthcheck returns ok even when the database is down, it should check the connection.
+Let me know if you need anything else from my side to unblock the release.
+Use tracing spans instead of manual timing code, we already export them to the collector.
+This branch is three weeks old, I suggest closing it and opening a fresh one.
+The default log level in production should be info, debug is too noisy.
+Hi Anna, the meeting notes say we agreed on Tuesday, but the calendar invite says Wednesday.
+Run the migration with --step so we can stop halfway if something looks wrong.
+The variable is shadowed in the inner scope, so the outer value never changes.
+I added a fuzz target for the parser, it found two crashes in the first minute.
+Could we write this as a single SQL query instead of fetching all rows and filtering in Python?
+The worker pool size should default to the number of CPU cores.
+Thanks for the heads up. I will move my changes to a separate branch until yours lands.
+Document the expected format of the CSV, including the header row and the date format.
+iptables -L -n shows that port 5432 is blocked from the app subnet.
+I think the test name should describe the behavior, not the function. Something like rejects_expired_token.
+Please add the license header to the new files.
+The download fails halfway because the server closes idle connections after 30 seconds.
+Hi Huy, I fixed the issue you reported. It was a missing null check in the parser.
+Use Path::join instead of format! with a slash, so it works on Windows.
+We can drop the jQuery dependency, only two functions still use it.
+Make the function pure: pass the current time as a parameter instead of reading it inside.
+The release notes should mention that the config key was renamed from max_conn to max_connections.
+Add a short summary at the top of the PR, the diff alone does not explain why.
+sed -n '100,120p' app.log prints just the lines around the crash.
+I am happy to pair on this tomorrow morning if you want.
+The image is 1.2 GB because the build tools are still in the final stage. Use a multi-stage build.
+We should never log full credit card numbers, mask everything except the last four digits.
+Hi Trang, the PDF export is done. You can test it on staging under Reports.
+The callback is called twice when the request is retried, which creates duplicate records.
+Prefer impl Trait in argument position for simple generic functions.
+I closed the issue as duplicate and linked the original one.
+Our disk usage alert fired at 90 percent on the logging node, I extended the volume.
+Can you explain the reasoning behind the 250ms delay? A comment would help future readers.
+Add a CODEOWNERS file so reviews are requested automatically.
+The mutex is poisoned after the panic, so every later lock call returns an error.
+Hi Mark, apologies for the noise in the channel, the alert was a false positive.
+Use a typed enum for the status instead of raw strings like "pending" and "done".
+I suggest we run the load test against staging every night and post the results.
+The JSON field is called user_id in one endpoint and userId in another. Let us pick one.
+Please update the example in the README, the function signature changed.
+git log --oneline --graph --all is my go-to for understanding a messy branch.
+The scheduler picks up new jobs within a minute, there is no need to restart it.
+Thanks for the review, all good points. I will push the changes tonight.
+Use a percent-encoded URL when the query contains spaces or ampersands.
+The default config should be safe: no debug endpoints and no open CORS.
+Hi Nam, can you send me the slides from yesterday? I want to reuse the architecture diagram.
+The test fixture creates files in the repo root, please use a temp directory instead.
+I bumped the minimum supported Rust version to 1.75 because we need async fn in traits.
+Return an empty list instead of null when there are no results.
+The batch size of 10000 makes the transaction too long, try 1000.
+Where is the design doc for this? I could not find it in the wiki.
+The service discovers peers via DNS, so a stale record means traffic goes to a dead node.
+Prefer &str over &String in function parameters.
+Hi Emma, the issue was on our side. A config change last night broke the webhook signature check.
+Add a .editorconfig so everyone uses the same indentation and line endings.
+The error is thrown before the finally block runs, so the connection is never released.
+I would like to propose a weekly 30 minute session to go through open PRs together.
+Use openssl x509 -in cert.pem -noout -dates to check when the certificate expires.
+The cache key does not include the user id, so users can see each other's data. Please fix before release.
+I removed the retry in the inner function since the outer layer already retries.
+Hi Kevin, I will be in the office on Tuesday and Thursday next week if you want to meet in person.
+We should version the API in the URL, like /v1/orders, before we have external users.
+The new endpoint is documented in openapi.yaml, the generated docs are updated too.
+Thanks again for helping with the migration last weekend, I owe you a coffee.
+The websocket reconnect loop has no jitter, so every client hammers the server at the same moment after an outage.
+Hi Anna, I double checked the numbers and the report is correct, the drop is from the holiday week.
+Use EXPLAIN ANALYZE on the slow query and paste the plan here.
+The binary panics with index out of bounds when the CSV row has fewer columns than the header.
+I suggest we keep feature flags in the database so we can flip them without a deploy.
+Please run the full test suite with --release once, some bugs only show up with optimizations on.
+The cleanup job deletes sessions older than 30 days, but the index on expires_at is missing.
+Hi Peter, the invoice for October is attached. Let me know if the billing address needs to change.
+Use scp -r ./dist user@host:/var/www/app to copy the build, or better, let the pipeline do it.
+The async block borrows a local variable that does not live long enough, move it into the closure.
+I wrote down the steps to reproduce in the issue, it takes about two minutes.
+Prefer returning an iterator here instead of collecting into a Vec, the caller only needs the first match.
+Our monorepo build takes 25 minutes, most of it is rebuilding packages that did not change.
+Can you confirm whether the client wants the export in CSV or in Excel format?
+The stdin reader blocks forever when the pipe is closed early, check for EOF explicitly.
+Add a short note to the docs that the cache directory can be deleted safely.
+I reworded the error so it includes the file path and the line number.
+Hi Huy, no rush on this one, it is not blocking anything this week.
+The pre-commit hook runs eslint on the whole repo, limit it to staged files.
+Use kubectl port-forward svc/postgres 5432:5432 to connect from your laptop.
+I would split this commit: one for the rename, one for the logic change. It makes review much easier.
+The UUID is generated on the client, so two retries can create two rows. Generate it once and reuse it.
+Our nightly backup is 40 GB uncompressed, zstd brings it down to about 6.
+Thanks Linh, I will take the API part and you take the frontend, we sync on Wednesday.
+The handler reads the whole request body into memory before checking the content length.
+Please mark the old function with #[deprecated] and point to the new one in the note.
+I set the regex flag to case insensitive, the email domains came in with mixed case.
+Hi Daniel, quick update: the vendor confirmed the fix will ship in their next patch release.
+Use a semaphore to limit concurrent downloads to four, the server rejects anything above that.
+The snapshot tests need updating after the layout change, run them with the update flag.
+I think we can close this ticket, the behavior is now documented and nobody has complained since.

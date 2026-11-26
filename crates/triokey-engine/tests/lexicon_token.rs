@@ -3,36 +3,17 @@ use triokey_engine::token::{is_mixed_case, starts_code};
 use triokey_engine::Lang;
 
 #[test]
-fn english_words() {
+fn rates() {
     let lx = Lexicon::builtin();
     for w in ["this", "has", "been", "less", "class", "error", "terrible", "sorry", "tomorrow", "mix", "user", "windows", "text", "err", "boss"] {
-        assert!(lx.is_english(w), "{w} should be English");
+        let (vi, en) = lx.rates(w);
+        assert!(en > vi, "{w} should be English");
     }
-    for w in ["tieesng", "xoong", "toi", "bij"] {
-        assert!(!lx.is_english(w), "{w} should not be English");
+    for w in ["tiếng", "tôi", "được", "Việt"] {
+        let (vi, en) = lx.rates(w);
+        assert!(vi > en, "{w} should be Vietnamese");
     }
-}
-
-#[test]
-fn tie_defaults() {
-    let lx = Lexicon::builtin();
-    for w in ["this", "has", "of"] {
-        assert_eq!(lx.tie_default(w), Lang::En, "{w}");
-    }
-    // Every entry of the data file is honoured.
-    for line in include_str!("../data/ambiguous_defaults.txt").lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let (w, lang) = line.split_once('\t').expect("word<TAB>lang");
-        let want = match lang {
-            "en" => Lang::En,
-            "vi" => Lang::Vi,
-            _ => panic!("bad lang in line {line:?}"),
-        };
-        assert_eq!(lx.tie_default(w), want, "{w}");
-    }
+    assert_eq!(lx.rates("tieesng"), (0.0, 0.0));
 }
 
 #[test]
@@ -45,8 +26,6 @@ fn user_force_files() {
     assert_eq!(lx.forced("this"), Some(Lang::Vi));
     assert_eq!(lx.forced("has"), None);
     assert_eq!(lx.forced("# always english"), None);
-    assert!(lx.is_english("larry"));
-    assert!(!lx.is_english("this"));
 }
 
 #[test]

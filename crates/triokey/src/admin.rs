@@ -1,4 +1,4 @@
-//! Admin mode (spec 5.9): a logon task with the highest run level that starts a copy of
+//! Admin mode (docs/ARCHITECTURE.md, 8. Elevated copy): a logon task with the highest run level that starts a copy of
 //! triokey.exe in `%ProgramFiles%\TrioKey`, which only admins can write.
 //!
 //! The elevated child (`triokey.exe --install-admin` / `--uninstall-admin`) does only the parts
@@ -155,7 +155,8 @@ pub fn is_admin() -> bool {
 
 /// This process holds the elevated half of a split (UAC) token: the admin copy, or "Run as
 /// administrator". Only then do unelevated programs of the same user exist, which is what the
-/// restrictions of decision 0006 guard against. With UAC off, as the built-in Administrator or
+/// restrictions in docs/ARCHITECTURE.md, 8.3 What an elevated TrioKey must never do,
+/// guard against. With UAC off, as the built-in Administrator or
 /// in Windows Sandbox (probably; untested) the token is not split, every program of the user is equally privileged,
 /// and TrioKey behaves like a normal copy. An admin whose token type cannot be read counts as
 /// elevated.

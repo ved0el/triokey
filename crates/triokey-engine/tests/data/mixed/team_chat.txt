@@ -1,0 +1,320 @@
+Sáng nay ai review giúp em PR #482 với, chỉ sửa validate form login thôi
+Hôm qua em làm xong phần filter theo ngày, hôm nay em viết test cho nó
+CI lại fail ở bước lint, ai vừa merge vào main vậy?
+Anh Nam ơi, API lấy danh sách đơn hàng đang trả về 500 trên staging
+Em check log rồi, lỗi do DB connection pool bị đầy
+Standup dời sang 9h30 nhé mọi người, PM đang kẹt xe
+Morning all, quick reminder: sprint review is at 3pm today.
+Design mới của màn hình checkout em up lên Figma rồi, mọi người xem góp ý giúp em
+Cái nút Thanh toán hơi nhỏ trên mobile, bấm khó lắm
+Linh ơi, bản build Android hôm qua có crash khi mở camera không?
+Em test trên Samsung A54 thì không crash, nhưng trên Pixel 7 thì có
+Ticket này estimate bao nhiêu point vậy mọi người?
+Em nghĩ 5 point, phải sửa cả backend lẫn frontend
+3 thôi, phần backend có sẵn endpoint rồi mà
+Ok vậy chốt 5 cho an toàn, có gì cuối sprint xem lại
+Deploy lên production lúc 22h tối nay nhé, ai trực thì báo
+Em trực tối nay, có gì ping em trên Slack
+Rollback xong rồi, hệ thống ổn định lại
+Nguyên nhân là migration thêm cột mới nhưng chưa có default value
+Lần sau mình nên chạy migration trên bản copy của DB production trước
+Đồng ý, để em viết lại checklist deploy
+Can someone approve my PR? It's blocking the release.
+Anh Huy review rồi nhưng còn 2 comment chưa resolve
+Sửa xong rồi anh, anh xem lại giúp em nha
+LGTM, merge đi
+Ai biết sao Docker build trên máy em chậm thế không, mất gần 15 phút
+Bật BuildKit lên và thêm .dockerignore đi, chắc đang copy cả node_modules
+Đúng rồi, giờ còn có 2 phút, cảm ơn anh
+Chiều nay họp với khách lúc 2h, Trang chuẩn bị demo giúp chị nhé
+Dạ, em sẽ demo luồng đăng ký và thanh toán
+Bug này reproduce được không em? Anh thử mãi không ra
+Phải xóa cache trình duyệt rồi đăng nhập bằng tài khoản mới mới bị
+QA báo lỗi hiển thị sai múi giờ ở trang báo cáo
+Server đang để UTC, frontend chưa convert sang giờ Việt Nam
+Em thêm dayjs timezone vào rồi, đợi CI xanh là merge
+Hôm nay em xin nghỉ buổi chiều vì có việc gia đình, task em đã cập nhật trên Jira
+Ok em, nghỉ ngơi đi
+Có ai dùng thử Postgres 16 chưa, nghe nói query planner tốt hơn
+Bên mình còn đang ở 13, nâng cấp chắc phải lên kế hoạch kỹ
+Ai đang giữ key AWS của môi trường dev vậy? Em cần tạo thêm bucket S3
+Đừng dùng key chung nữa, em tạo IAM role riêng rồi xin quyền qua anh Minh
+Tuần này mục tiêu là đóng hết bug critical trước khi release 2.3
+Hiện còn 4 bug critical, 2 cái đang có người làm
+Cái bug mất session khi refresh trang em nhận nhé
+Thanks, I'll pair with you on it after lunch.
+Ảnh banner trên trang chủ bị vỡ trên màn hình 4K
+Em sẽ export lại asset ở độ phân giải 2x và 3x
+Trang ơi, file SVG icon em gửi lại được không, bản cũ bị lệch viewBox
+Có ngay chị, em gửi qua Drive nhé
+Unit test coverage đang là 68%, mục tiêu quý này là 75%
+Phần payment không có test nào luôn, sợ thật
+Em đề xuất mỗi PR phải có test cho logic mới, không thì không merge
+Đồng ý, nhưng đừng bắt buộc với PR chỉ sửa UI nhé
+Redis trên staging bị full memory, ai set TTL cho key cache chưa?
+Chưa anh ơi, em quên mất, để em thêm TTL 1 tiếng
+Hotfix lên production rồi, mọi người kiểm tra giúp
+Đã kiểm tra trên web và app, không còn lỗi nữa
+Họp retro chiều thứ sáu, mọi người ghi sẵn ý kiến vào board nhé
+Điều em thấy chưa ổn là requirement thay đổi giữa sprint nhiều quá
+Em thấy daily standup hơi dài, nên giới hạn 15 phút thôi
+Cái này mình nói với PO được không, cứ chen task vào giữa sprint hoài
+Chị sẽ trao đổi lại với bên business, từ sprint sau chỉ nhận thay đổi qua chị
+Kubernetes pod của service notification cứ restart liên tục
+Xem thử memory limit đi, có thể bị OOMKilled
+Đúng rồi, limit đang 256Mi mà nó dùng gần 400Mi
+Tăng lên 512Mi tạm thời, rồi tìm chỗ leak sau
+Ai còn nhớ password của tài khoản test trên TestFlight không?
+Đừng gửi password lên channel, nhắn riêng hoặc lấy trong vault nhé
+Dạ em xin lỗi, em xóa tin nhắn rồi
+Release note cho bản 2.3 ai viết vậy?
+Em viết draft rồi, anh chị đọc và sửa giúp em
+Phần mô tả tính năng mới nên viết dễ hiểu hơn, khách không biết webhook là gì đâu
+Load test hôm qua kết quả sao rồi em?
+Ở 500 request mỗi giây thì p95 khoảng 320ms, lên 1000 thì bắt đầu timeout
+Bottleneck nằm ở query tìm kiếm, chưa có index cho cột created_at
+Thêm composite index cho user_id và created_at thử xem
+Thêm rồi, p95 giảm còn 90ms, ngon
+Great work everyone, the client is happy with the demo.
+Khách muốn thêm tính năng export PDF, chị cần estimate sơ bộ trước thứ tư
+Export PDF đơn giản thì 3 ngày, nếu cần template tùy chỉnh thì khoảng 2 tuần
+Em đề xuất làm bản đơn giản trước, xem khách dùng thế nào rồi tính tiếp
+Màu primary mới hơi chói, độ tương phản với chữ trắng không đạt chuẩn WCAG
+Em chỉnh lại sang tông xanh đậm hơn, contrast giờ là 4.8
+Có ai rảnh pair programming với em phần refactor auth không?
+Chiều nay anh rảnh từ 3h, gọi Google Meet nhé
+Mọi người ơi, wifi văn phòng đang chập chờn, ai cần họp online thì dùng phòng họp tầng 5
+Hôm nay ai đi ăn trưa không, quán bún chả đầu ngõ nhé
+Em đi, đợi em push code đã
+GitHub Actions hết quota phút chạy rồi, build đang bị queue
+Chuyển mấy job nặng sang self-hosted runner đi anh
+Em setup runner trên con server cũ rồi, chạy ổn
+Merge conflict to quá, em rebase mãi không xong
+Gửi anh nhánh đó đi, mình cùng xem trên call cho nhanh
+Sao không ai viết README cho repo này vậy, em clone về không biết chạy kiểu gì
+Có file docs trong thư mục wiki đó, nhưng chắc cũ rồi, em cập nhật giúp nhé
+Sentry báo lỗi NullPointerException ở màn hình danh sách khách hàng, 120 lần trong 1 tiếng
+Do user đăng ký bằng số điện thoại không có display_name, app chưa xử lý trường hợp null
+Hiển thị tạm số điện thoại nếu thiếu tên đi, rồi hotfix bản 2.2.1
+Bản iOS đang chờ Apple review, chắc mai mới lên store
+Android lên Google Play rồi, đang rollout 20%
+Crash rate bản mới là 0.3%, thấp hơn bản trước
+Em đề xuất tăng rollout lên 50% nếu đến chiều không có gì bất thường
+Ok, chiều nay 5h mình xem lại số liệu rồi quyết định
+Ai có quyền admin trên Jira không, em cần tạo thêm một board cho team mobile
+Em có quyền, em tạo giúp chị nha
+Sprint planning sáng mai lúc 9h, mọi người đọc trước backlog giúp chị
+Story về đăng nhập bằng Google em thấy chưa rõ acceptance criteria
+Chị bổ sung rồi, thêm cả trường hợp tài khoản đã liên kết email khác
+Có cần hỗ trợ đăng nhập bằng Apple không chị? Apple bắt buộc nếu có social login
+Đúng rồi, thêm vào luôn, cảm ơn em nhắc
+Front-end đang dùng React 17, có nên lên 18 trong quý này không?
+Nên lên, nhưng phải check mấy thư viện cũ có tương thích không đã
+Em liệt kê được 6 thư viện cần nâng cấp, 2 cái đã ngừng maintain
+Thư viện datepicker thì thay bằng cái khác đi, nó lỗi với Safari từ lâu rồi
+Does anyone know why the staging certificate expired? I thought it auto-renewed.
+Cron renew cert bị tắt khi mình chuyển server tháng trước
+Em bật lại rồi và thêm alert trước 14 ngày khi cert sắp hết hạn
+Tối qua ai deploy mà không báo trên channel vậy?
+Em xin lỗi, em tưởng chỉ là thay đổi config nhỏ nên không báo
+Không sao, nhưng lần sau thay đổi gì trên production cũng báo một câu nhé
+Dashboard Grafana mới em dựng xong rồi, có cả biểu đồ latency theo từng endpoint
+Đẹp quá, thêm panel số lượng lỗi 5xx nữa thì tuyệt
+Em vừa thêm, kèm alert gửi về Slack khi vượt 1%
+Phân quyền cho role kế toán vẫn thấy được menu cài đặt hệ thống
+Lỗi do em check quyền ở frontend mà quên check ở backend
+Cái này nghiêm trọng đấy, ưu tiên sửa ngay hôm nay nhé
+Em sửa xong và thêm test cho từng role rồi, nhờ anh review
+Mai em làm remote nhé, có gì gọi em qua Teams
+Bên khách dùng Teams nên mình họp qua đó luôn cho tiện
+Bản thiết kế dark mode xong 70% rồi, còn mấy màn hình cài đặt
+Dark mode nhớ kiểm tra cả biểu đồ, màu đường kẻ nhiều khi bị chìm
+Text trên nền ảnh cần thêm overlay, không thì khó đọc
+Cái modal xác nhận xóa nên để nút Hủy bên trái, Xóa bên phải và màu đỏ
+Em thấy nên thống nhất với guideline của iOS và Android, mỗi bên mỗi khác
+Mình làm design system chung đi, đỡ phải tranh luận từng màn hình
+GraphQL hay REST cho service mới hả anh?
+Team mình quen REST rồi, cứ REST cho nhanh, có OpenAPI spec là được
+Em generate client TypeScript từ OpenAPI spec rồi, đỡ phải viết tay
+Spec đang sai kiểu dữ liệu của trường price, phải là string chứ không phải number
+Tại sao lại là string vậy anh?
+Để tránh sai số của số thực, tiền tệ mình lưu dạng decimal và trả về string
+Hiểu rồi, em sửa lại spec
+Lịch on-call tháng sau em đã cập nhật trên PagerDuty
+Tuần thứ 2 em đi đám cưới ở quê, ai đổi ca giúp em được không?
+Để anh đổi cho, tuần thứ 4 em trực thay anh nhé
+Deal, cảm ơn anh nhiều
+Đêm qua có alert CPU cao trên DB lúc 2h sáng, ai biết lý do không?
+Job backup chạy đúng giờ đó, cộng thêm job tổng hợp báo cáo
+Dời job báo cáo sang 4h sáng cho đỡ trùng
+Đã dời, theo dõi thêm vài đêm xem sao
+Ai đang dùng nhánh feature/search-v2 không? Em định xóa vì đã merge rồi
+Xóa đi em, anh xong phần đó lâu rồi
+Nhớ bật auto delete branch sau khi merge trong settings của repo
+PR này to quá, gần 3000 dòng, chia nhỏ ra được không em?
+Dạ được, em tách thành 3 PR: model, API và UI
+Review PR nhỏ dễ hơn nhiều, cảm ơn em
+Ai biết cách debug memory leak trên Node không, heap cứ tăng dần
+Dùng heap snapshot trong Chrome DevTools, so sánh hai snapshot cách nhau vài phút
+Tìm ra rồi, event listener đăng ký mỗi request mà không gỡ
+Classic. Good catch.
+Màn hình onboarding có 5 bước, user test thấy nhiều người bỏ ở bước 3
+Bước 3 bắt nhập số điện thoại, chắc nhiều người ngại
+Cho phép bỏ qua bước đó, nhắc lại sau khi họ dùng app vài ngày
+Em sẽ làm A/B test giữa bản cũ và bản cho phép bỏ qua
+Thống kê sau 1 tuần: bản mới tỷ lệ hoàn thành onboarding tăng 18%
+Quá tốt, rollout cho 100% user luôn
+Khách hỏi tại sao tính năng đồng bộ lịch chưa có trong bản này
+Phần đó bị chặn vì chờ bên đối tác cấp quyền API
+Chị sẽ gửi email nhắc bên đối tác, em gửi chị danh sách quyền cần cấp nhé
+Terraform plan cho thay đổi VPC trông ổn, ai approve giúp em với
+Cẩn thận, thay đổi subnet có thể làm recreate cả cluster đấy
+Em kiểm tra rồi, chỉ thêm subnet mới, không đụng subnet cũ
+Ok, apply vào giờ thấp điểm cho chắc
+Mấy bạn thực tập tuần sau vào, ai hướng dẫn setup môi trường giúp chị?
+Em nhận, em đang viết tài liệu onboarding luôn
+Nên có script setup một lệnh, chứ đọc tài liệu 20 bước dễ sai lắm
+Em làm Makefile rồi, chỉ cần make setup là xong
+Trên Windows thì sao, các bạn thực tập dùng Windows nhiều
+Dùng WSL2 đi, em ghi chú thêm trong README
+Bên QA cần thêm môi trường test riêng, staging hay bị dev deploy đè lên
+Mình dùng preview environment cho từng PR được không?
+Được, Vercel có sẵn cho frontend, backend thì phải tự dựng
+Em thử dựng bằng namespace riêng trên k8s cho mỗi PR, chi phí chắc tăng khoảng 15%
+Chi phí AWS tháng này tăng 30%, ai giải thích giúp chị với
+Chủ yếu do mấy instance GPU thử nghiệm quên tắt
+Em tắt rồi, và đặt budget alert để không lặp lại
+Gắn tag owner cho mọi resource nữa, để biết cái nào của ai
+Search trên trang sản phẩm không tìm được từ có dấu
+Phải normalize Unicode trước khi đưa vào Elasticsearch, thêm analyzer bỏ dấu nữa
+Em thêm rồi, giờ tìm không dấu hay có dấu đều ra kết quả
+Người dùng phàn nàn email xác nhận vào spam
+Domain mình chưa cấu hình SPF và DKIM đầy đủ
+Em cấu hình xong DKIM, DMARC để chế độ none theo dõi trước
+Hôm nay em hơi mệt, em xin làm nửa ngày
+Ừ em, khỏe lại rồi làm, đừng cố
+Chúc mừng sinh nhật Hòa nhé, chiều nay cả team ăn bánh
+Cảm ơn mọi người nhiều, em mang bánh lên rồi đó
+Ai muốn cà phê không, em xuống mua, order trong 5 phút nhé
+Em một bạc xỉu ít đá
+Cho anh một americano không đường
+Có ai biết vì sao test e2e chạy local pass mà trên CI lại fail không?
+Trên CI chạy headless, màn hình nhỏ hơn nên nút bị che
+Set viewport cố định trong config Playwright đi
+Flaky test này fail 3 lần trong tuần rồi, tạm skip được không?
+Skip thì được nhưng tạo ticket để sửa, đừng skip rồi quên
+Ticket tạo rồi, gán cho em
+UX writer góp ý thông báo lỗi nên thân thiện hơn, đừng hiện mã lỗi cho người dùng
+Ví dụ thay vì Error 403 thì ghi là Bạn không có quyền truy cập trang này
+Em gom hết thông báo lỗi vào file i18n để dễ sửa
+Bản tiếng Anh ai dịch vậy, có mấy câu nghe hơi máy móc
+Em dịch, anh chị sửa trực tiếp trên file giúp em nhé
+Thủy ơi, file thiết kế màn hình thống kê em xem chưa?
+Em xem rồi chị, có vài chỗ biểu đồ cột nên đổi sang biểu đồ đường
+Biểu đồ tròn có tới 9 phần thì khó nhìn lắm, gom bớt vào mục Khác
+The new onboarding flow looks clean, nice job on the illustrations.
+Kế hoạch quý 4 chị gửi trong Notion rồi, mọi người đọc và comment trước thứ sáu
+Mục tiêu giảm thời gian tải trang chủ xuống dưới 2 giây có vẻ hơi tham
+Hiện tại LCP khoảng 3.5 giây, chủ yếu do ảnh hero và font
+Chuyển ảnh sang WebP, lazy load ảnh dưới fold, preload font chính là được
+Thêm CDN cho static asset nữa, giờ đang serve trực tiếp từ server
+Lighthouse sau khi tối ưu đạt 92 điểm performance trên mobile
+Cuộc họp với khách dời sang 4h vì bên họ bận
+Em vẫn tham gia được, anh gửi lại link giúp em nhé
+Ai ghi biên bản họp hôm nay?
+Em ghi, tóm tắt sẽ gửi lên channel sau 30 phút
+Tóm tắt: khách đồng ý scope phase 1, deadline cuối tháng 12, phần báo cáo nâng cao để phase 2
+Cuối tháng 12 hơi gắt, còn nghỉ Noel nữa
+Mình xem lại velocity mấy sprint gần đây, nếu không kịp thì đàm phán bớt scope
+Velocity trung bình 3 sprint là 34 point, backlog phase 1 còn 110 point
+Vậy cần khoảng 3 sprint rưỡi, sát nút thật
+Bỏ bớt tính năng import Excel ra phase 2 thì vừa đủ
+Chị sẽ đề xuất với khách như vậy
+Ai có kinh nghiệm với WebSocket scale ngang không? Em đang bị mất message khi có nhiều pod
+Dùng Redis pub/sub làm adapter để các pod nhận được message của nhau
+Hoặc chuyển sang dịch vụ managed như Pusher, đỡ phải tự vận hành
+Bên mình có yêu cầu dữ liệu không ra khỏi hạ tầng riêng nên phải tự làm
+Vậy Redis adapter là hợp lý nhất, em thử nhé
+Chạy ổn rồi anh, test với 4 pod không mất message nào
+Ai đổi biến môi trường trên staging vậy, app đang trỏ sang DB production
+Dừng hết mọi thao tác trên staging ngay!
+Em đổi lại rồi, may là chỉ có vài request đọc, không ghi gì
+Mình phải tách hẳn credential production ra, staging không được biết tới nó
+Em sẽ chuyển secret sang Vault và phân quyền theo môi trường
+Postmortem cho sự cố này em viết xong rồi, mọi người đọc giúp em
+Viết rõ ràng, không đổ lỗi, ghi được action item cụ thể, tốt lắm
+Action item số 3 ai nhận vậy? Chưa thấy có tên
+Em nhận, deadline thứ ba tuần sau
+App bị giật khi cuộn danh sách dài trên Android máy yếu
+Đổi sang FlatList với getItemLayout và giảm re-render đi em
+Ảnh thumbnail cũng nên resize phía server, đừng tải ảnh gốc 4MB về
+Giờ cuộn mượt hơn nhiều, FPS ổn định quanh 58
+Em đang phân vân giữa Zustand và Redux Toolkit cho app mới
+App nhỏ thì Zustand cho gọn, đừng over-engineer
+Đồng ý, khi nào phức tạp thì tính sau
+Có cần hỗ trợ IE nữa không chị?
+Không cần em, khách đã chuyển hết sang Edge và Chrome rồi
+Tuyệt vời, bỏ được cả đống polyfill
+Lịch nghỉ Tết năm nay công ty thông báo chưa mọi người?
+Chưa, nghe đâu nghỉ 9 ngày
+Trước Tết chốt code freeze ngày 20 tháng chạp nhé
+Is the code freeze date final? We have a big feature that might slip.
+Final rồi, tính năng nào chưa xong thì để sau Tết
+API rate limit hiện tại là bao nhiêu vậy anh?
+100 request mỗi phút cho mỗi API key, đối tác lớn thì nâng lên 1000
+Bên đối tác đang bị 429 liên tục, họ gọi đồng loạt lúc đầu giờ
+Hướng dẫn họ dùng exponential backoff, và mình tăng tạm limit cho họ
+Đang chuyển log sang Loki, ai còn dùng ELK cũ thì báo em trước khi tắt
+Team data còn query log cũ để làm báo cáo, giữ thêm 1 tháng được không?
+Được anh, em để ELK chạy đến hết tháng sau
+Nhân tiện, giữ log bao lâu thì đúng quy định vậy chị?
+Log truy cập giữ tối thiểu 12 tháng, dữ liệu cá nhân thì phải ẩn đi
+Em thêm bước mask số điện thoại và email trong log rồi
+Code review guideline mới em đưa lên wiki, mọi người góp ý
+Có nên quy định thời gian review tối đa không, PR em treo 3 ngày rồi
+Mục tiêu review trong vòng 1 ngày làm việc, quá thì nhắc trên channel
+Em đề xuất dùng conventional commit để tự sinh changelog
+Ủng hộ, thêm commitlint vào pre-commit hook luôn
+Hook chạy chậm quá thì mọi người lại bỏ qua đó
+Chỉ chạy lint trên file thay đổi thôi, dùng lint-staged là nhanh
+Bên marketing cần landing page cho chiến dịch Black Friday trong tuần này
+Tuần này team đang dồn cho release, nhận thêm thì phải hy sinh gì đó
+Dùng template có sẵn trên Webflow được không, đỡ mất thời gian dev
+Được, em làm design trong 2 ngày, bên marketing tự cập nhật nội dung
+Tracking event trên landing page cần gắn GA4 và Meta Pixel
+Nhớ có banner xin phép cookie trước khi bật tracking nhé
+Ai rảnh xem giúp em lỗi CORS khi gọi API từ subdomain mới không?
+Thêm origin mới vào whitelist trong config gateway là được
+Thêm rồi mà vẫn lỗi, preflight trả về 404
+Gateway chưa xử lý method OPTIONS, để anh sửa route
+Chạy rồi, cảm ơn anh
+Thứ bảy này team building ở Ba Vì, mọi người đăng ký trong form trước thứ tư nhé
+Em đăng ký rồi, có cho mang người nhà không chị?
+Được em, nhưng ghi số lượng vào form để chị đặt phòng
+Tuần sau em có buổi chia sẻ nội bộ về observability, ai quan tâm thì vào nhé
+Ghi hình lại giúp em, hôm đó em phải đi gặp khách
+Slide em up lên Drive rồi, kèm link video
+Mình có nên chuyển từ Jenkins sang GitHub Actions hẳn không?
+Jenkins còn mấy pipeline deploy on-premise cho khách, chuyển hết hơi mệt
+Chuyển dần từng pipeline, cái nào đơn giản làm trước
+Em chuyển xong 5 pipeline đầu, thời gian build giảm khoảng 40%
+Chị cần báo cáo tiến độ cho ban giám đốc, mọi người cập nhật status ticket giúp chị trước 4h
+Em cập nhật rồi, còn 2 ticket đang chờ QA
+QA ơi, ticket đăng nhập OTP test xong chưa em?
+Còn case OTP hết hạn chưa test được vì chưa chỉnh được thời gian trên server test
+Anh thêm biến môi trường để rút thời gian hết hạn OTP xuống 30 giây cho môi trường test
+Test xong hết rồi, pass toàn bộ, em chuyển sang Done
+Hôm nay em học được cách dùng git bisect tìm commit gây lỗi, nhanh hơn dò tay nhiều
+Nhớ chia sẻ trong buổi tech talk tháng sau nhé
+Em đã thêm healthcheck cho tất cả service, giờ load balancer tự loại pod lỗi ra
+Liveness và readiness probe nhớ tách riêng, đừng dùng chung một endpoint
+Cảm ơn anh, em tách lại rồi
+Chú ý: chiều nay 3h đến 4h bảo trì VPN, ai cần truy cập server nội bộ thì làm trước
+Ai thấy app chậm sau bản cập nhật sáng nay không? Bên CSKH báo nhiều khách phàn nàn
+Em thấy thời gian phản hồi API tăng gấp đôi từ 9h
+Do cache bị vô hiệu hóa sau khi đổi format key, cache đang warm lại
+Khoảng 20 phút nữa sẽ ổn định, em theo dõi tiếp
+Đã bình thường lại, em sẽ thêm bước warm cache vào quy trình deploy
+Sprint này cả team làm tốt lắm, cảm ơn mọi người đã cố gắng
+Have a good weekend everyone, see you Monday.
+Cuối tuần vui vẻ nha mọi người, nhớ tắt máy nghỉ ngơi đấy

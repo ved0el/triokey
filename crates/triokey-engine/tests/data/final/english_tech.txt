@@ -1,0 +1,160 @@
+Hi Mark, thanks for the quick reply. I will send the updated proposal by Friday.
+Fix race condition in the session cache when two requests refresh the same token.
+Can you rebase on main before I review? There are a lot of unrelated changes in this diff.
+Run cargo test --workspace to make sure nothing else breaks.
+This function is doing too much. Consider splitting the parsing and the validation into separate steps.
+Sorry for the late response, I was out of office yesterday.
+The build fails on Windows because the path separator is hardcoded as a forward slash.
+nit: rename tmp to something more descriptive, maybe pending_rows.
+LGTM, just one small comment about error handling.
+Use git bisect to find the commit that introduced the regression, it is faster than reading the log.
+Hi Sarah, could we move our sync to Thursday afternoon? I have a dentist appointment on Wednesday.
+The migration adds a nullable column first, backfills it, then sets NOT NULL in a separate step.
+Why do we need an Arc here? The value is never shared across threads as far as I can tell.
+Bump serde to 1.0.210 and regenerate Cargo.lock.
+I think the timeout should be configurable instead of hardcoded to 30 seconds.
+docker compose up -d starts all services in the background, then use docker compose logs -f api to follow the API logs.
+Please find the invoice attached. Let me know if anything is missing.
+We saw a spike of 502 errors around 3 AM UTC. It looks like the load balancer health check failed after the deploy.
+This works, but it allocates a new String on every iteration. You can reuse the buffer.
+Thanks a lot for your help last week, the demo went really well.
+Remove the deprecated v1 endpoints. They have not received any traffic for three months.
+kubectl rollout undo deployment/web reverts to the previous ReplicaSet.
+Could you share the staging credentials through the password vault instead of Slack?
+Good catch. I missed that edge case when the list is empty.
+The README now explains how to set up the dev environment on macOS and Linux.
+Let me know when you are free for a quick call, I want to walk you through the architecture.
+Add retry with exponential backoff for the payment webhook handler.
+I am not sure this lock is needed. The map is only written during startup.
+Happy new year to you and your family!
+Use rg instead of grep here, it respects .gitignore by default and is much faster.
+The flaky test is caused by relying on HashMap iteration order. Switching to BTreeMap fixes it.
+Hi Tom, I reviewed the contract and have a few questions about the payment terms in section 4.
+Should this return an Option instead of panicking? Callers might pass an empty slice.
+Our team will be on holiday from April 30 to May 1, so responses may be slow.
+Refactor config loading to read environment variables before the TOML file.
+The query is slow because there is no index on orders.customer_id. Adding one brings it from 4s to 20ms.
+I pushed a fix, can you take another look?
+Thanks for flagging this. I will create a ticket and we can prioritize it in the next sprint.
+Set RUST_LOG=debug to see the full request trace.
+This PR introduces a small breaking change: the parse function now returns a Result.
+Hope you had a good trip to Đà Nẵng! Did you get to see the Marble Mountains?
+The CI pipeline caches the target directory, so incremental builds take about two minutes.
+Please avoid force pushing to shared branches. Use git push --force-with-lease if you really need to.
+I agree with Anna's point, we should not expose internal IDs in the public API.
+Update the Dockerfile to use a multi-stage build and reduce the image size from 1.2 GB to 180 MB.
+What happens if the user cancels the upload halfway? I do not see any cleanup of the partial file.
+Hi team, quick reminder that the release freeze starts on Monday.
+The chmod 600 is required, otherwise ssh refuses to use the key.
+We can drop this dependency, the standard library already has the same functionality.
+I will be working from Hà Nội next week, so please expect a seven hour time difference.
+Split the large module into smaller files: client.rs, server.rs and protocol.rs.
+Thanks, that makes sense. I did not know about that flag.
+The memory leak comes from event listeners that are never removed when the component unmounts.
+Could you add a unit test for the negative case?
+Our Postgres replica lags behind by about 40 seconds during the nightly batch job.
+Dear Mr. Fischer, thank you for your interest in our services. Please see the attached quotation.
+Use a feature flag for this so we can turn it off quickly if something goes wrong.
+I am going to approve this, but please address the comments before merging.
+The pre-commit hook runs cargo fmt and clippy, so formatting issues are caught early.
+Hi Kevin, I think there is a misunderstanding. The deadline we agreed on was the end of the month, not this Friday.
+Avoid unwrap in library code. Return the error and let the caller decide.
+ssh -L 5432:localhost:5432 user@bastion forwards the remote database port to your local machine.
+Add CHANGELOG entry for 0.4.0.
+I tried to reproduce the bug on Firefox and Chrome but could not. Which browser version are you using?
+The new caching layer cuts average response time by roughly 60 percent.
+This comment is outdated, the function no longer takes a callback.
+Thanks for the coffee recommendation, I will try that place near the office.
+Make the error message more actionable. Tell the user which file failed to load and why.
+We decided to go with SQLite for the local store because it needs no separate process.
+Is there a reason we are not using the existing retry helper in utils?
+Please note that the office will be closed on September 2 for National Day.
+Fix off-by-one error in pagination when the total count is a multiple of the page size.
+The script expects Python 3.11 or newer because it uses tomllib.
+Can we schedule the postmortem for tomorrow at 10 AM?
+I would prefer a match here instead of nested if let blocks, it is easier to read.
+git stash push -m wip saves your local changes so you can switch branches cleanly.
+Sorry, I sent the wrong file. Here is the correct version.
+The service crashes on startup when the config file contains a trailing comma.
+Hi Lisa, welcome to the team! Let me know if you need help setting up your laptop.
+We should document the rate limits in the API reference, users keep asking about them.
+This change is backward compatible, old clients will simply ignore the new field.
+I left a few comments inline. Most of them are minor.
+Move the secrets out of the repository and load them from the environment instead.
+The test suite now runs in parallel, which cut the total time from 12 to 5 minutes.
+Thanks for your patience while we investigated the issue.
+Use a bounded channel here to apply backpressure, otherwise memory can grow without limit.
+I will be offline this afternoon for a family event, back online tonight.
+The cron job runs at 0 2 * * * which is 2 AM server time, not local time.
+Could you explain why this needs to be async? It only reads a small file at startup.
+Fix typo in the installation guide.
+My flight to Singapore got delayed, so I may miss the first half of the meeting.
+We need to pin the Node version in .nvmrc, the build broke after someone upgraded to 22.
+This is a great improvement, thanks for taking the time to clean this up.
+The webhook signature check compares strings with ==, please use a constant time comparison.
+Hi Peter, attached are the meeting notes from today. Action items are at the bottom.
+Replace the custom date parsing with chrono, it handles time zones correctly.
+Does this endpoint need authentication? Right now anyone can call it.
+I benchmarked both versions with criterion. The new one is about 3x faster for large inputs.
+Let us keep this PR focused on the bug fix and handle the refactor separately.
+journalctl -u nginx --since today shows only today's logs for the nginx service.
+Thanks for the feedback, I updated the doc based on your suggestions.
+Add a health check endpoint at /healthz that returns 200 when the database is reachable.
+The previous implementation silently dropped events when the queue was full.
+Are you coming to the team dinner on Friday? We booked a table for eight.
+Please use snake_case for JSON fields to stay consistent with the rest of the API.
+I have to admit I underestimated this task. It will take two more days.
+Upgrade to tokio 1.40 and remove the workaround for the old select macro bug.
+The certificate expires next week. I set a reminder to renew it on Monday.
+Can you clarify what you mean by "real time"? Do we need updates within one second or one minute?
+Revert "Enable HTTP/2 for internal services" because it breaks the legacy proxy.
+I am happy to help with the onboarding docs if nobody else has time.
+This loop is O(n squared). A HashSet lookup would make it linear.
+The invoice was paid on the 15th, please check again on your side.
+Use make release to build the optimized binary and strip debug symbols.
+Hi Julia, I could not join the call because of a power outage here. Could you share the recording?
+We should log the request ID in every error message to make debugging easier.
+The default value of zero is ambiguous here, consider using Option<u32> instead.
+Thanks for organizing the workshop, I learned a lot about observability.
+Add integration tests for the export command using a temporary directory.
+The deploy is blocked until the security team approves the firewall change.
+Could you double check the numbers in the Q3 report? The total does not match the sum of the rows.
+I see you added a new environment variable. Please also add it to .env.example.
+Rename the crate to avoid a naming conflict with an existing package on crates.io.
+I am sorry to hear about your father, please take all the time you need.
+The background worker retries failed jobs up to five times before moving them to the dead letter queue.
+Let us use the same error type across the crate instead of mixing anyhow and custom errors.
+Use git log --oneline --graph to get a quick overview of the branch history.
+Hi Daniel, I wanted to follow up on the hiring plan. Do we have approval for the second backend position?
+Remove the console.log statements before merging.
+The cache key should include the locale, otherwise users see content in the wrong language.
+We had heavy rain in Sài Gòn today and half the team could not reach the office, so standup was online.
+I think we are overengineering this. A simple JSON file would be enough for now.
+Fix panic when the input contains a null byte.
+Please send me your availability for next week and I will set up the interview.
+The CPU usage drops back to normal once the garbage collector finishes, so it is not a leak.
+This should be behind the admin role check, regular users should not see the audit log.
+Thanks for being flexible with the schedule, I really appreciate it.
+Document the steps to rotate the API keys without downtime.
+How about we pair on this tomorrow morning? It might be faster than going back and forth in comments.
+terraform plan shows that it will recreate the database, do not apply this before we check why.
+I will take care of the release notes, you can focus on the bug fixes.
+We switched from REST polling to server-sent events, which reduced the number of requests by 90 percent.
+The unsafe block is fine, but please add a comment explaining why the pointer is always valid.
+Hi Emma, just checking in. Did you receive the package we sent last Tuesday?
+Bump the minimum supported Rust version to 1.75 because we use async fn in traits.
+I did not change the behavior, only moved the code to a separate module.
+The batch size of 10000 causes timeouts on smaller instances. Lowering it to 1000 works fine.
+Have a nice weekend, see you on Monday!
+Add a --dry-run flag so users can preview the changes before applying them.
+I would rather fail loudly here than return an empty result and hide the problem.
+Our monthly cloud bill went up by 30 percent, mostly from egress traffic on the CDN.
+Could you please resend the link? The previous one has expired.
+Clean up unused imports and dead code reported by clippy.
+The issue only happens when the system clock is set to a time zone with daylight saving.
+My mom is visiting from Huế this week, so I will leave a bit earlier on Thursday.
+We can close this issue, it was fixed by the upgrade to the new driver.
+Add a short section to CONTRIBUTING.md about how we name branches and write commit messages.
+The OpenAPI spec is generated from the handler annotations, so do not edit openapi.yaml by hand.
+Hi Ravi, the shipment cleared customs this morning and should arrive at your warehouse by Wednesday.
+Prefer early returns here, the happy path is buried three levels deep.

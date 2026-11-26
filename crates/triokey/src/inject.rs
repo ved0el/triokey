@@ -1,9 +1,9 @@
-//! Turn an engine `Edit` into `SendInput` records. Building only; sending is Task 7.
+//! Turn an engine `Edit` into `SendInput` records. Building only; `hook.rs` sends them.
 
 use triokey_engine::Edit;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, VK_BACK};
 
-/// `dwExtraInfo` on every injected key so the hook skips its own input. Spells "EVJ1", the working name; kept so the value never changes.
+/// `dwExtraInfo` on every injected key so the hook skips its own input. The value must never change.
 pub const TRIOKEY_MARK: usize = 0x45564A31;
 
 fn key(vk: u16, scan: u16, flags: u32) -> INPUT {

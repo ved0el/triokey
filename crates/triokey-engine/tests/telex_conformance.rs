@@ -41,4 +41,7 @@ cases! {
     quaanf: "quaanf", Old => "quần";
     truongwf: "truongwf", Old => "trường";
     truwowngf: "truwowngf", Old => "trường";
+    truyeenf_upper: "TRUYEENF", Old => "TRUYỀN";
+    truyeenf_upper_new: "TRUYEENF", New => "TRUYỀN";
+    dd_upper: "DD", Old => "Đ";
 }

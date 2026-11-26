@@ -1,0 +1,160 @@
+sửa giúp mình lỗi build trong src/main.rs, cargo báo E0382 borrow of moved value
+chạy lại npm test rồi cho mình biết test nào fail
+đổi tên hàm getUserInfo thành fetchUserProfile ở tất cả các file
+thêm flag --dry-run cho script deploy.sh, mặc định không bật
+tại sao docker compose up bị treo ở bước pulling vậy
+viết unit test cho hàm parseDate trong utils/date.ts, nhớ cover cả trường hợp timezone
+ok commit đi, message ngắn gọn bằng tiếng Anh
+đừng sửa file config.yaml, chỉ đọc thôi
+kiểm tra xem package lodash có còn được dùng ở đâu không, nếu không thì gỡ
+log ra bị lặp hai lần mỗi request, xem middleware có bị đăng ký hai lần không
+nâng cấp react lên 19.1 và fix mấy cái warning deprecated
+mình muốn tách component Header ra file riêng, giữ nguyên props
+lỗi này là sao: TypeError: Cannot read properties of undefined (reading 'map')
+viết giúp mình email xin nghỉ phép thứ sáu tuần sau gửi sếp, giọng lịch sự
+tóm tắt lại PR 42 làm gì, ngắn thôi
+rollback migration cuối cùng, mình lỡ thêm cột sai kiểu
+cột created_at đang là varchar, đổi sang timestamp with time zone giúp mình
+bỏ qua mấy test e2e, chỉ chạy unit thôi cho nhanh
+sao git push bị rejected non-fast-forward, mình có rebase rồi mà
+đừng force push nhé, tạo branch mới rồi push lên
+giải thích đoạn regex này làm gì: ^(?:\d{3}-){2}\d{4}$
+hàm này chạy chậm quá, profile thử xem nghẽn ở đâu
+thêm retry với exponential backoff cho call tới payment API, tối đa 5 lần
+cái endpoint /api/orders trả về 500 khi không có query param page
+check giúp file .env.example có thiếu biến nào so với code không
+dịch README sang tiếng Việt, giữ nguyên các đoạn code block
+viết lại đoạn này cho dễ đọc hơn, đừng đổi logic
+please add type hints to all functions in services/billing.py
+mình đang dùng python 3.12, sao pip install báo không tìm thấy wheel cho numpy
+tạo virtualenv mới trong .venv rồi cài requirements.txt
+thôi bỏ đi, revert lại thay đổi vừa rồi
+lên kế hoạch đi Đà Lạt 3 ngày 2 đêm cho gia đình 4 người, ngân sách khoảng 8 triệu
+gợi ý thực đơn ăn sáng healthy cho một tuần, dễ làm, ít tốn thời gian
+con mình học lớp 5, giải thích phân số cho bé hiểu bằng ví dụ chia bánh
+viết caption ngắn cho bài đăng bán bánh trung thu handmade
+cron job chạy lúc 2h sáng mà không thấy log gì, xem giúp crontab
+sửa Dockerfile để image nhỏ hơn, dùng multi-stage build
+image hiện tại nặng 1.2GB, mục tiêu dưới 300MB
+viết script bash backup thư mục /var/www lên S3 mỗi ngày, giữ 7 bản gần nhất
+kubectl get pods thấy CrashLoopBackOff, đọc log giúp mình
+nginx trả 502 Bad Gateway sau khi đổi port app sang 8081
+cấu hình CORS cho phép domain staging thôi, không mở *
+mình không hiểu sự khác nhau giữa useMemo và useCallback, giải thích ngắn gọn
+sao biến này lại bị undefined trong closure, mình tưởng let là đủ
+viết hàm debounce bằng TypeScript, có generic cho tham số
+chuyển đoạn code callback này sang async await
+thêm loading spinner khi đang fetch dữ liệu, dùng component Spinner có sẵn
+nút Submit trên mobile bị lệch sang phải, chỉnh lại css
+dark mode bị lỗi màu chữ ở trang settings, chữ đen trên nền đen
+tìm tất cả chỗ hardcode chuỗi tiếng Anh trong thư mục src/pages để chuẩn bị i18n
+thêm khóa ngôn ngữ vi và en vào file locales, mình sẽ dịch sau
+run cargo clippy and fix the warnings, but skip the ones in generated code
+tối ưu câu query này, đang mất 4 giây với bảng 2 triệu dòng
+thêm index cho cột email trong bảng users, nhớ viết migration
+giải thích EXPLAIN ANALYZE này giúp mình, sao nó lại seq scan
+đọc stack trace này và chỉ ra dòng nào gây lỗi
+viết README ngắn cho repo này: cài đặt, chạy, test
+đừng thêm dependency mới, dùng thư viện chuẩn thôi
+sao go build báo undefined: http.NewRequestWithContext, mình đang dùng go 1.13
+hàm handler này bị race condition, chạy go test -race thử
+thêm graceful shutdown cho server, chờ request đang xử lý xong rồi mới tắt
+viết GitHub Actions workflow chạy lint và test khi có pull request
+CI fail ở bước cache, báo key không hợp lệ, xem file .github/workflows/ci.yml
+pin version node 20.11 trong .nvmrc và package.json engines
+mình cần một hàm format tiền tệ kiểu 1.250.000 đ, không dùng Intl
+tại sao Intl.NumberFormat vi-VN trên server lại ra dấu phẩy
+thêm validation cho form đăng ký: số điện thoại 10 số, mật khẩu tối thiểu 8 ký tự
+thông báo lỗi để tiếng Việt, ví dụ Mật khẩu quá ngắn
+viết test cho trường hợp người dùng nhập tên có dấu như Nguyễn Thị Hòa
+sắp xếp danh sách tên theo thứ tự tiếng Việt, Đ phải đứng sau D
+hàm slugify đang biến Thủy thành thy, sửa để ra thuy
+chuẩn hóa chuỗi về NFC trước khi so sánh, không thì so sánh sai
+lỗi encoding khi đọc file csv xuất từ excel, chữ có dấu bị vỡ
+mở file với encoding utf-8-sig thử xem
+viết đoạn văn giới thiệu bản thân cho CV, mình có 4 năm làm backend Java
+sửa lỗi chính tả trong đoạn này giúp mình, giữ nguyên ý
+viết tin nhắn nhắc khách hàng thanh toán hóa đơn quá hạn, nhẹ nhàng thôi
+so sánh giúp mình gói cước internet 150Mbps và 300Mbps, nhà có 3 người hay xem phim
+mình bị đau lưng do ngồi nhiều, gợi ý vài bài giãn cơ 10 phút
+why is this test flaky, it passes locally but fails on CI about one in five runs
+hình như test phụ thuộc vào thứ tự chạy, thử chạy với --test-threads=1
+mock thời gian hiện tại trong test, đừng dùng Date.now trực tiếp
+tăng coverage của module auth lên trên 80 phần trăm
+đổi từ jest sang vitest, giữ nguyên cú pháp test càng nhiều càng tốt
+thêm eslint rule cấm console.log trong src, cho phép trong scripts
+format lại toàn bộ project bằng prettier nhưng commit riêng
+sao husky pre-commit hook không chạy sau khi clone lại repo
+viết lại commit message cho 3 commit gần nhất cho rõ nghĩa hơn
+cherry-pick commit a1b2c3d sang nhánh release/2.4
+conflict ở file package-lock.json, giải quyết sao cho đúng
+xóa nhánh local đã merge vào main rồi
+mình muốn xem ai sửa dòng này lần cuối, git blame giúp
+tạo tag v1.8.0 và viết changelog từ commit kể từ v1.7.2
+cập nhật CHANGELOG.md theo chuẩn keep a changelog
+API key bị lộ trong lịch sử git, làm sao xóa sạch
+đừng in giá trị token ra log, che bớt chỉ để 4 ký tự cuối
+thêm rate limit 100 request mỗi phút cho mỗi IP
+hash mật khẩu bằng argon2 thay vì md5, viết migration để rehash khi user đăng nhập
+kiểm tra endpoint upload có chặn file .exe và giới hạn 10MB chưa
+JWT hết hạn sau 15 phút, thêm refresh token lưu trong httpOnly cookie
+user báo bị logout liên tục trên Safari, nghi do SameSite cookie
+viết hàm tính khoảng cách giữa hai tọa độ GPS bằng công thức haversine
+vẽ biểu đồ doanh thu theo tháng từ file sales.csv bằng matplotlib
+trục hoành hiển thị tháng bằng tiếng Việt, ví dụ Th1, Th2
+dùng pandas group by theo quận rồi tính trung bình giá thuê
+dữ liệu có nhiều dòng NaN ở cột giá, bỏ đi hay điền median thì hợp lý hơn
+train lại model với learning rate 3e-4, batch size 32, 10 epoch
+CUDA out of memory khi batch size 64, giảm xuống hoặc bật gradient checkpointing
+viết hàm đọc file jsonl lớn theo từng dòng, không load hết vào RAM
+chuyển script này thành CLI có argparse, tham số --input --output --verbose
+thêm progress bar bằng tqdm cho vòng lặp xử lý file
+sao subprocess.run trên Windows không tìm thấy lệnh git dù đã có trong PATH
+đường dẫn có dấu cách bị lỗi, bọc trong nháy kép giúp mình
+trên Windows dùng PowerShell nhé, đừng viết lệnh bash
+viết script PowerShell đổi tên hàng loạt ảnh theo ngày chụp
+mình dùng WSL2, sao localhost:3000 từ Windows không vào được
+đổi shell mặc định sang zsh rồi chỉnh prompt hiện tên nhánh git
+ssh vào server báo Permission denied (publickey), kiểm tra quyền file authorized_keys
+tạo user deploy không có quyền sudo, chỉ được restart service app
+ổ đĩa server đầy 95 phần trăm, tìm thư mục nào chiếm nhiều nhất
+log của journald chiếm 8GB, giới hạn lại còn 500MB
+cấu hình systemd service để app tự khởi động lại khi crash
+gia hạn chứng chỉ Let's Encrypt bằng certbot, kiểm tra cron renew có chạy không
+domain mới trỏ về server nhưng vẫn ra trang cũ, chắc DNS chưa cập nhật hay cache
+viết hàm Rust đọc file config TOML bằng serde, có giá trị mặc định
+lifetime ở đây sai chỗ nào, compiler báo does not live long enough
+đổi Vec<String> thành &[&str] cho tham số hàm này có được không
+thêm feature flag serde vào Cargo.toml, mặc định tắt
+viết benchmark bằng criterion so sánh hai cách parse
+cargo test chạy mất 3 phút, có cách nào tăng tốc không
+giải thích Arc<Mutex<T>> khác gì Rc<RefCell<T>>, khi nào dùng cái nào
+tách module network ra crate riêng trong workspace
+viết docstring cho các hàm public trong file này, bằng tiếng Anh
+đặt tên biến lại cho có nghĩa, x1 x2 tmp khó đọc quá
+hàm này dài 200 dòng, chia nhỏ ra giúp mình nhưng không đổi hành vi
+trước khi sửa thì giải thích kế hoạch đã, mình duyệt rồi làm
+chỉ sửa đúng chỗ mình nói thôi, đừng refactor lung tung
+làm tiếp phần còn dang dở hôm qua, đọc file TODO.md trước
+cảm ơn nhé, giờ tổng kết lại những gì đã làm trong buổi này
+viết hướng dẫn cài đặt cho người không biết code, từng bước một
+soạn biên bản họp ngắn từ ghi chú này, chia mục quyết định và việc cần làm
+viết lời chúc mừng sinh nhật đồng nghiệp tên Thảo, vui vẻ, không quá sến
+mình định mua laptop tầm 25 triệu để code và chỉnh ảnh nhẹ, nên ưu tiên RAM hay CPU
+giải thích lãi suất kép cho người mới, ví dụ gửi 100 triệu trong 5 năm lãi 6 phần trăm
+dịch đoạn hợp đồng này sang tiếng Anh, giữ văn phong pháp lý
+viết lại tiêu đề bài blog cho hấp dẫn hơn, chủ đề tự học lập trình sau tuổi 30
+gợi ý tên cho quán cà phê nhỏ gần hồ, phong cách mộc mạc
+tạo bảng chi tiêu tháng trong Google Sheets, có cột ngày, khoản chi, số tiền, ghi chú
+công thức nào tính tổng chi tiêu theo từng tháng trong sheet đó
+viết hàm Python đọc số tiền thành chữ, ví dụ 1250000 thành một triệu hai trăm năm mươi nghìn
+cho mình ví dụ dùng Redis làm cache với TTL 10 phút
+websocket bị ngắt sau đúng 60 giây không có tin nhắn, chắc do proxy timeout
+thêm heartbeat ping mỗi 30 giây cho kết nối websocket
+ứng dụng Flutter build apk release bị crash ngay khi mở, debug thì không sao
+hình như do proguard xóa class, thêm rule keep giúp mình
+iOS build báo No such module FirebaseCore sau khi pod install
+upgrade next.js from 14 to 15 and tell me what breaks
+sao trang chủ load mất 6 giây, lighthouse báo LCP kém, xem ảnh hero có nén chưa
+đổi ảnh sang webp và thêm lazy loading cho ảnh dưới màn hình đầu
+tìm giúp chỗ nào đang gọi API trong vòng lặp, gom lại thành một request batch

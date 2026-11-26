@@ -1,4 +1,4 @@
-//! Start with Windows in normal mode: `HKCU\...\Run` value `TrioKey` (spec 5.7). Never touches
+//! Start with Windows in normal mode: `HKCU\...\Run` value `TrioKey`. Never touches
 //! `HKCU\Keyboard Layout` or the language list (AT6).
 
 use std::path::Path;

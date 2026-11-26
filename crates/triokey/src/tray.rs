@@ -1,5 +1,5 @@
-//! Tray icon `V` (typing Vietnamese) / `E` (keys pass through), monochrome like the
-//! Windows 11 system icons; menu Tiếng Việt · Cài đặt… · Thoát (spec 5.7).
+//! Tray icon `V` (typing Vietnamese, red) / `E` (keys pass through, blue), shaded for the
+//! taskbar theme; menu Tiếng Việt · Cài đặt… · Thoát.
 
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering::Relaxed};
@@ -68,19 +68,16 @@ pub fn quit() {
     }
 }
 
-/// Taskbar theme: white glyph on dark, near-black on light. Missing value: dark (Windows 10).
-fn glyph_color() -> [u8; 3] {
-    if autostart::hkcu_dword(PERSONALIZE, "SystemUsesLightTheme") == Some(1) {
-        icon::ON_LIGHT
-    } else {
-        icon::ON_DARK
-    }
+/// Taskbar theme: deep colours on a light taskbar, light ones on dark. Missing value: dark
+/// (Windows 10).
+fn light_taskbar() -> bool {
+    autostart::hkcu_dword(PERSONALIZE, "SystemUsesLightTheme") == Some(1)
 }
 
 unsafe fn load_icons() {
-    let (n, c) = (GetSystemMetrics(SM_CXSMICON), glyph_color());
+    let (n, light) = (GetSystemMetrics(SM_CXSMICON), light_taskbar());
     for (slot, g) in ICONS.iter().zip([Glyph::V, Glyph::E]) {
-        let old = slot.swap(icon::hicon(g, n, c) as usize, Relaxed);
+        let old = slot.swap(icon::hicon(g, n, icon::color(g, light)) as usize, Relaxed);
         if old != 0 {
             DestroyIcon(old as HICON);
         }
@@ -220,6 +217,13 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         WM_SETTINGCHANGE if lp != 0 && wide_eq(lp as *const u16, "ImmersiveColorSet") => {
             load_icons();
             show(hwnd);
+            0
+        }
+        // logoff or shutdown: the process is killed after this returns, before `run` gets back
+        WM_ENDSESSION => {
+            if wp != 0 {
+                app::save_learned(true);
+            }
             0
         }
         WM_DESTROY => {

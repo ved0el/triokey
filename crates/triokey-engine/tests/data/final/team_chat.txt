@@ -1,0 +1,160 @@
+Mọi người ơi, 9h15 stand-up nhé, phòng họp tầng 3 đang có khách nên mình họp qua Google Meet.
+Hôm qua em fix xong bug login trên iOS, hôm nay làm tiếp ticket PAY-214, không có blocker ạ.
+Anh Tuấn review giúp em PR 482 với, em sửa theo comment hôm thứ Sáu rồi.
+LGTM, nhưng em tách hàm validate ra file riêng cho dễ viết unit test nhé.
+Staging lại chết à? Mình vừa deploy xong thì API trả 502 liên tục.
+Đang check, pod của order-service bị OOMKilled, để mình tăng memory limit lên 1Gi xem sao.
+Chị Hoa ơi, design màn hình checkout mới có trên Figma chưa chị?
+Có rồi em, chị để ở page Checkout v3, phần empty state chị đang làm nốt.
+Sprint này mình còn 34 point mà chỉ còn 3 ngày, ai thấy không kịp thì báo sớm giúp chị.
+Ticket export CSV em estimate 5 point nhưng chắc phải lên 8, phần phân quyền phức tạp hơn em nghĩ.
+Ok em, update lại trên Jira rồi tag chị vào nhé.
+QA bên mình vừa reopen BUG-1093, vẫn crash khi upload ảnh lớn hơn 10MB.
+Em test trên Android 14 bản Samsung, log em đính kèm trong ticket rồi đó anh.
+Can someone take a look at the failing CI on main? The e2e job has been red since this morning.
+Mình xem rồi, do Playwright lên bản mới nên selector của nút Submit bị đổi. Mình pin version lại tạm.
+Trưa nay ai đi ăn bún chả ở đầu ngõ không? Mình đặt bàn cho 6 người.
+Cho em một suất nhé, em xuống muộn 10 phút.
+Incident lúc 14h20: payment gateway timeout, khoảng 3% giao dịch fail. Mình đang mở war room trên Slack.
+Đã rollback về v2.13.4, error rate về lại dưới 0.1%. Postmortem mình sẽ viết trong hôm nay.
+Cảm ơn mọi người đã support nhanh. Thứ Hai mình họp retro riêng về vụ này.
+Em hỏi chút, môi trường UAT dùng database nào vậy ạ? Em không connect được bằng DBeaver.
+Dùng Postgres trên RDS, em phải vào VPN trước rồi lấy credential trong Vault nhé.
+Design system có thêm component Toast mới, mọi người dùng bản 1.8 trong Storybook nhé.
+Màu primary bên mình đổi sang xanh đậm hơn một chút, contrast đạt chuẩn WCAG AA rồi.
+Anh ơi, cái màu này trên MacBook với màn hình Dell trông khác nhau quá.
+Do profile màu đó em, cứ lấy mã hex trong Figma làm chuẩn.
+Release tối nay lúc 22h, freeze code từ 17h. Ai còn PR cần merge thì merge trước giờ đó.
+Em xin phép nghỉ chiều nay, con em bị sốt phải đưa đi khám ạ.
+Ừ em cứ nghỉ đi, việc gấp thì để Minh cover giúp.
+Chúc bé mau khỏe nhé em.
+Hotfix cho lỗi hiển thị giá đã lên production, mọi người verify lại trên app giúp mình.
+Đã verify trên iOS và web, giá hiển thị đúng rồi anh.
+Bên khách hàng muốn thêm tính năng đăng nhập bằng Zalo, mình cần estimate trước thứ Năm.
+Phần OAuth thì không khó, nhưng phải chờ họ cấp app ID, cái đó thường mất cả tuần.
+Ok, mình sẽ note risk này vào báo cáo gửi khách.
+Có ai biết sao Docker build trên máy M1 chậm thế không? Mất gần 15 phút.
+Do image base là amd64 đó, em thêm --platform linux/arm64 hoặc dùng buildx.
+Wow nhanh hơn hẳn, cảm ơn anh.
+Meeting với team marketing dời sang 3h chiều nhé, chị Lan bận đột xuất.
+Mình vừa thêm dashboard Grafana cho latency của API search, link mình ghim trên channel.
+p95 đang khoảng 800ms, hơi cao. Chắc phải thêm index cho cột created_at.
+Thêm index thì lúc migrate trên production có lock bảng không anh?
+Dùng CREATE INDEX CONCURRENTLY thì không lock, nhưng chạy lâu hơn. Mình làm vào giờ thấp điểm.
+Sáng mai 8h mình có buổi demo với khách, ai chưa chuẩn bị data mẫu thì làm ngay hôm nay nhé.
+Em đã seed xong 200 đơn hàng mẫu trên môi trường demo rồi chị.
+Cảm ơn Linh, quá tuyệt vời.
+Heads up: AWS sẽ maintenance region Singapore vào Chủ nhật, từ 1h đến 3h sáng.
+Mình có cần báo trước cho user không anh?
+Có, Thảo soạn giúp mình thông báo trên app với email, ngắn gọn thôi.
+Em để bản nháp trong Google Docs rồi, anh xem rồi góp ý giúp em.
+Code review xong rồi nhưng có vài chỗ đặt tên biến hơi khó hiểu, em comment trực tiếp trên GitHub.
+Dạ em sửa luôn, còn chỗ dùng any trong TypeScript em sẽ thêm type cụ thể.
+Test coverage của module billing đang 61%, mục tiêu quý này là 80% nha mọi người.
+Em đề xuất mình chuyển từ Jest sang Vitest, chạy nhanh hơn khoảng 3 lần.
+Ý hay, em làm thử một PoC trên một package nhỏ rồi share kết quả nhé.
+Hôm nay em làm remote, mạng nhà em hơi chập chờn nên có gì nhắn em trên Slack.
+Laptop em không lên nguồn nữa, IT bảo phải gửi đi bảo hành, chắc mất 3 ngày.
+Em qua phòng IT mượn tạm máy khác, nhớ backup SSH key nhé.
+Has anyone tested the new onboarding flow on tablets? The layout breaks on iPad mini.
+Em check rồi, do breakpoint 768px, em sẽ thêm case cho tablet trong CSS.
+Chị ơi, user story này acceptance criteria chưa rõ lắm, em không biết làm phần filter theo ngày thế nào.
+Để chị hỏi lại PO rồi update trong ticket, em làm phần khác trước nhé.
+Quý này team mình có budget teambuilding, mọi người muốn đi Đà Lạt hay Phú Quốc?
+Đà Lạt đi, mùa này se lạnh, cà phê ngon.
+Em vote Phú Quốc, lâu rồi chưa được tắm biển.
+Mình làm poll trên Slack nhé, chốt trước thứ Sáu.
+Log trên Kibana cho thấy lỗi NullPointerException ở hàm calculateDiscount khi voucher hết hạn.
+Đúng rồi, voucher hết hạn thì trả null mà không check. Em fix và thêm test case luôn.
+Merge conflict ở file package-lock.json, mọi người đừng sửa tay file đó nha.
+Mình đã bật branch protection cho main, PR cần ít nhất 2 approve mới merge được.
+Nếu gấp mà chỉ có 1 người review thì sao anh?
+Thì ping mình hoặc anh Dũng, admin có thể override nhưng phải ghi lý do.
+Buổi sharing thứ Sáu này chủ đề là Kubernetes cơ bản, ai muốn tham gia thì đăng ký trong form nhé.
+Em đăng ký rồi, có recording không anh? Hôm đó em có lịch khám răng.
+Có record, mình upload lên Drive sau buổi.
+Bản build APK mới nhất ở đâu vậy mọi người?
+Trên Firebase App Distribution, em add email anh vào rồi, check mail giúp em.
+Khách báo app chạy chậm khi mở danh sách sản phẩm, có hơn 2000 item.
+Mình chưa có pagination ở màn đó, load hết một lần. Phải thêm infinite scroll.
+Estimate tầm 3 ngày cả FE và BE, QA thêm 1 ngày nữa.
+Ok, mình đưa vào sprint sau, sprint này full rồi.
+Sorry mọi người, em lỡ push thẳng lên develop, em revert rồi ạ.
+Không sao, lần sau nhớ tạo branch nhé. Ai cũng từng bị.
+Hệ thống monitor báo disk trên server log đầy 92%, ai đang trực on-call xem giúp.
+Mình đây, đang dọn log cũ hơn 30 ngày, sẽ set up logrotate luôn.
+Chị gửi lại file spec bản mới nhất, bản hôm trước thiếu phần quy trình hoàn tiền.
+Quy trình hoàn tiền có cần approve của kế toán không chị?
+Có em, trên 5 triệu thì cần kế toán trưởng duyệt, dưới thì tự động.
+Đồng nghiệp mới tên Khoa vào team từ thứ Hai, mọi người giúp đỡ bạn ấy nhé.
+Chào cả nhà, em là Khoa, backend dev, rất vui được làm việc với mọi người.
+Welcome Khoa! Có gì cần hỏi cứ ping anh.
+Em gửi Khoa checklist onboarding: cài Docker, clone repo, đọc README, xin quyền GitLab.
+Chiều nay có tiệc sinh nhật tháng 11 lúc 4h ở pantry, mọi người xuống ăn bánh nhé.
+Có trà sữa không chị? Hỏi trước để còn nhịn.
+Có cả trà sữa và bánh flan nha em.
+The client approved the new color palette. We can start the implementation next sprint.
+Tuyệt, em sẽ cập nhật design tokens trong code luôn.
+Ai biết cách config ESLint để bỏ qua thư mục generated không?
+Thêm vào .eslintignore hoặc dùng ignorePatterns trong config là được em.
+Cron job gửi báo cáo hằng ngày bị chạy 2 lần, khách nhận 2 email giống nhau.
+Do có 2 replica cùng chạy scheduler. Mình phải thêm distributed lock bằng Redis.
+Tạm thời scale xuống 1 replica trước, fix triệt để sau.
+Em nghĩ mình nên viết ADR cho quyết định dùng Kafka thay vì RabbitMQ, sau này người mới đỡ hỏi.
+Đồng ý, em draft rồi gửi team review nhé.
+Tối qua em trực mà không có alert nào, ngủ ngon lành.
+Hiếm có đấy, chắc nhờ đợt dọn dẹp tuần trước.
+Ngày mai họp planning lúc 10h, mọi người xem trước backlog và đánh giá độ ưu tiên giúp chị.
+Chị ơi ticket SEARCH-77 mình có làm không? Em thấy nó nằm trong backlog lâu lắm rồi.
+Tạm thời chưa, khách chưa chốt yêu cầu.
+API của bên đối tác vận chuyển đổi format response mà không báo trước, giờ tracking không hiển thị được.
+Lại nữa à. Em viết adapter để parse cả 2 format, đồng thời mail hỏi bên họ.
+Mình vừa gửi email cho đầu mối bên đó, họ hẹn trả lời trong chiều nay.
+Ai có thể pair với em chiều nay để debug vụ WebSocket bị ngắt không ạ?
+Mình rảnh từ 3h, gọi mình nhé.
+Nguyên nhân là load balancer timeout 60 giây, em đã tăng idle timeout và thêm ping định kỳ.
+Perfect, nhớ ghi lại vào wiki nhé.
+Design review chiều nay: màn hình profile, settings và luồng đổi mật khẩu.
+Icon trong settings em thấy hơi nhỏ trên Android, khó bấm.
+Ừ đúng, chị sẽ tăng vùng chạm lên 48dp theo guideline của Material.
+Chị Mai ơi, logo trong splash screen bị mờ trên màn hình độ phân giải cao.
+Để chị export lại bản SVG, em thay giúp chị nhé.
+Có ai biết quán cà phê nào yên tĩnh gần công ty để làm việc cuối tuần không?
+Quán ở góc Nguyễn Trãi đó, tầng 2 ít người, wifi ổn.
+Release notes cho bản 3.2 em đã viết xong, mọi người bổ sung nếu thiếu gì.
+Thiếu phần sửa lỗi đồng bộ giỏ hàng giữa web và app nhé em.
+Server dev hết hạn SSL certificate rồi, trình duyệt cảnh báo đỏ lòm.
+Mình đã renew bằng certbot, lần này set auto renew rồi, sẽ không bị nữa.
+Hỏi ngu chút: GraphQL với REST thì dự án mới mình nên chọn cái nào?
+Không ngu đâu. Team nhỏ, client đơn giản thì REST cho nhanh, đỡ phải học thêm.
+Velocity sprint vừa rồi là 42 point, cao nhất từ đầu năm. Cảm ơn cả team.
+Có ai thấy chìa khóa xe máy có móc khóa màu đỏ để quên ở phòng họp lớn không ạ?
+Chị để ở bàn lễ tân rồi em.
+Em đã giải quyết xong conflict giữa nhánh feature và develop, giờ build xanh rồi.
+The load test results look good: 1500 RPS with error rate under 0.5%.
+Con số đó với cấu hình mấy pod vậy anh?
+4 pod, mỗi pod 2 vCPU và 4GB RAM.
+Chiều nay điện tòa nhà bị cắt từ 2h đến 4h để bảo trì, mọi người sạc đầy laptop nhé.
+Thế thì em xin làm ở nhà chiều nay được không chị?
+Được em, nhớ online đúng giờ họp.
+Lỗi font tiếng Việt bị vỡ khi export PDF hóa đơn, em đang thử đổi sang font Be Vietnam Pro.
+Đổi font xong nhớ check lại khoảng cách dòng, mấy chữ có dấu hay bị cắt.
+Feature flag cho tính năng mới đã bật cho 10% user, mọi người theo dõi metric trên Datadog.
+Conversion rate tăng nhẹ, chưa thấy lỗi gì bất thường.
+Ngày mai tăng lên 50% nếu ổn định nhé.
+Mai em đi đám cưới bạn ở quê, xin nghỉ một ngày, em đã báo trên HRM.
+Ok em, chúc vui vẻ, nhớ mang kẹo cưới về.
+Cập nhật: khách đồng ý lùi deadline sang ngày 15/12, mọi người có thêm một tuần.
+Thở phào nhẹ nhõm thật sự.
+Đừng vội mừng, khách cũng thêm 2 yêu cầu mới vào scope.
+Em vừa tạo template cho bug report trên Jira, gồm các bước tái hiện, kết quả mong đợi và môi trường.
+Cảm ơn em, cái này giúp dev đỡ phải hỏi lại nhiều.
+Ai có quyền truy cập Google Analytics của dự án cũ không? Khách cần số liệu năm ngoái.
+Anh còn quyền viewer, để anh export báo cáo gửi em.
+Tháng sau công ty tổ chức giải bóng đá, team mình đăng ký một đội chứ?
+Đăng ký đi, có thủ môn chưa? Em đá tiền đạo được.
+Anh Hòa từng làm thủ môn hồi đại học đấy.
+Lâu lắm rồi không đá, nhưng cứ ghi tên anh vào.
+Before we close the sprint, please move all done tickets and log your hours.
+Em đã log giờ xong, còn 2 ticket chuyển sang sprint sau vì đang chờ khách phản hồi.
+Cảm ơn mọi người, cuối tuần vui vẻ, thứ Hai gặp lại nhé.

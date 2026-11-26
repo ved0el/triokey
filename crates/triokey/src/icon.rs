@@ -1,6 +1,7 @@
 //! Tray glyphs `V` / `E`, rasterised at the exact pixel size Windows asks for, so they are
-//! crisp at any DPI without shipping .ico files. Stems and bars are snapped to whole pixels;
-//! only the diagonals of `V` are anti-aliased.
+//! crisp at any DPI without shipping .ico files. Every stroke is a capsule (round ends), so the
+//! glyph is the distance to a few segments. E's straight edges fall on whole pixels; V's
+//! diagonals and all round ends are anti-aliased.
 
 use std::ptr::null_mut;
 
@@ -15,53 +16,72 @@ pub enum Glyph {
     E,
 }
 
-/// Glyph colours (R, G, B): white for a dark taskbar, near-black for a light one.
-pub const ON_DARK: [u8; 3] = [0xFF, 0xFF, 0xFF];
-pub const ON_LIGHT: [u8; 3] = [0x1C, 0x1C, 0x1C];
+/// Glyph colours (R, G, B). DEEP for a light taskbar, LIGHT for a dark one; BLUE_DEEP is also
+/// the app icon's tile.
+const BLUE_DEEP: [u8; 3] = [0x35, 0x65, 0xB8];
+const RED_DEEP: [u8; 3] = [0xB2, 0x3B, 0x33];
+const BLUE_LIGHT: [u8; 3] = [0x8A, 0xB4, 0xF8];
+const RED_LIGHT: [u8; 3] = [0xF2, 0x8B, 0x82];
+
+/// V is red, E is blue, in the shade that reads on the taskbar.
+pub fn color(g: Glyph, light_taskbar: bool) -> [u8; 3] {
+    match (g, light_taskbar) {
+        (Glyph::V, true) => RED_DEEP,
+        (Glyph::V, false) => RED_LIGHT,
+        (Glyph::E, true) => BLUE_DEEP,
+        (Glyph::E, false) => BLUE_LIGHT,
+    }
+}
+
+/// Whole-pixel layout at size `n`: margin, stroke, and E's left edge, width, middle bar top
+/// and middle bar width.
+struct Layout {
+    m: f32,
+    t: f32,
+    e_x0: f32,
+    e_w: f32,
+    e_mid: f32,
+    e_mid_w: f32,
+}
+
+fn layout(n: u32) -> Layout {
+    let nf = n as f32;
+    let m = (nf / 16.0).round().max(1.0);
+    let t = (nf * 0.18).round().max(3.0);
+    let h = nf - 2.0 * m;
+    // same parity as n, so E sits centred on whole pixels
+    let e_w = nf - 2.0 * ((nf - h * 0.75) / 2.0).round();
+    // floor: an odd leftover pixel goes below the middle bar, as in most type
+    let e_mid = m + ((h - t) / 2.0).floor();
+    Layout { m, t, e_x0: (nf - e_w) / 2.0, e_w, e_mid, e_mid_w: e_w - (e_w * 0.15).round().max(1.0) }
+}
 
 /// `n`×`n` RGBA, straight alpha, top row first.
-pub fn render(g: Glyph, n: u32, rgb: [u8; 3]) -> Vec<u8> {
+fn render(g: Glyph, n: u32, rgb: [u8; 3]) -> Vec<u8> {
     let nf = n as f32;
-    let t = (nf * 0.12).round().max(2.0);
-    let m = (nf * 0.125).round();
-    let (top, bottom) = (m, nf - m);
-    let h = bottom - top;
-    let inside: Box<dyn Fn(f32, f32) -> bool> = match g {
+    let Layout { m, t, e_x0, e_w, e_mid, e_mid_w } = layout(n);
+    let r = t / 2.0;
+    // capsules of radius r around these segments
+    let segs: Vec<((f32, f32), (f32, f32))> = match g {
         Glyph::E => {
-            let w = (h * 0.72).round();
-            let x0 = ((nf - w) / 2.0).floor();
-            let mid = ((top + bottom - t) / 2.0).round();
-            let mid_w = (w * 0.85).round();
-            Box::new(move |x, y| {
-                let in_x = |a: f32, b: f32| x >= a && x < b;
-                let in_y = |a: f32, b: f32| y >= a && y < b;
-                (in_x(x0, x0 + t) && in_y(top, bottom))
-                    || (in_x(x0, x0 + w) && (in_y(top, top + t) || in_y(bottom - t, bottom)))
-                    || (in_x(x0, x0 + mid_w) && in_y(mid, mid + t))
-            })
+            let (l, top, bottom) = (e_x0 + r, m + r, nf - m - r);
+            let bar = |y: f32, w: f32| ((l, y), (e_x0 + w - r, y));
+            vec![((l, top), (l, bottom)), bar(top, e_w), bar(e_mid + r, e_mid_w), bar(bottom, e_w)]
         }
         Glyph::V => {
-            let w = h;
-            let x0 = (nf - w) / 2.0;
-            let r = t * 0.55;
-            let (l, tip, rt) = ((x0 + r, top), (nf / 2.0, bottom - r), (x0 + w - r, top));
-            Box::new(move |x, y| y >= top && y < bottom && (seg_dist(x, y, l, tip) <= r || seg_dist(x, y, rt, tip) <= r))
+            let (top, tip) = (m + r, (nf / 2.0, nf - m - r));
+            vec![((m + r, top), tip), ((nf - m - r, top), tip)]
         }
     };
-    const S: u32 = 4;
     let mut out = Vec::with_capacity((n * n * 4) as usize);
     for py in 0..n {
         for px in 0..n {
-            let mut hits = 0;
-            for sy in 0..S {
-                for sx in 0..S {
-                    let x = px as f32 + (sx as f32 + 0.5) / S as f32;
-                    let y = py as f32 + (sy as f32 + 0.5) / S as f32;
-                    hits += inside(x, y) as u32;
-                }
-            }
+            let (x, y) = (px as f32 + 0.5, py as f32 + 0.5);
+            let d = segs.iter().map(|&(a, b)| seg_dist(x, y, a, b)).fold(f32::MAX, f32::min) - r;
+            // coverage from the signed distance at the pixel centre: an edge on a pixel
+            // boundary gives exactly 0 or 1
             out.extend_from_slice(&rgb);
-            out.push((hits * 255 / (S * S)) as u8);
+            out.push(((0.5 - d).clamp(0.0, 1.0) * 255.0).round() as u8);
         }
     }
     out
@@ -108,26 +128,40 @@ pub unsafe fn hicon(g: Glyph, n: i32, rgb: [u8; 3]) -> HICON {
 mod tests {
     use super::*;
 
-    const SIZES: [u32; 6] = [16, 20, 24, 32, 40, 48];
+    const SIZES: [u32; 7] = [16, 20, 24, 32, 40, 48, 64];
 
     fn alpha(px: &[u8], n: u32, x: u32, y: u32) -> u8 {
         px[((y * n + x) * 4 + 3) as usize]
     }
 
     #[test]
-    fn e_is_pixel_aligned_and_v_is_not_e() {
+    fn e_edges_are_on_pixels_and_v_is_symmetric() {
         for n in SIZES {
-            let e = render(Glyph::E, n, ON_DARK);
-            let v = render(Glyph::V, n, ON_DARK);
+            let e = render(Glyph::E, n, BLUE_DEEP);
+            let v = render(Glyph::V, n, RED_DEEP);
             assert_eq!(e.len(), (n * n * 4) as usize);
-            // E has only fully on / fully off pixels
-            assert!(e.as_chunks::<4>().0.iter().all(|p| p[3] == 0 || p[3] == 255), "E blurry at {n}");
-            // both have ink, transparent corners, and differ
-            assert!(e.as_chunks::<4>().0.iter().any(|p| p[3] == 255) && v.as_chunks::<4>().0.iter().any(|p| p[3] > 200));
-            assert_eq!(alpha(&v, n, 0, 0), 0);
-            assert_eq!(alpha(&e, n, n - 1, n - 1), 0);
-            assert_ne!(e, v);
-            // V is symmetric
+            let l = layout(n);
+            let (x0, t, m, mid) = (l.e_x0 as u32, l.t as u32, l.m as u32, l.e_mid as u32);
+            assert!(t >= 3 && l.e_mid_w < l.e_w, "{n}");
+            // a row between the top and middle bars crosses only the stem: hard edges
+            for x in 0..n {
+                assert_eq!(alpha(&e, n, x, m + t), if (x0..x0 + t).contains(&x) { 255 } else { 0 }, "E row at {n}, x {x}");
+            }
+            // a column through the three bars, clear of their round ends: hard edges
+            for y in 0..n {
+                let ink = (m..m + t).contains(&y) || (mid..mid + t).contains(&y) || (n - m - t..n - m).contains(&y);
+                assert_eq!(alpha(&e, n, x0 + t + 1, y), if ink { 255 } else { 0 }, "E column at {n}, y {y}");
+            }
+            // round ends are anti-aliased, the outer corners are cut
+            assert!(e.as_chunks::<4>().0.iter().any(|p| p[3] > 0 && p[3] < 255));
+            assert!(alpha(&e, n, x0, m) < 255 && alpha(&e, n, x0, n - m - 1) < 255);
+            // both have ink and a transparent 1 px border; V is symmetric
+            assert!(v.as_chunks::<4>().0.iter().any(|p| p[3] == 255));
+            for i in 0..n {
+                for p in [&e, &v] {
+                    assert_eq!(alpha(p, n, i, 0) | alpha(p, n, 0, i) | alpha(p, n, i, n - 1) | alpha(p, n, n - 1, i), 0, "border at {n}");
+                }
+            }
             for y in 0..n {
                 for x in 0..n {
                     assert_eq!(alpha(&v, n, x, y), alpha(&v, n, n - 1 - x, y), "V asymmetric at {n}");
@@ -136,40 +170,98 @@ mod tests {
         }
     }
 
+    /// WCAG 2 contrast ratio of two sRGB colours.
+    fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+        let lin = |v: u8| {
+            let s = v as f64 / 255.0;
+            if s <= 0.04045 {
+                s / 12.92
+            } else {
+                ((s + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let lum = |c: [u8; 3]| 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+        let (x, y) = (lum(a), lum(b));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    #[test]
+    fn colours_meet_wcag_aa_on_their_taskbar() {
+        for (g, light, bg) in [(Glyph::V, false, 0x20), (Glyph::E, false, 0x20), (Glyph::V, true, 0xF3), (Glyph::E, true, 0xF3)] {
+            let c = contrast(color(g, light), [bg; 3]);
+            println!("{g:?} light={light}: {c:.2}");
+            assert!(c >= 4.5, "{g:?} light={light}: {c:.2}");
+        }
+    }
+
     /// `cargo test -p triokey -- --ignored icons_preview` writes docs/icons-preview.png.
     #[test]
     #[ignore]
     fn icons_preview() {
-        // all colours are neutral grey, so an 8-bit greyscale PNG is enough
         const Z: u32 = 4;
         const GAP: u32 = 12;
         let w = SIZES.iter().map(|n| n * Z + GAP).sum::<u32>() + GAP;
-        let row_h = 48 * Z + 2 * GAP;
+        let row_h = 64 * Z + 2 * GAP;
         let h = row_h * 4;
-        let themes = [(0x20u8, ON_DARK), (0xF3, ON_LIGHT)];
-        let mut img = vec![0u8; (w * h) as usize];
-        for (row, (bg, fg, g)) in themes.iter().flat_map(|&(bg, fg)| [(bg, fg, Glyph::V), (bg, fg, Glyph::E)]).enumerate() {
+        let mut img = vec![0u8; (w * h * 3) as usize];
+        let rows = [(0x20u8, Glyph::V, false), (0x20, Glyph::E, false), (0xF3, Glyph::V, true), (0xF3, Glyph::E, true)];
+        for (row, &(bg, g, light)) in rows.iter().enumerate() {
             let y0 = row as u32 * row_h;
-            img[(y0 * w) as usize..((y0 + row_h) * w) as usize].fill(bg);
+            img[(y0 * w * 3) as usize..((y0 + row_h) * w * 3) as usize].fill(bg);
+            let fg = color(g, light);
             let mut x0 = GAP;
             for n in SIZES {
                 let px = render(g, n, fg);
                 for y in 0..n * Z {
                     for x in 0..n * Z {
                         let a = alpha(&px, n, x / Z, y / Z) as u32;
-                        let v = (fg[0] as u32 * a + bg as u32 * (255 - a)) / 255;
-                        img[((y0 + GAP + y) * w + x0 + x) as usize] = v as u8;
+                        let i = (((y0 + GAP + y) * w + x0 + x) * 3) as usize;
+                        for (k, &c) in fg.iter().enumerate() {
+                            img[i + k] = ((c as u32 * a + bg as u32 * (255 - a)) / 255) as u8;
+                        }
                     }
                 }
                 x0 += n * Z + GAP;
             }
         }
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/icons-preview.png");
-        std::fs::write(path, png_grey(w, h, &img)).unwrap();
+        std::fs::write(path, png_rgb(w, h, &img)).unwrap();
     }
 
-    /// Minimal PNG: one IDAT of stored (uncompressed) deflate blocks.
-    fn png_grey(w: u32, h: u32, grey: &[u8]) -> Vec<u8> {
+    /// Deflate bit writer: values go LSB first, Huffman codes MSB first.
+    struct Bits {
+        z: Vec<u8>,
+        acc: u32,
+        n: u32,
+    }
+
+    impl Bits {
+        fn put(&mut self, v: u32, len: u32) {
+            self.acc |= v << self.n;
+            self.n += len;
+            while self.n >= 8 {
+                self.z.push(self.acc as u8);
+                self.acc >>= 8;
+                self.n -= 8;
+            }
+        }
+        fn code(&mut self, c: u32, len: u32) {
+            self.put((0..len).fold(0, |r, i| r | ((c >> i) & 1) << (len - 1 - i)), len);
+        }
+        /// A literal/length symbol in the fixed Huffman code.
+        fn sym(&mut self, v: u32) {
+            match v {
+                0..=143 => self.code(0x30 + v, 8),
+                144..=255 => self.code(0x190 + v - 144, 9),
+                256..=279 => self.code(v - 256, 7),
+                _ => self.code(0xC0 + v - 280, 8),
+            }
+        }
+    }
+
+    /// Minimal PNG: one IDAT deflated with the fixed Huffman code and only distance-3 matches
+    /// (runs of one RGB colour), which is most of this picture.
+    fn png_rgb(w: u32, h: u32, rgb: &[u8]) -> Vec<u8> {
         fn crc(data: &[u8]) -> u32 {
             let mut c = !0u32;
             for &b in data {
@@ -186,22 +278,35 @@ mod tests {
             out.extend(&body);
             out.extend(crc(&body).to_be_bytes());
         }
+        const BASE: [u32; 29] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
+        const EXTRA: [u32; 29] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
         let mut raw = Vec::new();
-        for row in grey.chunks_exact(w as usize) {
+        for row in rgb.chunks_exact(w as usize * 3) {
             raw.push(0);
             raw.extend_from_slice(row);
         }
-        let mut z = vec![0x78, 0x01];
-        let blocks: Vec<&[u8]> = raw.chunks(65535).collect();
-        for (i, b) in blocks.iter().enumerate() {
-            z.push((i + 1 == blocks.len()) as u8);
-            z.extend((b.len() as u16).to_le_bytes());
-            z.extend((!(b.len() as u16)).to_le_bytes());
-            z.extend_from_slice(b);
+        let mut b = Bits { z: vec![0x78, 0x01], acc: 0, n: 0 };
+        b.put(0b011, 3); // final block, fixed Huffman
+        let mut i = 0;
+        while i < raw.len() {
+            let run = if i >= 3 { (i..raw.len().min(i + 258)).take_while(|&j| raw[j] == raw[j - 3]).count() } else { 0 };
+            if run >= 3 {
+                let k = BASE.iter().rposition(|&l| l <= run as u32).unwrap();
+                b.sym(257 + k as u32);
+                b.put(run as u32 - BASE[k], EXTRA[k]);
+                b.code(2, 5); // distance 3
+                i += run;
+            } else {
+                b.sym(raw[i] as u32);
+                i += 1;
+            }
         }
+        b.sym(256);
+        b.put(0, 7); // pad to a byte
+        let mut z = b.z;
         let (mut a, mut s) = (1u32, 0u32);
-        for &b in &raw {
-            a = (a + b as u32) % 65521;
+        for &v in &raw {
+            a = (a + v as u32) % 65521;
             s = (s + a) % 65521;
         }
         z.extend(((s << 16) | a).to_be_bytes());
@@ -209,7 +314,7 @@ mod tests {
         let mut ihdr = Vec::new();
         ihdr.extend(w.to_be_bytes());
         ihdr.extend(h.to_be_bytes());
-        ihdr.extend([8, 0, 0, 0, 0]);
+        ihdr.extend([8, 2, 0, 0, 0]);
         chunk(&mut out, b"IHDR", &ihdr);
         chunk(&mut out, b"IDAT", &z);
         chunk(&mut out, b"IEND", &[]);

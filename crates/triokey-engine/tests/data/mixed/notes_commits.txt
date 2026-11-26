@@ -1,0 +1,320 @@
+fix: handle empty response body in the http retry loop
+Sửa lỗi timeout khi gọi API thanh toán, tạm thời tăng lên 30s
+TODO: tách hàm parse_config ra module riêng, file này dài quá rồi
+chore: bump serde to 1.0.210
+Đã test lại trên staging, không thấy lỗi nữa nhưng vẫn cần theo dõi thêm vài ngày
+docs: add an example for custom middleware
+The cache is invalidated whenever the schema version changes.
+Mình nghĩ nên dùng Arc<Mutex<_>> ở đây thay vì clone cả struct
+refactor: move auth helpers into src/auth/mod.rs
+Lỗi này chỉ xảy ra trên macOS, file system không phân biệt hoa thường nên import nhầm file
+feat: support pagination in /api/v2/orders
+Nam ơi, PR #142 cần rebase lại trên main trước khi merge nhé
+Run `make test` before opening a pull request.
+Chưa rõ tại sao bản build release nặng gấp đôi bản trước, chắc do bật debug symbol
+test: add a regression test for negative offsets
+Ghi chú: biến DATABASE_URL trên production phải có sslmode=require
+Note that this function is not thread safe.
+revert: undo the change to the default log level
+Phần migration này chạy khá lâu, khoảng 15 phút với bảng users hiện tại
+If the token has expired, the client should request a new one silently.
+Cần hỏi lại Linh về format ngày tháng trong file export, hiện đang lẫn lộn dd/mm và mm/dd
+ci: cache cargo registry between jobs
+Hàm này trả về Option nhưng chỗ gọi lại unwrap thẳng, sớm muộn gì cũng panic
+fix typo in README
+The default port is 8080, but it can be overridden with the PORT environment variable.
+Tạm thời comment đoạn gửi email lại, chờ bên vận hành cấp SMTP mới
+perf: avoid allocating a new buffer on every frame
+Đã thêm index cho cột phone, tìm khách theo số điện thoại giờ nhanh hơn hẳn
+Each worker owns its own connection pool.
+TODO: viết thêm test cho trường hợp file rỗng và file chỉ có header
+build: drop support for Node 16
+Mấy cái warning unused variable trong crate cũ để sau dọn, giờ chưa ưu tiên
+This endpoint is deprecated and will be removed in the next major release.
+Minh check giúp mình log của service notification lúc 2h sáng nay với, có vẻ bị restart liên tục
+feat(cli): add --dry-run flag to the deploy command
+Trước khi chạy script này nhớ backup database, nó xóa dữ liệu cũ không hỏi lại đâu
+Use `--verbose` to print every request and response header.
+Bug: khi người dùng đổi múi giờ thì lịch hẹn bị lệch đúng 7 tiếng
+fix(ui): close the modal when clicking outside of it
+Giải thích thêm: mình chọn SQLite vì app chạy offline là chính, không cần server riêng
+Configuration is loaded from config.toml in the current directory, then from the user config folder.
+Huy đang làm phần upload ảnh, đừng sửa file storage.rs lúc này kẻo conflict
+style: run rustfmt on the whole workspace
+Có ai biết sao docker compose up trên máy mới lại báo thiếu volume không
+The function returns an error if the input contains invalid UTF-8.
+Đổi tên biến tmp thành pending_jobs cho dễ hiểu, không thay đổi logic
+chore(deps): update tokio to 1.40
+Lưu ý: không commit file .env lên repo, đã có .env.example rồi
+Retries use exponential backoff with a maximum delay of one minute.
+Hôm nay xong phần validate form đăng ký, mai làm tiếp phần quên mật khẩu
+fix: correct off by one error in the date range filter
+Mình đề xuất bỏ hẳn thư viện moment, chuyển sang date-fns cho nhẹ bundle
+All public functions must have doc comments.
+TODO(Trang): xác nhận lại công thức tính phí vận chuyển cho đơn hàng trên 5kg
+refactor: replace nested match with early returns
+Server bên khách hàng chặn port 22, phải deploy qua bastion host
+The worker shuts down gracefully after finishing its current job.
+Đã merge nhánh feature/report-export vào develop, mọi người pull về nhé
+docs: clarify how to set up the local database
+Hàm calculate_total đang làm tròn sai khi có giảm giá phần trăm lẻ
+Logs are rotated daily and kept for fourteen days.
+Mình không chắc cách này có scale được không nếu số lượng tenant tăng lên vài nghìn
+feat: allow admins to export user lists as CSV
+Kết quả benchmark: trước 120ms, sau khi thêm cache còn khoảng 18ms
+Do not call this method from the UI thread.
+Thêm retry cho job đồng bộ kho, mạng bên chi nhánh hay chập chờn
+test: mock the clock in scheduler tests
+Ai review giúp mình PR sửa lỗi đăng nhập Google với, khá gấp vì khách đang báo
+Pass an empty string to disable the prefix.
+Bỏ đoạn kiểm tra quyền thừa ở controller, middleware đã check rồi
+fix: prevent duplicate rows when the import is retried
+Cấu trúc thư mục mới: src/domain cho logic, src/infra cho database và HTTP
+The parser accepts both tabs and spaces as indentation.
+TODO: thay hardcode URL bằng biến cấu hình trước khi release
+chore: remove unused feature flags
+Họp xong với team mobile, thống nhất API trả về snake_case cho mọi field
+Make sure the output directory exists before running the build script.
+Lỗi race condition khi hai request cùng cập nhật số dư một lúc, cần dùng transaction
+feat(api): return 409 when the resource already exists
+Phiên bản này chưa hỗ trợ đa ngôn ngữ, sẽ làm ở sprint sau
+The migration is reversible; run `migrate down` to roll it back.
+Mình đã viết lại hàm sort cho danh sách sản phẩm, giờ sắp xếp đúng theo giá và tên
+ci: run clippy with warnings as errors
+Không hiểu sao test này chỉ fail vào thứ Hai, chắc liên quan đến tính tuần
+Timestamps are stored in UTC and converted on display.
+Quang nhắc là chứng chỉ SSL của domain staging hết hạn cuối tháng này
+fix: escape HTML in user comments
+Tài liệu hướng dẫn cài đặt đã cập nhật trong docs/setup.md, có cả phần cho macOS
+This option has no effect when caching is disabled.
+Cần thống nhất lại quy tắc đặt tên nhánh: feature/, fix/, chore/ rồi đến mã ticket
+refactor: extract retry logic into a reusable helper
+Số liệu trên dashboard lệch so với báo cáo Excel khoảng 2%, đang tìm nguyên nhân
+Invalid entries are skipped and reported at the end.
+TODO: thêm rate limit cho endpoint gửi OTP, tránh bị spam tin nhắn
+docs: document the release process
+Mình chuyển task này sang tuần sau vì đang kẹt phần thanh toán trả góp
+The client keeps a single websocket connection open per session.
+Lỗi 504 khi xuất báo cáo năm, nginx cắt kết nối sau 60 giây vì proxy_read_timeout để mặc định
+feat: add dark mode to the settings page
+Đã xóa các bản ghi test khỏi database production, tổng cộng 312 dòng
+Values are compared case-insensitively.
+Dũng ơi, script seed data có cần chạy lại sau khi đổi schema không
+fix: release the file lock on early return
+Nên tách bảng orders thành orders và order_items, hiện đang lưu JSON trong một cột
+The scheduler skips jobs that are already running.
+Hướng dẫn: chạy cargo build --release rồi copy file trong target/release sang server
+test: cover the empty cart case
+Phần thông báo đẩy trên iOS chưa nhận được, nghi là sai certificate
+Set this to false if you manage the database schema yourself.
+TODO: kiểm tra lại quyền truy cập thư mục uploads sau khi chuyển server
+chore: tidy up imports
+Có thể dùng feature flag để bật dần tính năng mới cho từng nhóm người dùng
+Errors are logged with the request id so they can be traced across services.
+Mình vừa thêm file CONTRIBUTING.md, mọi người đọc qua rồi góp ý nhé
+perf: batch database writes in the sync job
+Hiện tại mỗi lần vào trang chủ gọi tới 14 request, cần gộp bớt lại
+The API returns at most one hundred items per page.
+Lỗi hiển thị sai số tiền khi locale là vi-VN, dấu phân cách bị đảo
+feat: send a weekly summary email to project owners
+Đã cấu hình lại cron chạy lúc 1h sáng thay vì 0h để tránh trùng giờ backup
+Use the staging environment for any manual testing.
+Bên khách hàng muốn thêm cột ghi chú vào báo cáo tồn kho, ước tính mất nửa ngày
+fix: handle missing locale files gracefully
+Mai mình nghỉ phép, việc gấp nhắn Phương giúp mình nhé
+This crate has no unsafe code.
+Cần review lại toàn bộ chỗ dùng unwrap() trong module network trước khi lên bản 1.0
+docs: fix broken links in the changelog
+Không nên log nguyên request body vì có thể chứa mật khẩu và số thẻ
+The health check endpoint does not require authentication.
+TODO: đo lại thời gian khởi động app sau khi bỏ bớt dependency
+refactor: rename UserService to AccountService
+Phần tìm kiếm full-text dùng tạm LIKE, khi dữ liệu nhiều sẽ chuyển sang Postgres tsvector
+A restart is required after changing this setting.
+Đã fix lỗi hiển thị ảnh đại diện bị méo trên Android cũ
+build: produce static binaries for Linux
+Mình thấy hàm này làm quá nhiều việc, nên chia thành validate, transform và save
+Keys must be unique within a single namespace.
+Thảo luận với Vy: tạm thời giữ REST, chưa chuyển sang GraphQL vì team chưa quen
+fix: retry failed uploads up to three times
+Đồng bộ dữ liệu giữa hai kho bị chậm vì đang gọi tuần tự, đổi sang chạy song song
+Deleted items are kept in the trash for thirty days.
+Khi chạy test song song thì bị trùng port, thêm biến TEST_PORT để chọn port ngẫu nhiên
+chore: add issue templates
+Báo cáo doanh thu tháng 10 bị thiếu dữ liệu ngày 31, do vòng lặp dừng sớm
+The service reads secrets from the vault at startup.
+Mọi người nhớ cập nhật trạng thái ticket trên board trước buổi standup sáng mai
+feat: show a progress bar during long exports
+Thư viện này lâu rồi không ai maintain, nên tìm cái khác thay thế
+Avoid holding the lock across await points.
+Lỗi khi tên file có ký tự tiếng Việt, đường dẫn trả về bị encode hai lần
+test: add property tests for the money type
+Đã thêm hướng dẫn rollback vào runbook, phòng khi deploy lỗi lúc nửa đêm
+The default timeout is ten seconds.
+TODO: gom các hằng số cấu hình rải rác vào một file constants.rs
+fix: make the sidebar scroll independently of the main content
+Bên design gửi bản mới, bo góc nút to hơn và bỏ viền ở ô tìm kiếm
+Requests without a valid signature are rejected.
+Mình chạy thử load test với 500 người dùng đồng thời, CPU lên 85% thì bắt đầu chậm
+refactor: split the monolithic handler into smaller functions
+Vẫn chưa tái hiện được lỗi Toàn báo, máy mình chạy bình thường
+This guide assumes you have Docker installed.
+Không xóa bảng audit_logs nhé, bên kiểm toán cần giữ ít nhất 5 năm
+ci: publish docs on every tag
+Màn hình hết phiên đăng nhập trước đây trắng trơn, giờ có thông báo và nút đăng nhập lại
+The import tool can read both CSV and JSON files.
+Cần thêm bước xác nhận trước khi hủy đơn, khách hàng bấm nhầm nhiều quá
+feat: add a search box to the admin user list
+Cập nhật: lỗi tràn bộ nhớ là do đọc cả file Excel vào RAM, đã chuyển sang đọc từng dòng
+Only the owner can transfer a project.
+Khoa đang refactor lớp repository, tạm dừng thêm query mới vào đó
+fix: correct the order of arguments in the log call
+Đã chuyển toàn bộ ảnh tĩnh sang CDN, trang sản phẩm tải nhanh hơn rõ rệt
+The response is cached for five minutes.
+TODO: xử lý trường hợp người dùng đóng tab giữa chừng khi đang thanh toán
+docs: add architecture overview diagram
+Cái này là technical debt từ hồi làm MVP, giờ mới có thời gian dọn
+Use a separate database for integration tests.
+Lỗi đăng xuất ngẫu nhiên do refresh token bị ghi đè khi mở nhiều tab
+chore: update the copyright year
+Theo mình thì nên viết test trước cho phần tính lương, logic phức tạp và dễ sai
+Line numbers in error messages start at one.
+Kiểm tra lại giúp mình xem bucket S3 có đang để public không, cảm giác hơi nguy hiểm
+perf: reuse the http client instead of creating one per request
+Đã thêm script dọn file tạm trong thư mục /tmp/reports chạy mỗi tuần một lần
+The command exits with a non-zero status on failure.
+Tuấn hỏi có nên gộp hai service auth và user lại không, mình thấy chưa cần
+fix: prevent the form from submitting twice
+Ghi chú cho bản phát hành 2.3: thêm xuất PDF, sửa lỗi lọc theo ngày, cải thiện tốc độ
+Environment variables take precedence over the config file.
+Phần phân quyền theo vai trò đang hardcode ba vai, sau này cần cho admin tự tạo
+test: verify that expired sessions are cleaned up
+Lỗi màn hình trắng trên Safari do dùng cú pháp optional chaining chưa được transpile
+Pull requests need at least one approval before merging.
+TODO: đổi thuật toán hash mật khẩu từ sha256 sang argon2
+feat: let users pin their favorite projects
+Mình để lại comment trong code giải thích tại sao phải sleep 200ms ở đây, đừng xóa
+The list is sorted by creation date, newest first.
+Hệ thống báo động gửi quá nhiều cảnh báo giả, cần chỉnh lại ngưỡng
+refactor: use a builder for the request options
+Đã đối chiếu số liệu với bên kế toán, khớp hoàn toàn cho quý 3
+Large files are uploaded in chunks of eight megabytes.
+Bản build Android bị lỗi Gradle sau khi nâng cấp Android Studio, đang xem lại
+fix: show a friendly message when the network is offline
+Có nên dùng uuid v7 cho khóa chính không, sắp xếp theo thời gian sẽ tiện hơn
+Each step in the pipeline can be retried independently.
+Chị Hằng nhờ thêm bộ lọc theo phòng ban vào trang danh sách nhân viên
+chore: delete stale branches
+Mình gặp lỗi borrow checker ở chỗ này mãi, cuối cùng phải đổi sang dùng index thay vì reference
+This flag is intended for debugging only.
+TODO: viết tài liệu cho API webhook, đối tác đang hỏi
+docs: explain the difference between draft and archived states
+Sau khi bật gzip, dung lượng response trung bình giảm từ 240KB xuống 38KB
+The maximum file name length is 255 bytes.
+Khách hàng phản ánh không nhận được email đặt lại mật khẩu, kiểm tra thì queue gửi mail đang bị kẹt
+feat: support markdown in task descriptions
+Hàm format_currency không xử lý số âm, hiển thị thành --50.000 đ
+Write operations are serialized through a single queue.
+Đề xuất: thêm bước kiểm tra kiểu dữ liệu bằng mypy vào pipeline CI
+fix: avoid leaking file handles in the watcher
+Lỗi không nhận được callback từ cổng thanh toán, hóa ra IP server mới chưa được whitelist
+The plugin system is experimental and may change.
+Mình đã viết lại phần README cho rõ ràng hơn, thêm mục câu hỏi thường gặp
+test: run the end to end suite against a fresh database
+Bảng sessions phình to quá, cần job xóa các session hết hạn hơn 30 ngày
+Prefer small focused traits over one large trait with optional methods.
+Tuần này ưu tiên sửa bug, tạm dừng làm tính năng mới cho đến khi bản ổn định
+ci: split the test job into unit and integration stages
+Phần dịch thuật đang để trong file JSON, mỗi lần thêm chuỗi mới phải sửa ba file
+The archive format is versioned and backward compatible.
+Nhắc lại: mọi thay đổi database phải có file migration, không sửa tay trên production
+fix: keep the scroll position when returning to the list
+Ngân đang xin quyền truy cập Grafana, ai có quyền admin cấp giúp với
+Strings longer than the limit are truncated with an ellipsis.
+TODO: thêm kiểm tra định dạng số điện thoại trước khi lưu
+refactor: remove the global state from the logger
+Giao diện trên màn hình nhỏ bị tràn ngang ở bảng chi tiết hóa đơn
+A dry run prints the planned changes without applying them.
+Mình đã thử cả hai cách, dùng channel đơn giản hơn và hiệu năng gần như nhau
+chore: switch the license header to SPDX format
+Lỗi tính sai ngày công khi tháng có ngày nghỉ lễ rơi vào thứ Bảy
+The cleanup job runs every night at midnight UTC.
+Cần thêm cột updated_by để biết ai sửa bản ghi lần cuối
+feat: add recent items to the command palette
+Đã gửi bản demo cho khách, họ hài lòng nhưng muốn đổi bố cục trang tổng quan
+Avoid blocking calls inside async handlers.
+Vấn đề không phải ở code mà ở cấu hình DNS, đổi lại record là chạy
+fix: trim whitespace from email addresses before saving
+Ghi chú kỹ thuật: dữ liệu lịch sử được nén theo tháng, giải nén khi cần truy vấn
+Unknown fields in the request body are ignored.
+TODO: tìm hiểu cách chạy test trên GitHub Actions với runner Windows
+docs: list the supported database versions
+Hôm qua deploy xong quên chạy migration nên trang báo cáo lỗi cả buổi sáng
+The SDK retries idempotent requests automatically.
+Thư mục scripts/ có nhiều file không ai dùng nữa, mình sẽ dọn dần
+perf: precompute the lookup table at startup
+Mọi người cho ý kiến: có nên bắt buộc ký commit bằng GPG không
+Configuration changes are applied without a restart.
+Lỗi không lưu được bài viết khi tiêu đề chứa dấu nháy đơn, query chưa dùng tham số
+test: add snapshot tests for the CLI help output
+Hùng ơi, endpoint /health trên môi trường dev đang trả về 503, bạn xem giúp
+Timeouts are reported as a distinct error kind.
+Đã đổi cách tính điểm thưởng theo yêu cầu mới, áp dụng từ ngày 1 tháng sau
+fix: handle leap years in the age calculation
+Mình thấy thiết kế bảng hiện tại khó mở rộng, nên chuẩn hóa lại trước khi thêm tính năng
+Comments are limited to two thousand characters.
+TODO: bỏ polling mỗi 5 giây, chuyển sang server-sent events
+chore: pin the toolchain version in rust-toolchain.toml
+Báo cáo lỗi từ Thủy: nút tải xuống không hoạt động trên Firefox bản mới
+The library does not depend on any system packages.
+Kiểm tra hiệu năng cho thấy phần lớn thời gian nằm ở bước serialize JSON
+feat: allow scheduling reports for a specific weekday
+Không cần tối ưu đoạn này vội, nó chỉ chạy một lần lúc khởi động
+Backups are encrypted before they leave the server.
+Lỗi khi xuất Excel quá 65 nghìn dòng do thư viện cũ dùng định dạng xls
+refactor: introduce a typed id for orders
+Giải pháp tạm: thêm header Cache-Control no-store cho trang tài khoản
+Use semantic versioning for all published crates.
+Đã hoàn thành tích hợp đăng nhập một lần với hệ thống nội bộ, chờ bên bảo mật duyệt
+fix: stop the spinner when the request fails
+Mình nghi lỗi nằm ở thư viện, đã mở issue bên repo của họ và đang chờ phản hồi
+The first user to sign up becomes the administrator.
+TODO: chuẩn hóa các mã lỗi trả về, hiện mỗi module một kiểu
+docs: add troubleshooting steps for proxy errors
+Thêm log ở các điểm quan trọng của luồng đặt hàng để dễ truy vết khi có sự cố
+Access tokens are valid for one hour.
+Server staging hết dung lượng đĩa, xóa bớt image docker cũ là ổn
+test: ensure the parser rejects trailing commas
+Phần hướng dẫn sử dụng cho người dùng cuối cần viết bằng tiếng Việt, tránh thuật ngữ khó
+Notifications can be muted per project.
+Đã thống nhất với Long dùng chuẩn ISO 8601 cho mọi trường thời gian trong API
+fix: correct the plural form in the item counter
+Bản cập nhật này thay đổi cấu trúc file cấu hình, cần ghi rõ trong changelog
+This module wraps the platform specific file APIs.
+TODO: hỏi lại bên hạ tầng về giới hạn băng thông của gói hosting hiện tại
+ci: fail the build when coverage drops below seventy percent
+Mình thêm enum Status thay cho chuỗi string, tránh viết sai giá trị
+Old records are moved to cold storage after one year.
+Lỗi đồng bộ lịch với Google Calendar khi sự kiện lặp lại hàng tuần có ngoại lệ
+feat: add an audit log for permission changes
+Sửa lại thứ tự middleware, phần CORS phải chạy trước phần xác thực
+Benchmarks were run on a machine with eight cores.
+Mai có buổi demo với ban giám đốc, tối nay đóng băng code, không merge gì thêm
+chore: rename the default branch to main
+Hàm này đặt tên chưa đúng ý nghĩa, get_data thực ra còn ghi file nữa
+Shared links expire after seven days by default.
+Đã viết thêm hướng dẫn cách đọc log trên Kibana cho các bạn mới vào
+fix: guard against division by zero in the stats view
+Có lẽ nên dùng queue riêng cho email để không ảnh hưởng tới job xử lý đơn hàng
+The tool prints a summary table when it finishes.
+Cuối cùng cũng tìm ra lỗi: biến môi trường bị ghi đè bởi file .env.local
+fix: reset the filter state after logout
+Đoạn regex kiểm tra mã bưu chính đang quá chặt, loại cả mã hợp lệ có số 0 ở đầu
+The export runs in the background and sends a link when it is ready.
+TODO: thêm biểu đồ thống kê theo tuần cho trang quản trị, khách hỏi mấy lần rồi
+docs: describe the folder layout under crates/
+Lỗi phân trang: trang cuối luôn lặp lại hai bản ghi của trang trước
+Each tenant has its own schema in the shared database.
+Mình merge nhánh hotfix vào release/2.4 rồi, nhớ cherry-pick ngược về develop
+chore: move test fixtures into tests/fixtures
+Khuyến nghị: đặt giới hạn bộ nhớ cho container worker là 512MB, tránh ảnh hưởng service khác

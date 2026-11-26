@@ -1,0 +1,160 @@
+fix: handle empty config path when HOME is unset
+Sửa lỗi crash khi file config.toml bị thiếu trường timeout
+TODO: move retry logic out of http_client.rs into its own module
+TODO: tách phần parse header ra hàm riêng, hiện tại quá dài
+chore: bump serde to 1.0.210 and regenerate Cargo.lock
+Đã test lại trên Ubuntu 24.04, không còn lỗi segfault nữa
+docs: add example for --dry-run flag in README
+Cập nhật hướng dẫn cài đặt cho Windows, thêm bước set PATH
+refactor: rename UserStore to AccountRepository
+Mình nghĩ nên dùng Arc<Mutex<_>> ở đây thay vì clone cả struct
+Can you share the full stack trace? The snippet above cuts off before the panic message.
+Bạn chạy lại với RUST_LOG=debug rồi gửi log giúp mình nhé
+feat: support reading credentials from environment variables
+Thêm option --output-dir để chọn thư mục xuất file
+Closing this as duplicate of the earlier report about the cache invalidation bug.
+Issue này trùng với cái hôm trước, mình đóng lại nhé
+Note: the migration script must be run before deploying v2.3.
+Lưu ý: phải chạy migrate trước khi deploy bản 2.3, không thì bảng orders sẽ lỗi khóa ngoại
+perf: avoid allocating a new Vec on every iteration in tokenize()
+Hàm build_index chạy mất gần 4 giây với tập dữ liệu 50 nghìn dòng, cần tối ưu
+Remember to buy rice, fish sauce and two bottles of cooking oil on the way home.
+Chiều nay nhớ ghé chợ mua rau muống, cà chua với nửa ký thịt ba chỉ
+TODO: renew the domain before December 15
+Gia hạn bảo hiểm xe máy trước cuối tháng, giấy tờ để trong ngăn kéo bàn làm việc
+Meeting with Lan moved to Thursday afternoon, same room.
+Họp với anh Tuấn dời sang sáng thứ Sáu, nhớ chuẩn bị slide báo cáo quý
+test: add regression test for overflow in parse_duration
+Viết thêm test cho trường hợp chuỗi rỗng và chuỗi chỉ có khoảng trắng
+ci: cache cargo registry to speed up the build
+Pipeline trên GitHub Actions bị timeout ở bước cargo test, chắc do runner yếu
+LGTM, just one nit: please keep the imports sorted.
+Code ổn rồi, chỉ cần sửa lại tên biến tmp2 cho dễ hiểu hơn
+Why do we need a separate thread for this? Tokio tasks should be enough.
+Chỗ này đang block_on bên trong async context, sẽ panic khi chạy với runtime đa luồng
+The default value of max_connections is 16, which is too low for production.
+Tăng pool_size lên 32 thì latency p99 giảm rõ, nhưng CPU của DB lên gần 80%
+fix(api): return 404 instead of 500 when the resource does not exist
+Endpoint /api/v1/invoices trả về dữ liệu của user khác nếu sửa tham số id, cần fix gấp
+Backup the database every night at 2 AM and keep the last 7 copies.
+Cron job backup chạy lúc 2 giờ sáng bị trùng với job tính lương, dời sang 3 giờ
+Revert "feat: enable experimental scheduler" because it breaks the nightly job.
+Tạm tắt tính năng gợi ý sản phẩm vì query chậm làm trang chủ load hơn 5 giây
+This function is not thread safe. Do not call it from the worker pool.
+Biến static mut này dễ gây race condition, nên bọc trong OnceLock
+wip: draft of the new onboarding flow
+Đang làm dở phần đăng ký tài khoản, mai làm tiếp
+Mom's birthday is next Sunday, book a table for six people.
+Mua quà sinh nhật cho bé Na, con bé thích bộ lego xếp hình lâu đài
+TODO: replace unwrap() calls in src/loader.rs with proper error handling
+Thay hết println! trong thư viện bằng macro log::debug!, không nên in ra stdout
+Is there a reason we pin tokio to 1.28? The latest release fixes a known deadlock.
+Cập nhật reqwest lên 0.12 thì phải sửa lại toàn bộ chỗ dùng Body, khá nhiều
+style: run cargo fmt on the whole workspace
+Chạy cargo clippy thấy 23 cảnh báo, phần lớn là needless_borrow
+The installer now asks for confirmation before overwriting existing files.
+Bản cài đặt .msi chưa ký số nên Windows SmartScreen chặn, phải mua chứng chỉ code signing
+Water the plants on the balcony twice a week while I am away.
+Nhờ cô hàng xóm cho mèo ăn mỗi sáng trong mấy ngày mình đi công tác
+fix: correct off-by-one error in pagination when page size equals total count
+Lỗi phân trang: khi số bản ghi chia hết cho page_size thì trang cuối bị trống
+Added a section about running the service behind nginx.
+Bổ sung phần cấu hình reverse proxy với nginx, kèm ví dụ file sites-available/app.conf
+I could not reproduce this on macOS 14. Which version of Node are you using?
+Mình không tái hiện được lỗi này trên máy, bạn dùng Node bản nào vậy?
+build: drop support for Python 3.8
+Ngừng hỗ trợ Python 3.8 từ bản 4.0, người dùng cần nâng cấp lên ít nhất 3.10
+The report generator ignores the timezone setting and always uses UTC.
+Báo cáo doanh thu luôn tính theo giờ UTC, chưa áp dụng múi giờ Asia/Ho_Chi_Minh
+TODO: ask the landlord about the leaking pipe in the kitchen
+Hỏi chủ nhà về vụ ống nước trong bếp bị rỉ, đã ba tuần rồi chưa ai sửa
+security: escape user input before rendering it in the admin panel
+Cookie phiên đăng nhập chưa có cờ HttpOnly và Secure, thêm vào trong middleware session
+Thanks for the quick fix! Confirmed working on version 2.4.1.
+Bản 2.4.1 vẫn còn lỗi đó trên Android 13, mình đính kèm video quay màn hình ở dưới
+Use the --verbose flag to print every request and response header.
+Thêm cờ --quiet để tắt hết output trừ lỗi, tiện khi chạy trong cron
+Deprecated: get_user_by_name will be removed in the next major release.
+Đánh dấu #[deprecated] cho mấy hàm cũ trong module legacy, giữ thêm hai bản rồi mới xóa
+Flight to Da Nang leaves at 6:40, be at the airport by 5.
+Vé tàu Sài Gòn đi Nha Trang đã đặt, toa 5 giường số 12, khởi hành 21 giờ
+chore: remove unused dependencies from package.json
+Xóa mấy package không dùng nữa trong package.json, bundle nhẹ đi khoảng 300 KB
+The cache key should include the locale, otherwise users see pages in the wrong language.
+Cache Redis không có TTL nên bộ nhớ đầy sau vài ngày, đặt expire 1 giờ cho mọi key
+merge branch 'feature/export-csv' into main
+Gộp nhánh feature/export-csv vào main sau khi chị Hoa review xong
+Please do not commit .env files. Add them to .gitignore instead.
+Lỡ đẩy API key lên repo public rồi, đã revoke và tạo key mới
+Battery drains fast after the last update, maybe the sync service never sleeps.
+Sau bản cập nhật gần nhất pin tụt nhanh hẳn, chắc do service đồng bộ chạy liên tục
+fix: close file handles on early return in export_report
+Quên đóng file handle khi hàm export_report thoát sớm, gây rò rỉ tài nguyên
+Read chapter 4 of the networking book before Saturday's study group.
+Đọc xong chương 4 cuốn sách mạng máy tính trước buổi học nhóm thứ Bảy
+TODO: write a short guide for new contributors
+Cần viết hướng dẫn ngắn cho người mới đóng góp, nói rõ quy trình tạo pull request
+Logs are rotated daily and compressed after three days.
+Đã cấu hình logrotate cho nginx, giữ 14 ngày, file cũ nén gzip
+The test suite is flaky on Windows because of path separators.
+Test integration phụ thuộc thứ tự chạy, chạy riêng lẻ thì pass mà chạy chung thì fail
+feat(cli): add shell completion for bash, zsh and fish
+Thêm lệnh completions để sinh script tự hoàn thành cho bash và zsh
+Pay the electricity bill, it is due on the 20th.
+Đóng tiền điện trước ngày 20, tháng này hóa đơn cao hơn mọi khi vì chạy điều hòa nhiều
+Rename the config key from db_url to database_url for consistency.
+Biến môi trường APP_PORT bị đọc thành chuỗi rỗng trên Alpine, thêm giá trị mặc định 8080
+Docker image size went from 1.2 GB to 180 MB after switching to a multi-stage build.
+Image Docker dùng base debian-slim thay vì ubuntu, build nhanh hơn được gần một phút
+Can we get this merged before the release freeze on Friday?
+Anh xem giúp em PR này trước thứ Sáu được không, sau đó là freeze bản release rồi
+fix: trim trailing whitespace from values read from the CSV file
+Dữ liệu đọc từ file CSV bị dư khoảng trắng ở cuối, cần trim trước khi so sánh
+Health check endpoint is now /healthz instead of /status.
+Kubernetes liên tục restart pod vì readinessProbe trỏ sai port
+Pick up the dry cleaning and the new glasses on Wednesday.
+Thứ Tư nhớ qua tiệm lấy kính mới, tiện ghé hiệu thuốc mua thêm vitamin
+The retry delay doubles after each failure, capped at 30 seconds.
+Đặt giới hạn 5 lần retry, quá thì đẩy message vào dead letter queue
+Do not change the public API in a patch release.
+Theo semver thì đổi kiểu trả về của hàm public là breaking change, phải lên 2.0
+docs: fix broken links in CONTRIBUTING.md
+Mấy link trong CONTRIBUTING.md bị hỏng do đổi tên thư mục docs/guide
+Memory usage keeps growing when the websocket client reconnects repeatedly.
+Bộ nhớ tăng dần mỗi lần websocket client kết nối lại, nghi là listener cũ không được gỡ
+Plan for the weekend: clean the garage, fix the bike chain, call grandma.
+Cuối tuần: dọn nhà kho, thay xích xe đạp, gọi điện hỏi thăm bà ngoại ở quê
+Feature flags are read once at startup, so a restart is required after changing them.
+Bật flag new_checkout cho 10% người dùng trước, theo dõi tỉ lệ lỗi hai ngày rồi mới tăng
+fix: use constant time comparison when checking API tokens
+Mật khẩu đang hash bằng SHA-256 không có salt, cần chuyển sang argon2 ngay
+Migration 0042 adds an index on orders.created_at.
+Migration 0042 chạy khoảng 10 phút trên dữ liệu thật, nên chạy ngoài giờ cao điểm
+I think the naming is confusing, handler and processor do the same thing here.
+Đặt tên hơi khó hiểu, mấy hàm do_work với run_task khác nhau chỗ nào vậy
+Lesson learned: always check disk space before running a full reindex.
+Hôm qua ổ đĩa server đầy 100% vì log debug quên tắt, mất nửa ngày mới dọn xong
+Book a dentist appointment for next month.
+Đặt lịch khám răng tháng sau, nhớ hỏi luôn về chuyện niềng răng cho thằng Bin
+Upgrade guide: replace Client::new(url) with Client::builder().url(url).build().
+Từ bản 2.0, Config::load() trả về Result thay vì panic khi thiếu file
+fix typo in error message
+Sửa lỗi chính tả trong thông báo lỗi khi đăng nhập thất bại
+The scheduler skips jobs that were due while the machine was asleep.
+Job đồng bộ kho hàng chạy hai lần liền nếu đổi giờ hệ thống, cần thêm khóa idempotency
+Need to decide between SQLite and Postgres before the end of the sprint.
+Phải chốt dùng SQLite hay Postgres trước khi hết sprint, mình nghiêng về Postgres
+Recipe note: soak the beans overnight, simmer for two hours with ginger.
+Nấu chè đậu xanh: ngâm đậu qua đêm, nấu nhỏ lửa hai tiếng, cho thêm chút gừng
+Each worker writes to its own temp file, then the main thread merges them.
+Dùng rayon để chạy song song phần resize ảnh, thời gian xử lý giảm còn một phần ba
+This PR is too big to review. Could you split it into smaller ones?
+PR này to quá, khó review, bạn tách thành mấy PR nhỏ được không
+Timeouts are in milliseconds unless the value ends with s.
+Đơn vị của tham số interval là giây, ghi rõ trong docs kẻo người ta nhầm sang phút
+Release 3.1.0 is out. Thanks to everyone who tested the beta.
+Bản 3.1.0 có lỗi khi migrate từ 2.x, đã rút lại và phát hành 3.1.1 thay thế
+Rain all week, move the team outing to next month.
+Team building năm nay đi Đà Lạt ba ngày hai đêm, ai không đi được thì báo chị Mai trước thứ Hai
+Known issue: export to PDF fails when the title contains a slash.
+Lỗi đã biết: xuất PDF thất bại khi tiêu đề chứa dấu gạch chéo

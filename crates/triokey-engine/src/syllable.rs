@@ -49,7 +49,7 @@ fn spelling_ok(initial: &str, rhyme: &str) -> bool {
         return initial == "qu";
     }
     match initial {
-        // `ka` is in the plan's must-accept list (loanword spelling); only bare `ka`, so kan/kao stay out.
+        // bare `ka` is accepted as a loanword spelling; kan/kao stay out.
         "k" => front || rhyme == "a",
         "gh" | "ngh" => matches!(first, 'i' | 'e' | 'ê'),
         "c" | "ng" => !front,
@@ -118,4 +118,17 @@ pub(crate) fn is_loose_prefix(word: &str) -> bool {
     static F: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
     let set = F.get_or_init(|| table().keys().map(|k| fold(k)).collect());
     strip_tone(word).is_some_and(|(base, _)| set.contains(&fold(&base)))
+}
+
+/// Table key that ignores where the tone sits (`hòa` == `hoà`): toneless lower case + tone digit.
+pub(crate) fn tone_free(word: &str) -> String {
+    match strip_tone(word) {
+        Some((base, tone)) => format!("{base}{tone}"),
+        None => word.to_lowercase(),
+    }
+}
+
+/// Marked letters (`â ă ê ô ơ ư đ`), plus one for a tone.
+pub(crate) fn marks(word: &str) -> usize {
+    strip_tone(word).map_or(0, |(base, tone)| base.chars().filter(|c| "âăêôơưđ".contains(*c)).count() + (tone > 0) as usize)
 }

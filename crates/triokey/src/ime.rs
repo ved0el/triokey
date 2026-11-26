@@ -1,4 +1,5 @@
-//! Pure IME-state rules (spec 5.3). The thread that reads the IME lives in Task 7.
+//! Pure IME-state rules (docs/ARCHITECTURE.md, 3.2 Rule per language). The thread that reads
+//! the IME lives in `ime_watch.rs`.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImeState {
@@ -12,11 +13,11 @@ const LANG_JAPANESE: u16 = 0x11;
 const LANG_CHINESE: u16 = 0x04;
 const LANG_KOREAN: u16 = 0x12;
 const IME_CMODE_NATIVE: u32 = 1;
-/// Spec 5.3: the first key after a possible IME toggle may wait this long for a fresh read.
+/// The first key after a possible IME toggle may wait this long for a fresh read.
 pub const FIRST_KEY_WAIT_MS: u32 = 30;
 
 /// `open`/`conv` are `None` when the read failed or timed out; then the window's last known
-/// state wins, and with none, yield (same as VKey today).
+/// state wins, and with none, yield.
 pub fn decide(lang_primary: u16, open: Option<bool>, conv: Option<u32>, last_known: Option<ImeState>) -> ImeState {
     let fallback = last_known.unwrap_or(ImeState::Yield);
     let yield_if = |b: bool| if b { ImeState::Yield } else { ImeState::Type };
@@ -33,7 +34,7 @@ pub fn decide(lang_primary: u16, open: Option<bool>, conv: Option<u32>, last_kno
     }
 }
 
-/// Layouts whose IME state matters; every other layout always types (spec 5.2).
+/// Layouts whose IME state matters; every other layout always types.
 pub fn is_cjk(lang_primary: u16) -> bool {
     matches!(lang_primary, LANG_JAPANESE | LANG_CHINESE | LANG_KOREAN)
 }

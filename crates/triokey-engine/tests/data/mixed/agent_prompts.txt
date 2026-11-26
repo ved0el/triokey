@@ -1,0 +1,320 @@
+đọc file README rồi tóm tắt cấu trúc project cho mình
+chạy cargo test và báo lại test nào fail
+fix lỗi build trên nhánh main giúp mình
+commit hết thay đổi với message ngắn gọn bằng tiếng Anh
+đừng push lên remote nhé, mình sẽ review trước
+tạo branch mới tên feature/login-form từ develop
+merge nhánh hotfix vào main rồi chạy lại test
+review giúp mình cái diff này, chỗ nào chưa ổn thì chỉ ra
+log ra nhiều quá, bỏ bớt mấy dòng debug đi
+sửa config để server chạy ở port 8080 thay vì 3000
+deploy bản mới lên staging, chưa đụng production
+viết unit test cho hàm parse_date trong utils.rs
+hàm này chạy chậm quá, tìm xem chậm ở đâu
+thêm flag --verbose cho CLI, mặc định tắt
+cập nhật version lên 1.4.2 trong Cargo.toml và CHANGELOG
+lỗi này là gì vậy: cannot borrow as mutable more than once
+giải thích giúp mình đoạn regex này làm gì
+đổi tên biến userList thành users cho dễ đọc
+xóa mấy file tạm trong thư mục build đi
+script deploy.sh bị lỗi permission denied, kiểm tra giúp
+chạy lint rồi tự sửa những lỗi format đơn giản
+pull code mới nhất về rồi rebase nhánh của mình lên
+có conflict ở file package.json, giải quyết giúp mình
+giữ bản của mình ở phần dependencies, lấy bản remote ở phần scripts
+please run the full test suite and summarize the failures
+check xem dependency nào đã cũ và có lỗ hổng bảo mật
+nâng react lên bản 18.3 xem có vỡ gì không
+viết lại hàm này cho gọn hơn, không đổi hành vi
+thêm comment giải thích tại sao phải retry ba lần
+tách component Header ra file riêng
+API trả về 500 khi gửi body rỗng, xem log server giúp mình
+đặt timeout cho request là 30 giây
+mình muốn thêm cache cho endpoint /api/products, nên dùng redis hay in-memory
+dùng in-memory trước đi, sau này cần thì chuyển
+tạo migration thêm cột created_at cho bảng orders
+rollback migration vừa chạy, mình lỡ sai tên cột
+chạy docker compose up và xem container nào bị crash
+container db cứ restart liên tục, log ghi gì
+sửa Dockerfile để image nhỏ hơn, dùng multi-stage build
+build image mới rồi tag là v2.0.1
+tại sao CI fail ở bước test mà local thì pass
+có thể do timezone, set TZ=UTC trong workflow thử xem
+thêm job chạy clippy vào GitHub Actions
+cache thư mục target để CI chạy nhanh hơn
+bỏ cái warning unused import đi
+viết docstring cho mấy hàm public trong module auth
+đừng sửa file generated, chỉ sửa source thôi
+tìm tất cả chỗ gọi hàm send_email trong codebase
+hàm này có ai gọi không hay xóa được rồi
+xóa đi, nhớ chạy test lại sau khi xóa
+ok good, giờ commit với message refactor: remove dead email helper
+thử lại lần nữa, lần trước bị timeout
+lỗi ECONNREFUSED 127.0.0.1:5432 nghĩa là postgres chưa chạy đúng không
+khởi động postgres giúp mình rồi chạy lại migration
+seed dữ liệu mẫu cho môi trường dev
+viết script backup database mỗi đêm lúc 2 giờ sáng
+dùng cron hay systemd timer thì hợp lý hơn
+thôi dùng systemd timer cho dễ xem log
+git reset --soft với --hard khác nhau thế nào, giải thích ngắn thôi
+mình lỡ commit nhầm file .env, gỡ ra khỏi lịch sử giúp
+thêm .env vào .gitignore luôn
+tạo file .env.example với các biến cần thiết, không có giá trị thật
+đọc qua issue số 42 rồi đề xuất cách sửa
+bug này chỉ xảy ra trên Windows, chắc do đường dẫn có dấu gạch ngược
+dùng PathBuf thay vì nối chuỗi thủ công
+viết test tái hiện bug trước rồi mới sửa
+test đỏ rồi, giờ sửa cho xanh
+ổn rồi, chạy thêm cargo clippy -- -D warnings cho chắc
+có warning needless_return ở dòng 88, sửa luôn
+tóm tắt những gì đã thay đổi hôm nay để mình gửi team
+viết ngắn thôi, ba bốn gạch đầu dòng là đủ
+dịch đoạn mô tả PR này sang tiếng Anh giúp mình
+mở PR vào develop, đừng merge
+title PR là fix: handle empty cart on checkout
+thêm label bug và gán reviewer là Minh
+khoan, đừng tạo PR vội, mình muốn test tay trước
+chạy app ở chế độ dev, mình mở trình duyệt xem
+trang login bị vỡ layout trên mobile, sửa CSS giúp
+nút submit lệch sang phải, căn giữa lại
+đổi màu chủ đạo sang xanh dương đậm hơn một chút
+thêm dark mode, dùng biến CSS cho dễ đổi
+form đăng ký chưa validate email, thêm vào
+báo lỗi ngay dưới ô input chứ đừng dùng alert
+khi mất mạng thì hiện thông báo thử lại sau
+viết hook useDebounce dùng chung cho mấy ô search
+kết quả search nên highlight phần khớp với từ khóa
+list sản phẩm load chậm, thêm phân trang
+mỗi trang 20 item, có nút xem thêm ở cuối
+sort theo giá tăng dần mặc định
+lọc theo danh mục bị sai, chọn điện thoại mà ra cả laptop
+kiểm tra lại query, có thể thiếu điều kiện where
+đúng rồi, thiếu category_id, sửa giúp mình
+thêm index cho cột category_id luôn
+explain analyze câu query này xem nó có dùng index không
+tại sao vẫn seq scan, bảng có hơn một triệu dòng mà
+chạy lại analyze cho bảng products rồi thử lại
+giờ nhanh hơn nhiều rồi, cảm ơn
+next: viết endpoint xuất báo cáo doanh thu ra CSV
+cột gồm ngày, số đơn, tổng tiền, tiền giảm giá
+định dạng tiền theo kiểu Việt Nam, dấu chấm phân cách hàng nghìn
+file CSV mở bằng Excel bị lỗi font tiếng Việt, thêm BOM vào
+đặt tên file theo dạng bao-cao-2026-11.csv
+viết test cho endpoint export, mock database
+mock kiểu gì cho gọn, dùng trait hay closure
+dùng trait đi, sau này thay bằng repo thật dễ hơn
+refactor phần xử lý thanh toán, hàm process_payment dài quá
+chia nhỏ ra thành validate, charge, ghi log
+giữ nguyên chữ ký hàm public để không vỡ chỗ khác
+có chỗ nào đang unwrap mà có thể panic không
+đổi hết unwrap trong handler thành trả lỗi tử tế
+định nghĩa enum AppError, implement IntoResponse
+lỗi validation trả 400, không tìm thấy trả 404, còn lại 500
+log lỗi kèm request id để dễ trace
+thêm middleware gắn request id vào header X-Request-Id
+viết tài liệu ngắn cho API này trong docs/api.md
+dùng OpenAPI luôn được không, mình muốn có swagger
+được, generate spec từ code bằng utoipa
+cài utoipa bản 4.2 thôi, đừng lấy bản mới nhất
+cargo build báo lỗi trait bound not satisfied, đọc kỹ giúp mình
+thiếu derive ToSchema ở struct OrderDto, thêm vào
+build pass rồi, chạy server mở /swagger-ui xem
+trang swagger trắng tinh, console báo 404 cho file js
+sửa đường dẫn static, chắc do prefix /api
+ok chạy được rồi, commit đi
+viết message theo conventional commits
+gom ba commit cuối thành một trước khi push
+dùng git rebase không cần interactive được không
+reset soft về HEAD~3 rồi commit lại là được
+push lên origin nhánh feature/export-csv
+push bị reject vì non-fast-forward, đừng force push
+pull rebase rồi push lại
+CI chạy mất 15 phút, xem bước nào lâu nhất
+bước cài dependency chiếm 8 phút, cache lại
+cache key dựa trên hash của Cargo.lock
+chuyển sang dùng sccache có lợi gì không
+thôi tạm chưa cần, để sau
+Linh nhờ xem lỗi trên nhánh của bạn ấy, checkout nhánh fix/upload-size
+upload file trên 10MB bị lỗi 413
+tăng giới hạn body ở nginx lên 50MB
+cũng phải tăng ở phía app nữa, config ở đâu
+tìm trong config/app.yaml, key max_upload_size
+sửa xong viết lại hướng dẫn trong README phần deploy
+đọc log production từ 9 giờ tới 10 giờ sáng nay
+lọc những dòng level error thôi
+có khoảng 200 lỗi timeout khi gọi service thanh toán
+bên đối tác không báo bảo trì gì cả, cứ thêm retry phía mình trước đi
+retry với exponential backoff, tối đa 5 lần
+thêm circuit breaker nếu lỗi liên tục
+viết test giả lập service trả lỗi liên tục
+test chạy mất 30 giây vì sleep thật, dùng mock clock
+dùng tokio::time::pause trong test
+giờ test chạy dưới một giây, tốt
+review lại toàn bộ thay đổi trên nhánh này trước khi mở PR
+có chỗ nào nên tách hàm không
+có magic number nào nên đặt thành hằng số không
+đặt tên hằng là MAX_RETRY và BASE_DELAY_MS
+viết lại commit message cho rõ ràng hơn
+explain this stack trace and point me to the line that panics
+index out of bounds: the len is 3 but the index is 3, sửa giúp
+vòng lặp chạy thừa một lần, đổi <= thành <
+thêm test cho trường hợp mảng rỗng
+còn trường hợp mảng có một phần tử nữa
+chạy cargo fmt trước khi commit
+cài pre-commit hook chạy fmt và clippy tự động
+hook chạy chậm quá, chỉ check file đã stage thôi
+mình đang dùng Windows, script hook viết bằng bash có chạy không
+chạy được qua Git Bash, nhưng viết thêm bản PowerShell cho chắc
+tạo Makefile với các lệnh build, test, lint, run
+trên Windows không có make, dùng just thay thế
+viết justfile tương ứng
+lệnh just test chạy cả integration test luôn
+integration test cần database, tách ra lệnh riêng
+kiểm tra coverage bằng cargo llvm-cov
+coverage module billing mới có 40 phần trăm, viết thêm test
+ưu tiên test các nhánh xử lý lỗi
+đừng test getter setter, phí thời gian
+nhánh refund chưa có test nào, viết trước
+số tiền hoàn lại lớn hơn số tiền đã trả thì phải báo lỗi
+dùng kiểu Decimal chứ đừng dùng f64 cho tiền
+thêm crate rust_decimal bản 1.36
+convert toàn bộ trường amount sang Decimal
+migration database đổi kiểu cột amount sang numeric(18,2)
+dữ liệu cũ có bị mất không, kiểm tra trước khi chạy
+chạy thử trên bản copy của database staging trước
+ổn rồi thì viết hướng dẫn chạy migration cho ca trực
+Huy hỏi sao API chậm vào buổi tối, xem metrics giúp
+CPU lên 90 phần trăm lúc 8 giờ tối
+có cron job nào chạy vào giờ đó không
+job gửi email marketing chạy 8 giờ, chuyển sang 2 giờ sáng
+giới hạn job đó chỉ dùng tối đa 2 worker
+thêm dashboard Grafana theo dõi số request mỗi giây
+xuất metrics ở endpoint /metrics theo chuẩn Prometheus
+đếm số request theo route và status code
+histogram cho latency, bucket từ 5ms đến 5s
+alert khi p99 trên 2 giây quá 5 phút
+gửi alert vào kênh chat của team
+viết runbook ngắn khi nhận alert này
+khởi tạo project mới bằng cargo new --lib parser
+viết parser đọc file cấu hình dạng TOML
+báo lỗi rõ ràng nếu thiếu trường bắt buộc, kèm số dòng
+hỗ trợ biến môi trường ghi đè cấu hình
+thứ tự ưu tiên là flag, rồi env, rồi file, rồi mặc định
+dùng clap cho phần CLI, derive API
+thêm subcommand init để tạo file cấu hình mẫu
+thêm subcommand check để kiểm tra file cấu hình hợp lệ
+in kết quả có màu, tắt màu khi NO_COLOR được set
+viết help text bằng tiếng Anh cho thống nhất
+viết ví dụ sử dụng trong README
+chưa publish lên crates.io vội, đợi bản 0.1 chạy ổn đã
+đặt license MIT, thêm file LICENSE
+thêm badge CI vào đầu README
+what's the difference between Arc and Rc here, do we need Arc
+struct này phải chia sẻ giữa các thread nên cần Arc đúng không
+Mutex hay RwLock thì tốt hơn cho trường hợp đọc nhiều ghi ít
+dùng RwLock, nhưng đo thử xem có nhanh hơn thật không
+viết benchmark bằng criterion
+kết quả benchmark lưu vào thư mục target/criterion, tóm tắt giúp mình
+nhanh hơn khoảng 30 phần trăm, giữ RwLock
+có deadlock nếu gọi lồng nhau không, kiểm tra kỹ
+tách phần giữ lock ra hàm riêng cho rõ phạm vi
+trang admin cần phân quyền, user thường không vào được
+thêm role admin, editor, viewer
+editor sửa được bài viết nhưng không xóa được
+viết middleware kiểm tra role từ JWT
+token hết hạn sau 15 phút, refresh token 7 ngày
+lưu refresh token trong cookie httpOnly
+đăng xuất thì xóa refresh token khỏi database
+viết test cho luồng đăng nhập, refresh, đăng xuất
+mật khẩu hash bằng argon2, đừng dùng md5
+check lại chỗ so sánh token, dùng constant time compare
+rate limit endpoint login, 5 lần mỗi phút mỗi IP
+khóa tài khoản 15 phút nếu sai mật khẩu 10 lần liên tiếp
+gửi email thông báo khi có đăng nhập từ thiết bị lạ
+phần email để sau, tạo issue ghi lại
+tạo issue với tiêu đề notify user on new device login
+Trang báo app crash khi mở màn hình hồ sơ, xem crash log
+null pointer ở chỗ đọc avatar url, user mới chưa có avatar
+dùng ảnh mặc định nếu avatar rỗng
+viết test cho user không có avatar
+build bản Android release, tăng versionCode lên 27
+build fail vì thiếu keystore, đường dẫn để trong local.properties
+đừng commit keystore, chỉ hướng dẫn mình đặt đúng chỗ
+build xong rồi, file apk nằm ở đâu
+ghi chú release cho bản 2.3.0 bằng tiếng Việt
+liệt kê tính năng mới, sửa lỗi, và thay đổi giao diện
+viết giọng thân thiện, không quá kỹ thuật
+check lại chính tả giúp mình đoạn release note đó
+dịch sang tiếng Anh cho bản trên store quốc tế
+tóm tắt nội dung file design.md trong năm dòng
+có điểm nào trong design này mâu thuẫn với code hiện tại không
+cập nhật design doc cho khớp với code
+vẽ sơ đồ luồng dữ liệu bằng mermaid trong doc
+giải thích cho người mới vào team cách chạy project từ đầu
+viết file CONTRIBUTING.md ngắn gọn
+quy ước đặt tên nhánh là feat/, fix/, chore/
+mỗi PR cần ít nhất một approve mới được merge
+bật branch protection cho main, mình sẽ tự làm trên web
+liệt kê các TODO còn sót trong code
+TODO nào quá ba tháng thì tạo issue rồi xóa comment
+vẫn còn ba chỗ FIXME trong module sync, xem có sửa nhanh được không
+cái thứ hai phức tạp, để nguyên và ghi rõ lý do
+đổi thư viện log từ log sang tracing
+giữ format log dạng JSON khi chạy production
+khi chạy local thì in dạng dễ đọc
+thêm span cho mỗi request để thấy thời gian từng bước
+mức log mặc định là info, đọc RUST_LOG để ghi đè
+sao log bị in hai lần vậy
+khởi tạo subscriber hai chỗ, bỏ một chỗ trong main.rs đi
+viết script so sánh hiệu năng trước và sau khi đổi
+chạy 1000 request song song bằng oha
+latency trung bình tăng 2ms, chấp nhận được
+nhớ ghi số liệu này vào mô tả PR
+can you check if this function is thread safe
+không an toàn vì biến counter dùng chung không có lock, đổi sang AtomicUsize
+Ordering nào là đủ ở đây, Relaxed được không
+chỉ đếm thống kê thôi nên Relaxed là được
+giải thích ngắn gọn cho mình hiểu memory ordering
+mình cần hàm chuyển số thành chữ tiếng Việt cho hóa đơn
+ví dụ 1250000 thành một triệu hai trăm năm mươi nghìn đồng
+xử lý đúng các trường hợp mốt, lăm, linh, mươi
+viết test với khoảng hai chục ví dụ khác nhau
+số 0 thì in là không đồng
+số âm thì báo lỗi, hóa đơn không có số âm
+có thư viện nào làm sẵn không, nếu không thì tự viết
+tự viết đi, cũng không dài
+chạy test rồi in ra những case sai
+case 105 ra một trăm lẻ năm, mình muốn là một trăm linh năm
+thêm tùy chọn chọn giữa linh và lẻ, mặc định linh
+xong phần này rồi, commit với message feat: number to vietnamese words
+nhắc mình chạy lại cargo test --release trước khi tag
+tag v0.3.0 nhưng đừng push tag
+quay lại vấn đề hôm qua, sync dữ liệu giữa hai server bị lệch
+so sánh số bản ghi giữa hai bên theo từng bảng
+bảng invoices lệch 12 bản ghi, liệt kê id bị thiếu
+có vẻ job sync bỏ qua bản ghi có updated_at trùng mốc thời gian
+đổi điều kiện từ lớn hơn sang lớn hơn hoặc bằng, rồi lọc trùng theo id
+chạy lại sync cho khoảng thời gian bị lệch
+giờ khớp rồi, viết postmortem ngắn cho sự cố này
+nguyên nhân, ảnh hưởng, cách sửa, cách phòng tránh
+gửi bản nháp cho mình đọc trước
+Nam muốn biết thời gian dự kiến làm xong tính năng export PDF
+ước lượng giúp mình dựa trên phần CSV đã làm
+chia nhỏ thành task, mỗi task không quá nửa ngày
+dùng thư viện nào để tạo PDF có hỗ trợ font tiếng Việt
+nhúng font Be Vietnam Pro vào file PDF
+bảng trong PDF bị tràn sang trang sau mà không lặp lại header
+lặp lại dòng header ở mỗi trang
+thêm số trang ở chân trang dạng trang 1 trên 5
+xuất thử một file mẫu cho mình xem
+chữ hơi nhỏ, tăng cỡ chữ lên 11pt
+kiểm tra xem file có mở được trên điện thoại không
+cleanup lại code thử nghiệm, xóa mấy hàm không dùng nữa
+squash các commit thử nghiệm trước khi mở PR
+viết mô tả PR có ảnh chụp màn hình file PDF mẫu
+ảnh thì mình tự chụp, bạn để chỗ trống đánh dấu là được
+xong rồi, cảm ơn nhé, mai làm tiếp phần gửi email kèm PDF
+kiểm tra lại file docker-compose.yml, service redis thiếu volume nên mất dữ liệu khi restart
+hàm này trả về Option hay Result thì hợp lý hơn, mình đang phân vân
+bỏ qua test flaky test_upload_retry tạm thời, ghi chú lý do trong code
+the build is green now, open a draft PR and wait for my review

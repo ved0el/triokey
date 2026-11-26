@@ -1,4 +1,4 @@
-//! Settings window (spec 5.7), plain Win32 controls on the tray thread. Every change is saved
+//! Settings window, plain Win32 controls on the tray thread. Every change is saved
 //! to config.txt and applied at once. One window at a time.
 //!
 //! The embedded manifest (build.rs) gives the controls the current visual style and makes the
@@ -6,13 +6,12 @@
 
 use std::ptr::{null, null_mut};
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering::Relaxed};
-use std::sync::OnceLock;
 
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Controls::{InitCommonControlsEx, ICC_STANDARD_CLASSES, INITCOMMONCONTROLSEX};
-use windows_sys::Win32::UI::HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow, SystemParametersInfoForDpi};
+use windows_sys::Win32::UI::HiDpi::{AdjustWindowRectExForDpi, GetDpiForWindow, GetSystemMetricsForDpi, SystemParametersInfoForDpi};
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{EnableWindow, GetActiveWindow, GetFocus, IsWindowEnabled, SetFocus};
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
@@ -49,8 +48,6 @@ static HWND_SETTINGS: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(null_mut());
 static FONT: AtomicUsize = AtomicUsize::new(0);
 /// The control that had the keyboard focus when the window was last deactivated.
 static FOCUS: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(null_mut());
-/// Window icons (small, big), made once.
-static ICONS: OnceLock<[usize; 2]> = OnceLock::new();
 
 pub fn hwnd() -> HWND {
     HWND_SETTINGS.load(Relaxed)
@@ -113,16 +110,11 @@ pub fn open() {
             return;
         }
         HWND_SETTINGS.store(hwnd, Relaxed);
-        // the app icon (resource 1, build.rs) at the exact sizes this monitor wants
-        let icons = ICONS.get_or_init(|| {
-            [GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CXICON)].map(|n| LoadImageW(hinst, 1 as _, IMAGE_ICON, n, n, LR_DEFAULTCOLOR) as usize)
-        });
-        SendMessageW(hwnd, WM_SETICON, ICON_SMALL as usize, icons[0] as isize);
-        SendMessageW(hwnd, WM_SETICON, ICON_BIG as usize, icons[1] as isize);
         let dpi = match GetDpiForWindow(hwnd) {
             0 => 96,
             d => d,
         };
+        set_icons(hwnd, dpi);
         let (w, h) = window_size(dpi);
         let (x, y) = ((GetSystemMetrics(SM_CXSCREEN) - w) / 2, (GetSystemMetrics(SM_CYSCREEN) - h) / 2);
         SetWindowPos(hwnd, null_mut(), x, y, w, h, SWP_NOZORDER);
@@ -137,6 +129,25 @@ pub fn open() {
             message(hwnd, t, MB_OK | MB_ICONWARNING);
         }
         warn_unsaved(hwnd);
+    }
+}
+
+/// The app icon (resource 1, build.rs) at the sizes this window's DPI wants, replacing and
+/// destroying the ones set before. `dpi` 0 only removes them (window closing).
+unsafe fn set_icons(hwnd: HWND, dpi: u32) {
+    let hinst = GetModuleHandleW(null());
+    for (kind, metric) in [(ICON_SMALL, SM_CXSMICON), (ICON_BIG, SM_CXICON)] {
+        let new = match dpi {
+            0 => null_mut(),
+            _ => {
+                let n = GetSystemMetricsForDpi(metric, dpi);
+                LoadImageW(hinst, 1 as _, IMAGE_ICON, n, n, LR_DEFAULTCOLOR)
+            }
+        };
+        let old = SendMessageW(hwnd, WM_SETICON, kind as usize, new as isize);
+        if old != 0 {
+            DestroyIcon(old as HICON);
+        }
     }
 }
 
@@ -315,6 +326,9 @@ unsafe fn command(hwnd: HWND, id: i32, code: u32) {
 /// The admin-only part runs first (one UAC prompt from the normal copy, none when already
 /// elevated), then this side updates HKCU and config.txt (see admin.rs).
 unsafe fn switch_admin(hwnd: HWND, on: bool) {
+    if on {
+        app::create_learned_file();
+    }
     let code = match admin::run_elevated(hwnd, on) {
         Elevated::Cancelled => return,
         Elevated::Exit(c) if c == admin::OK || c == admin::OK_AFTER_REBOOT || c == admin::OK_FOLDER_LEFT => c,
@@ -410,6 +424,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             }
             build(hwnd, dpi);
             fill(hwnd);
+            set_icons(hwnd, dpi);
             // the position Windows suggests, our own size for this DPI
             let (w, h) = window_size(dpi);
             SetWindowPos(hwnd, null_mut(), to.left, to.top, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -440,6 +455,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         }
         WM_DESTROY => {
             KillTimer(hwnd, 1);
+            set_icons(hwnd, 0);
             HWND_SETTINGS.store(null_mut(), Relaxed);
             FOCUS.store(null_mut(), Relaxed);
             let f = FONT.swap(0, Relaxed);

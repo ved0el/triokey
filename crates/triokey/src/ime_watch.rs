@@ -1,5 +1,5 @@
-//! IME watcher thread (spec 5.3): keeps the cached `ImeState` the hook reads, and the
-//! "focus is a Win32 password box" flag (spec 5.6). The key path never asks the IME itself.
+//! IME watcher thread (docs/ARCHITECTURE.md, 3.1 Reading the state from another process): keeps the cached `ImeState` the hook reads, and the
+//! "focus is a Win32 password box" flag. The key path never asks the IME itself.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -23,12 +23,12 @@ const LANG_JAPANESE: u16 = 0x11;
 /// The app handles the toggle key after the hook saw it; read again this much later.
 const RECHECK_DELAY_MS: u32 = 15;
 const TICK_MS: u32 = 100;
-/// Spec 3.2: one read is 0.1-3 ms, worst seen 28 ms.
+/// One read measured 0.1-3 ms, worst seen 28 ms.
 const READ_TIMEOUT_MS: u32 = 50;
 
 const TYPE: u8 = 0;
 const YIELD: u8 = 1;
-/// Unknown until the first read: yield (spec 5.3).
+/// Unknown until the first read: yield.
 static STATE: AtomicU8 = AtomicU8::new(YIELD);
 /// Primary language of the foreground layout at the last read (0 before it), for the tooltip.
 static LANG: AtomicU16 = AtomicU16::new(0);
@@ -128,6 +128,7 @@ unsafe fn run() {
                 if GetLastInputInfo(&mut lii) != 0 {
                     hook::check_alive(lii.dwTime);
                 }
+                app::save_learned(false);
             }
             _ => {}
         }
@@ -144,7 +145,7 @@ unsafe fn class_name(hwnd: HWND) -> String {
     String::from_utf16_lossy(&buf[..n])
 }
 
-/// `WM_IME_CONTROL` probe as in spec 3.2; `None` when refused, hung or timed out.
+/// `WM_IME_CONTROL` probe (`IMC_GETOPENSTATUS` or `IMC_GETCONVERSIONMODE`); `None` when refused, hung or timed out.
 unsafe fn query(ime: HWND, cmd: usize) -> Option<usize> {
     if ime.is_null() {
         return None;

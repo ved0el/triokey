@@ -1,4 +1,4 @@
-# Attested Vietnamese syllables (NFC, lowercase), one per line. Generator input only.
+# Attested Vietnamese syllables (NFC, lowercase), one per line. Read by tools/corpus/fetch.py only; not compiled in.
 # From VieLotus-IM (MIT) Sources/VieLotusCore/VietnameseSyllableDictionary.swift:
 # baseSyllableList + standardYOrthographySyllables + ethnicPlaceNameSyllables
 # (its supplementalTonedSyllables, accepted non-words like bỏn, are left out). See NOTICE.md.

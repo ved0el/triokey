@@ -1,4 +1,4 @@
-//! Signed self-update (decision 0007). The only network code in TrioKey: plain GETs of two
+//! Signed self-update (docs/ARCHITECTURE.md, 9. Updates). The only network code in TrioKey: plain GETs of two
 //! files at fixed GitHub URLs (the signature, then the exe, each through GitHub's redirects),
 //! on this module's own thread, never on the hook or tray thread.
 //!
@@ -402,7 +402,7 @@ pub fn click() {
             let _ = tx.send(true);
         }
     } else if admin::is_elevated() {
-        // never ShellExecute while elevated (decision 0006): the address as text
+        // never ShellExecute while elevated (an unelevated program can redirect it): the address as text
         let t = format!("TrioKey đang chạy quyền admin nên không tự mở trình duyệt. Tải bản mới tại:\n\n{RELEASES_URL}");
         unsafe { MessageBoxW(null_mut(), wide(&t).as_ptr(), wide("TrioKey").as_ptr(), MB_OK | MB_ICONINFORMATION) };
     } else {

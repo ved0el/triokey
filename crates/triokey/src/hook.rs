@@ -1,4 +1,5 @@
-//! Low-level keyboard (and mouse) hook on its own thread (spec 5.1, 5.5, 5.8).
+//! Low-level keyboard (and mouse) hook on its own thread (docs/ARCHITECTURE.md, 2. Process
+//! and threads, and 4. Text injection).
 
 use std::cell::{Cell, RefCell};
 use std::ptr::null_mut;
@@ -23,7 +24,8 @@ use crate::{app, ime_watch};
 
 const WM_APP_REINSTALL: u32 = WM_APP + 2;
 const WM_APP_RECONFIGURE: u32 = WM_APP + 5;
-/// Input newer than our last callback by this much: Windows has dropped the hook (spec 5.8).
+/// Input newer than our last callback by this much: Windows has dropped the hook
+/// (docs/ARCHITECTURE.md, 4.4 Hook loss and reinstall).
 const DEAD_AFTER_MS: i32 = 1000;
 /// `ToUnicodeEx` flag: do not change the keyboard state (keeps dead keys intact).
 const TU_NO_STATE_CHANGE: u32 = 0x4;
@@ -33,7 +35,7 @@ const RING: usize = 1024;
 static LAST_EVENT: AtomicU32 = AtomicU32::new(0);
 static HOOK_TID: AtomicU32 = AtomicU32::new(0);
 static HOOK_THREAD: OnceLock<Thread> = OnceLock::new();
-/// Callback durations in µs for AT7, shown in the tray menu. Memory only. Keys that called
+/// Callback durations in µs for AT7, shown at the bottom of the settings window. Memory only. Keys that called
 /// `SendInput` (time includes the call) and keys that did not are kept apart.
 static SENT: Ring = Ring::new();
 static PASSED: Ring = Ring::new();
@@ -192,9 +194,10 @@ pub fn latency() -> ((u32, usize), (u32, usize)) {
 /// The engine has no config setter: it is rebuilt from this copy when the settings change.
 pub fn spawn(lexicon: Lexicon) {
     std::thread::spawn(move || unsafe {
-        // builds the two lazy word tables (39k entries) now, not inside the first key's callback
-        let _ = (lexicon.is_english(""), lexicon.tie_default(""));
         let build = || Engine::new(app::engine_config(&app::settings()), lexicon.clone());
+        // build every table before the hook exists: a throwaway word for the syllable tables, one rate lookup for the frequency tables (docs/ARCHITECTURE.md, 2.5 Warm-up)
+        let mut warm = build();
+        let _ = (warm.key('a'), warm.boundary(' '), lexicon.rates("a"));
         ENGINE.with_borrow_mut(|e| *e = Some(build()));
         let _ = HOOK_THREAD.set(std::thread::current());
         let mut msg: MSG = std::mem::zeroed();
@@ -275,7 +278,7 @@ unsafe extern "system" fn mouse_proc(code: i32, wp: WPARAM, lp: LPARAM) -> LRESU
     if code >= 0 {
         LAST_EVENT.store((*(lp as *const MSLLHOOKSTRUCT)).time, Relaxed);
         if matches!(wp as u32, WM_LBUTTONDOWN | WM_RBUTTONDOWN | WM_MBUTTONDOWN | WM_XBUTTONDOWN) {
-            // a click may move the caret (spec 5.4) or toggle the IME (spec 5.3)
+            // a click may move the caret or toggle the IME
             ime_watch::break_word();
             HOT.set(HotState { combo: false, ..HOT.get() });
             TOGGLED_AT.set(Some(Instant::now()));
@@ -305,7 +308,7 @@ unsafe extern "system" fn kb_proc(code: i32, wp: WPARAM, lp: LPARAM) -> LRESULT 
     let start = Instant::now();
     let is_down = matches!(wp as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
     let (swallow, waited, sent) = on_key(k, is_down);
-    // spec 5.8: the first key after an IME toggle is excluded from the p99
+    // a key that waited for a fresh IME read is excluded from the p99
     if is_down && !waited {
         let us = start.elapsed().as_micros().min(u32::MAX as u128) as u32;
         if sent {
@@ -344,7 +347,7 @@ unsafe fn on_key(k: &KBDLLHOOKSTRUCT, is_down: bool) -> (bool, bool, bool) {
     if !is_down {
         return (false, false, false);
     }
-    // Unicode typed straight in by other software is not a Telex key (spec 5.4)
+    // Unicode typed straight in by other software is not a Telex key
     if vk == VK_PACKET {
         reset_engine();
         return (false, false, false);
@@ -399,7 +402,7 @@ unsafe fn on_key(k: &KBDLLHOOKSTRUCT, is_down: bool) -> (bool, bool, bool) {
     (true, waited, true)
 }
 
-/// Spec 5.3: the first typing key after a possible toggle may wait up to 30 ms for the
+/// The first typing key after a possible toggle may wait up to 30 ms for the
 /// watcher's fresh read; past that the cached value is used.
 fn wait_for_fresh_state() -> bool {
     let Some(t) = TOGGLED_AT.take() else { return false };

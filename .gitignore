@@ -4,3 +4,5 @@
 *.key
 *.minisig
 minisign.pub
+.corpus/
+__pycache__/

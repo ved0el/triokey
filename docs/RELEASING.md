@@ -1,6 +1,7 @@
 # Releasing TrioKey
 
-For the repository owner. Design and reasons: [decisions/0007-auto-update.md](decisions/0007-auto-update.md).
+For the repository owner. Design and reasons: [ARCHITECTURE.md](ARCHITECTURE.md), sections 9 (Updates)
+and 10.3 (Release flow).
 Commands are shown without the `mise x --` prefix; add it if you use mise.
 
 Every installed TrioKey accepts an update only if it is signed with the project's update key.
@@ -97,7 +98,7 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
    - The release must be neither a draft nor a pre-release: `latest` skips both, and the
      updater does not understand pre-release ordering beyond "older than the release".
 6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. It has not
-   been run yet, not even for 0.1.0; it is runnable now that a release exists.
+   been run yet, not for 0.1.0 or 0.1.1; it is runnable now that releases exist.
 
 To sign or check by hand (for example to test an exe without tagging):
 
@@ -139,7 +140,8 @@ So changing the key always means a manual download for every user, whatever the 
 
 - Actions are pinned to commit SHAs; Dependabot (`.github/dependabot.yml`) proposes updates
   weekly. `windows-sys`, `minisign`, `getrandom`, `rpassword` and `rtoolbox` are excluded on
-  purpose: their newer versions do not link with the GNU toolchain used here (0007).
+  purpose: their newer versions link Windows APIs through raw-dylib, which needs a `dlltool.exe`
+  the GNU toolchain used here does not find (see the comment in `.github/dependabot.yml`).
 - If GitHub starts serving release downloads from a host that is not in `update::HOSTS`,
   installed copies report `không tải được từ GitHub` and stop updating. The release that adds
   the host has to be downloaded by hand.
