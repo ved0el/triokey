@@ -238,7 +238,7 @@ Chưa ai kiểm trên máy thật: `schtasks /Run` từ bản thường có ch�
 
 # Tự cập nhật (AT10)
 
-Làm được từ giờ: khoá ký thật đã có trong repo và các bản v0.1.0, v0.1.1 đã được phát hành trên GitHub (2026-11-25). Phần tự cập nhật chưa từng chạy trên máy thật: mọi dòng dưới đây đều chưa ai kiểm.
+Làm được từ giờ: khoá ký thật đã có trong repo và các bản v0.1.0, v0.1.1 đã được phát hành trên GitHub (2026-11-25). Một lần tự cập nhật đã chạy thật: bản thường 0.2.0 trên máy của tác giả tự lên 0.2.1 (2026-11-26), `triokey.old.exe` còn nằm bên cạnh. Các dòng dưới đây thì chưa ai chạy riêng.
 
 **Chuẩn bị một bản "cũ":** sửa tạm `version` trong `crates/triokey/Cargo.toml` xuống thấp hơn bản đã phát hành (ví dụ `0.0.9`, **không commit**), build `mise x -- cargo build -p triokey --release --target-dir target/m4`, rồi trả `Cargo.toml` và `Cargo.lock` lại như cũ (`git checkout -- crates/triokey/Cargo.toml Cargo.lock`). Chép `target\m4\release\triokey.exe` vào một thư mục thử riêng (ví dụ `D:\tmp\tk`) và chạy từ đó. Trước mỗi bước, xoá dòng `last_update_check` trong `config.txt` khi TrioKey đang tắt, để nó kiểm tra lại ngay.
 

@@ -11,8 +11,9 @@ release, with a few words still wrong, and took one hook timing reading (AT7: p9
 keys passed through, 5,600 µs for keys that replace text, 502 keys). Remembering of kept swaps
 (no swap was kept in that session), the checked file access of the elevated copy, the tray and
 app icons and the save at logoff have so far been checked only by `cargo test` and compilation. The settings window's look (section 2.6) has been seen only in images that the ignored test `settings_preview` renders at 96 DPI; nobody has looked at it on a desktop. Chinese and Korean have
-never been tried by hand. The other checklist rows (among them hook reinstall, admin mode and the
-update swap, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
+never been tried by hand. The updater has installed one update by itself (the owner's normal copy of 0.2.0 became 0.2.1,
+with `triokey.old.exe` left next to it). The other checklist rows (among them hook reinstall, admin mode, the
+rows of the update checklist, and AT11 and AT12 for the new engine and remembering) have no recorded result. Statements below that depend on a real desktop say so.
 
 Sections 1 to 11 describe the Windows app. The macOS app shares only the engine and is described
 in section 12; none of it has ever run on a Mac.

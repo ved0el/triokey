@@ -97,8 +97,9 @@ environment allows `v*` tags only. The steps are kept for "Changing the key".
      `.../triokey.exe`.
    - The release must be neither a draft nor a pre-release: `latest` skips both, and the
      updater does not understand pre-release ordering beyond "older than the release".
-6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. It has not
-   been run for any release so far; it is runnable now that releases exist.
+6. Run AT10 in [HANDS_ON_TEST.md](HANDS_ON_TEST.md) whenever `update.rs` changed. Its rows
+   have not been run for any release so far. One automatic update was seen to work: the owner's
+   normal copy of 0.2.0 installed 0.2.1 by itself, leaving `triokey.old.exe` next to it.
 
 To sign or check by hand (for example to test an exe without tagging):
 
