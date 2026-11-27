@@ -140,8 +140,12 @@ pub const CONFIG_UNREADABLE: Text = Text(
 pub const LANGUAGES: [&str; 2] = ["Tiếng Việt", "English"];
 
 /// (setting, label) in pop-up order. No Control+Space: it is macOS's own input-source switch.
-pub const HOTKEYS: [(Hotkey, Text); 3] =
-    [(Hotkey::CtrlShift, Text("Control+Shift", "Control+Shift")), (Hotkey::AltZ, Text("Option+Z", "Option+Z")), (Hotkey::Off, Text("Không dùng", "None"))];
+pub const HOTKEYS: [(Hotkey, Text); 4] = [
+    (Hotkey::CtrlShift, Text("Control+Shift", "Control+Shift")),
+    (Hotkey::AltShift, Text("Option+Shift", "Option+Shift")),
+    (Hotkey::AltZ, Text("Option+Z", "Option+Z")),
+    (Hotkey::Off, Text("Không dùng", "None")),
+];
 
 /// Pop-up row of a hotkey.
 pub fn hotkey_index(h: Hotkey) -> usize {
@@ -250,7 +254,7 @@ mod tests {
             (MENU_QUIT, "Quit"),
             (SET_ENABLED, "Enable Vietnamese"),
             (SET_HOTKEY, "Shortcut"),
-            (HOTKEYS[2].1, "None"),
+            (HOTKEYS[3].1, "None"),
             (SET_TYPING, "Typing"),
             (SET_TONE, "Tone mark placement"),
             (SET_AUTO_EN, "Keep English words as typed"),
@@ -283,8 +287,8 @@ mod tests {
 
     #[test]
     fn hotkey_rows() {
-        assert_eq!([Hotkey::CtrlShift, Hotkey::AltZ, Hotkey::Off].map(hotkey_index), [0, 1, 2]);
-        assert_eq!(HOTKEYS.map(|(_, t)| t.get()), ["Control+Shift", "Option+Z", "Không dùng"]);
+        assert_eq!([Hotkey::CtrlShift, Hotkey::AltShift, Hotkey::AltZ, Hotkey::Off].map(hotkey_index), [0, 1, 2, 3]);
+        assert_eq!(HOTKEYS.map(|(_, t)| t.get()), ["Control+Shift", "Option+Shift", "Option+Z", "Không dùng"]);
     }
 
     #[test]

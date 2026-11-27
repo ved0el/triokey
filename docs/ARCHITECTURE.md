@@ -188,8 +188,9 @@ Headings (`Gõ`, `Hệ thống`, `Cập nhật`) are the message font in semibol
 laid out like the `Phím tắt` row (label right-aligned before a 104 px dropdown list), and `Chế độ phát triển` is its
 last box. The `Kiểu bỏ dấu` label is as wide as its text, and its two radio buttons start 7 px after it, at 118 px at
 the least, so a longer label (`Tone mark placement`) moves them instead of running under them. The hotkey list holds
-`Ctrl+Shift`, `Alt+Z` and `Không dùng`, the order of `config::HOTKEYS`; the labels are this app's (the macOS app says
-Option+Z). The update status under `Tự động cập nhật` takes the lines its text needs
+`Ctrl+Shift`, `Alt+Shift`, `Alt+Z` and `Không dùng`, the order of `config::HOTKEYS`; the labels are this app's (the
+macOS app says Option+Shift and Option+Z). Alt+Shift works like Ctrl+Shift (fires on release, no other key between, never
+swallowed), so where Windows itself switches input languages with Left Alt+Shift both happen. The update status under `Tự động cập nhật` takes the lines its text needs
 in the 378 px column (`DrawText` with `DT_CALCRECT | DT_WORDBREAK` in the window's font), and always
 at least one, also when it is empty: the ordinary answers of `Kiểm tra bản mới` (`Đang kiểm tra…`,
 `Đang dùng bản mới nhất.`, `Có bản mới vX.` with its link, `Chưa kiểm tra được: không tải được từ GitHub.`)
@@ -283,17 +284,8 @@ the hand cursor and the browser or message box the links open; checklist rows 2a
 `Khởi động lại` · `Thoát`, in the interface language (`Vietnamese`, `Settings…`, `Restart`, `Quit`). The tooltip
 says `TrioKey: Tiếng Việt`, `TrioKey: Tiếng Anh — đã tắt` or `TrioKey: Tiếng Anh — đang nhường IME Nhật` (in English
 `TrioKey: Vietnamese`, `TrioKey: English — off`, `TrioKey: English — yielding to the Japanese IME`; `ime::cjk_name`
-names the language). The menu keeps the system look (section 2.6).
-
-**Icons.** `Cài đặt…`, the update item, `Khởi động lại` and `Thoát` carry a glyph of the system icon font: U+E713
-Settings, U+E896 Download, U+E72C Refresh, U+E7E8 PowerButton, from `Segoe Fluent Icons` (Windows 11) or else
-`Segoe MDL2 Assets` (Windows 10). GDI quietly substitutes another face for a missing one, so after selecting the font
-its face (`GetTextFaceW`) must equal the name asked for; with neither font the menu has no icons. Each glyph is drawn
-white on black with grey anti-aliasing (`ANTIALIASED_QUALITY`, one coverage value per pixel, not ClearType) into a
-32-bpp top-down DIB as large as the menu check mark (`SM_CXMENUCHECK` at the DPI of the monitor under the cursor);
-the coverage becomes the alpha of `COLOR_MENUTEXT`, premultiplied (`tint`, unit-tested), and the bitmap is set with
-`MENUITEMINFOW` / `MIIM_BITMAP`. The bitmaps are freed once `TrackPopupMenu` has returned. The toggle keeps its check
-mark and gets no icon.
+names the language). The menu keeps the system look (section 2.6) and, like the system's own tray menus, has no
+icons: Windows offers no stock menu icons, and drawn ones were dropped in 0.4.1.
 
 **Restart.** `Khởi động lại` starts a new copy of this exe with the same arguments
 (`std::process::Command::new(current_exe())`, which calls `CreateProcessW`, never `ShellExecute`), then quits the way
@@ -1336,11 +1328,11 @@ bản <version> — mở trang tải về` while a version waits, a separator, `
 is not in the menu, only in the settings window's footer.
 
 **Hotkey** (`hotkey.rs`, a tested state machine; `config.txt` key `hotkey`). The pop-up offers
-`Control+Shift` (`ctrl_shift`, default), `Option+Z` (`alt_z`) and `Không dùng` (`none`). Control+Space
+`Control+Shift` (`ctrl_shift`, default), `Option+Shift` (`alt_shift`), `Option+Z` (`alt_z`) and `Không dùng` (`none`). Control+Space
 is macOS's own input-source switch and is not offered; a `ctrl_space` stored by 0.3.0 or earlier
 reads as the default, Control+Shift (shared parser). Only Shift, Control, Option
 and Command are compared (the flags also carry Caps Lock, Fn, the non-coalesced bit and left/right
-bits). Control+Shift fires when one of the two is released after exactly those two were held, with
+bits). Control+Shift (and Option+Shift, the same way) fires when one of the two is released after exactly those two were held, with
 no other modifier, key or click while any modifier was down; the modifier events always pass.
 Option+Z fires on the key-down of `kVK_ANSI_Z` with exactly Option held and that key-down is
 swallowed; its auto-repeats are swallowed without toggling again. In the tap both are branches of

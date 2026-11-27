@@ -6,6 +6,8 @@ pub enum Hotkey {
     CtrlShift,
     /// Option+Z on macOS.
     AltZ,
+    /// Option+Shift on macOS; like Ctrl+Shift, fires on release with no other key between.
+    AltShift,
     /// No hotkey: toggle from the tray only.
     Off,
 }
@@ -55,7 +57,7 @@ impl Default for Settings {
 
 /// (preset, config value), in dropdown order; each app labels them (Alt+Z is Option+Z on macOS). The `ctrl_space` of
 /// 0.3.0 and earlier is no longer a value: it reads as the default.
-pub const HOTKEYS: [(Hotkey, &str); 3] = [(Hotkey::CtrlShift, "ctrl_shift"), (Hotkey::AltZ, "alt_z"), (Hotkey::Off, "none")];
+pub const HOTKEYS: [(Hotkey, &str); 4] = [(Hotkey::CtrlShift, "ctrl_shift"), (Hotkey::AltShift, "alt_shift"), (Hotkey::AltZ, "alt_z"), (Hotkey::Off, "none")];
 
 /// Unknown keys, malformed lines and bad values are ignored; missing keys keep their default.
 pub fn parse(text: &str) -> Settings {

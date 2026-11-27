@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 (2026-11-27)
+
+- **New hotkey Alt+Shift** (Option+Shift on macOS), pressed and released with no other key, like Ctrl+Shift. On Windows, if Left Alt+Shift also switches input languages, both happen.
+- **Windows tray menu without icons**, like the system's own menus (0.4.0 drew them from the icon font). The macOS menu keeps the system's SF Symbols.
+
 ## 0.4.0 (2026-11-27)
 
 ### Both apps

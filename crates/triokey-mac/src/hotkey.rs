@@ -25,7 +25,7 @@ pub enum Hot {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct HotState {
-    /// Exactly Control and Shift are held.
+    /// Exactly the hotkey's two modifiers are held.
     full: bool,
     /// Another modifier, a key or a click came while a modifier was held; cleared once all four are up.
     spoiled: bool,
@@ -33,19 +33,24 @@ pub struct HotState {
 
 impl HotState {
     /// A modifier-changed event; `flags` are the event's flags after the change. The event always passes.
-    /// Control+Shift fires when one of the two is released after both were held with no other key or modifier.
+    /// Control+Shift (or Option+Shift) fires when one of the two is released after both were held with no other key
+    /// or modifier.
     pub fn flags_changed(&mut self, hk: Hotkey, flags: u64) -> Hot {
         let m = flags & MODS;
-        const BOTH: u64 = FLAG_CONTROL | FLAG_SHIFT;
-        if m & !BOTH != 0 {
+        let both = match hk {
+            Hotkey::CtrlShift => FLAG_CONTROL | FLAG_SHIFT,
+            Hotkey::AltShift => FLAG_OPTION | FLAG_SHIFT,
+            _ => 0,
+        };
+        if m & !both != 0 {
             self.spoiled = true;
         }
-        let fire = self.full && !self.spoiled && m != BOTH;
-        self.full = m == BOTH;
+        let fire = self.full && !self.spoiled && m != both;
+        self.full = both != 0 && m == both;
         if m == 0 {
             self.spoiled = false;
         }
-        if fire && hk == Hotkey::CtrlShift {
+        if fire {
             Hot::Toggle
         } else {
             Hot::None
@@ -124,6 +129,26 @@ mod tests {
             s.flags_changed(CtrlShift, f);
             assert_eq!(s.flags_changed(CtrlShift, 0), Hot::None);
         }
+    }
+
+    #[test]
+    fn option_shift_fires_like_control_shift() {
+        let mut s = HotState::default();
+        s.flags_changed(AltShift, NC | FLAG_OPTION | LALT);
+        s.flags_changed(AltShift, NC | FLAG_OPTION | LALT | FLAG_SHIFT | LSHIFT);
+        assert_eq!(s.flags_changed(AltShift, NC | FLAG_SHIFT | LSHIFT), Hot::Toggle);
+        s.flags_changed(AltShift, 0);
+        // Control+Shift does nothing under Option+Shift, Option+Shift+key does nothing
+        s.flags_changed(AltShift, FLAG_CONTROL | FLAG_SHIFT);
+        assert_eq!(s.flags_changed(AltShift, 0), Hot::None);
+        s.flags_changed(AltShift, FLAG_OPTION | FLAG_SHIFT);
+        s.key_down(AltShift, 0, FLAG_OPTION | FLAG_SHIFT, false);
+        assert_eq!(s.flags_changed(AltShift, FLAG_OPTION), Hot::None);
+        s.flags_changed(AltShift, 0);
+        // and Option+Shift does nothing under Control+Shift
+        let mut s = HotState::default();
+        s.flags_changed(CtrlShift, FLAG_OPTION | FLAG_SHIFT);
+        assert_eq!(s.flags_changed(CtrlShift, 0), Hot::None);
     }
 
     #[test]

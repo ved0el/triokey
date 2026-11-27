@@ -105,12 +105,16 @@ fn is_ctrl(vk: u16) -> bool {
     matches!(vk, VK_CONTROL | VK_LCONTROL | VK_RCONTROL)
 }
 
+fn is_alt(vk: u16) -> bool {
+    matches!(vk, VK_MENU | VK_LMENU | VK_RMENU)
+}
+
 fn is_shift(vk: u16) -> bool {
     matches!(vk, VK_SHIFT | VK_LSHIFT | VK_RSHIFT)
 }
 
-/// `m` is the state of the other modifiers when this event arrives. Ctrl+Shift fires on
-/// release, only if no other key came in between (Ctrl+Shift+T stays a shortcut).
+/// `m` is the state of the other modifiers when this event arrives. Ctrl+Shift and Alt+Shift
+/// fire on release, only if no other key came in between (Ctrl+Shift+T stays a shortcut).
 pub fn hotkey_step(st: &mut HotState, hk: Hotkey, vk: u16, down: bool, m: Mods) -> Hot {
     if st.swallowed != 0 {
         // Held: Windows repeats the key-down, which must not toggle again. The app never saw
@@ -135,10 +139,13 @@ pub fn hotkey_step(st: &mut HotState, hk: Hotkey, vk: u16, down: bool, m: Mods) 
     }
     let combo = &mut st.combo;
     match hk {
-        Hotkey::CtrlShift => {
-            let (c, s) = (is_ctrl(vk), is_shift(vk));
+        Hotkey::CtrlShift | Hotkey::AltShift => {
+            // c: the hotkey's other modifier (Ctrl or Alt); held: that one is down; other: a modifier that spoils it
+            let alt = hk == Hotkey::AltShift;
+            let (c, s) = (if alt { is_alt(vk) } else { is_ctrl(vk) }, is_shift(vk));
+            let (held, other) = if alt { (m.alt, m.ctrl) } else { (m.ctrl, m.alt) };
             if down {
-                if ((c && m.shift) || (s && m.ctrl)) && !m.alt && !m.win {
+                if ((c && m.shift) || (s && held)) && !other && !m.win {
                     *combo = true;
                 } else if !(c || s) {
                     *combo = false;
@@ -485,6 +492,28 @@ mod tests {
         assert_eq!(hotkey_step(&mut c, Hotkey::Off, 0x5A, true, alt), Hot::None);
         assert_eq!(hotkey_step(&mut c, Hotkey::Off, VK_LSHIFT, true, ctrl), Hot::None);
         assert_eq!(hotkey_step(&mut c, Hotkey::Off, VK_LSHIFT, false, ctrl), Hot::None);
+    }
+
+    #[test]
+    fn alt_shift_fires_on_release_and_only_under_its_setting() {
+        let (alt, shift, ctrl) = (Mods { alt: true, ..Mods::default() }, Mods { shift: true, ..Mods::default() }, Mods { ctrl: true, ..Mods::default() });
+        let mut c = HotState::default();
+        hotkey_step(&mut c, Hotkey::AltShift, VK_LMENU, true, Mods::default());
+        hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, true, alt);
+        assert_eq!(hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, false, alt), Hot::Toggle);
+        // Shift first, Alt released first
+        hotkey_step(&mut c, Hotkey::AltShift, VK_RSHIFT, true, Mods::default());
+        hotkey_step(&mut c, Hotkey::AltShift, VK_RMENU, true, shift);
+        assert_eq!(hotkey_step(&mut c, Hotkey::AltShift, VK_RMENU, false, shift), Hot::Toggle);
+        // Alt+Shift+key is a shortcut; Ctrl+Shift does nothing here; Alt+Shift does nothing under Ctrl+Shift
+        hotkey_step(&mut c, Hotkey::AltShift, VK_LMENU, true, Mods::default());
+        hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, true, alt);
+        hotkey_step(&mut c, Hotkey::AltShift, 0x54, true, Mods { alt: true, shift: true, ..Mods::default() });
+        assert_eq!(hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, false, alt), Hot::None);
+        hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, true, ctrl);
+        assert_eq!(hotkey_step(&mut c, Hotkey::AltShift, VK_LSHIFT, false, ctrl), Hot::None);
+        hotkey_step(&mut c, Hotkey::CtrlShift, VK_LSHIFT, true, alt);
+        assert_eq!(hotkey_step(&mut c, Hotkey::CtrlShift, VK_LSHIFT, false, alt), Hot::None);
     }
 
     #[test]

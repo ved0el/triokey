@@ -125,6 +125,7 @@ fn update_link() -> &'static str {
 fn hotkey_label(h: Hotkey) -> &'static str {
     match h {
         Hotkey::CtrlShift => "Ctrl+Shift",
+        Hotkey::AltShift => "Alt+Shift",
         Hotkey::AltZ => "Alt+Z",
         Hotkey::Off => tr("Không dùng", "None"),
     }
