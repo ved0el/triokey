@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 (2026-11-27)
+
+- **Windows tray menu icons again**, now the system's own Windows 11 colour icons: a plain green check on `Tiếng Việt` while it is on, the Settings app's gear for Settings, download arrow for the update (the UAC shield for the admin copy), circular arrows for Restart, a plain red X for Quit. Where Windows lacks one (Windows 10), that item has no icon.
+- **Restart after an update (Windows):** once a new version is installed, TrioKey restarts itself after 10 s without typing, instead of waiting for the next start.
+- **The previous version is kept as `triokey.exe.old`** (was `triokey.old.exe`), so it cannot be started by a double click by mistake. A leftover `triokey.old.exe` is deleted.
+
 ## 0.4.1 (2026-11-27)
 
 - **New hotkey Alt+Shift** (Option+Shift on macOS), pressed and released with no other key, like Ctrl+Shift. On Windows, if Left Alt+Shift also switches input languages, both happen.

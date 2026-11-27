@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "triokey"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "embed-manifest",
  "minisign",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "triokey-mac"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "objc2",
  "objc2-app-kit",

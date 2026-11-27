@@ -8,8 +8,11 @@ use std::time::Duration;
 use triokey_shared::glyph::{self, Glyph};
 use triokey_shared::{english, t};
 use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, HWND, LPARAM, LRESULT, POINT, WPARAM};
+use windows_sys::Win32::Graphics::Gdi::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows_sys::Win32::System::SystemInformation::GetSystemWindowsDirectoryW;
 use windows_sys::Win32::System::Threading::CreateMutexW;
+use windows_sys::Win32::UI::HiDpi::{GetDpiForMonitor, GetSystemMetricsForDpi, MDT_EFFECTIVE_DPI};
 use windows_sys::Win32::UI::Shell::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
@@ -19,11 +22,24 @@ use crate::{admin, app, autostart, icon, ime_watch, settings_ui, update};
 const WM_APP_TRAY: u32 = WM_APP + 3;
 const WM_APP_STATE: u32 = WM_APP + 4;
 const WM_APP_UPDATE: u32 = WM_APP + 5;
+const WM_APP_RESTART: u32 = WM_APP + 6;
 const ID_TOGGLE: usize = 1;
 const ID_QUIT: usize = 2;
 const ID_SETTINGS: usize = 3;
 const ID_UPDATE: usize = 4;
 const ID_RESTART: usize = 5;
+/// Menu item -> the system's own icon: file under the Windows folder and icon group resource id (docs/ARCHITECTURE.md,
+/// 2.7 Tray menu). The ids are not documented; one that is missing leaves its item without an icon.
+const MENU_ICONS: [(usize, SysIcon); 5] = [
+    (ID_TOGGLE, (r"System32\shell32.dll", 16802)),                    // green check mark, no circle
+    (ID_SETTINGS, (r"ImmersiveControlPanel\SystemSettings.exe", 10)), // the Settings app's gear
+    (ID_UPDATE, (r"System32\imageres.dll", 184)),                     // download arrow
+    (ID_RESTART, (r"System32\imageres.dll", 1401)),                   // circular arrows (Windows 11)
+    (ID_QUIT, (r"System32\shell32.dll", 240)),                        // red X, no circle
+];
+/// The UAC shield, the same one `SHGetStockIconInfo(SIID_SHIELD)` names.
+const ICON_UPDATE_ADMIN: SysIcon = (r"System32\imageres.dll", 78);
+type SysIcon = (&'static str, u16);
 /// Timer: the icon could not be shown, try again.
 const RETRY: usize = 1;
 const RETRY_MS: u32 = 2000;
@@ -91,6 +107,14 @@ pub fn notify() {
     let h = HWND_TRAY.load(Relaxed);
     if !h.is_null() {
         unsafe { PostMessageW(h, WM_APP_STATE, 0, 0) };
+    }
+}
+
+/// Updater thread: a new version was installed and the person paused, start it in place of this one.
+pub fn restart() {
+    let h = HWND_TRAY.load(Relaxed);
+    if !h.is_null() {
+        unsafe { PostMessageW(h, WM_APP_RESTART, 0, 0) };
     }
 }
 
@@ -212,6 +236,13 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             settings_ui::sync_update();
             0
         }
+        // after an update; if the new copy does not start, this one keeps running and the new version waits for the next start
+        WM_APP_RESTART => {
+            if can_restart() && start_copy() {
+                DestroyWindow(hwnd);
+            }
+            0
+        }
         WM_TIMER if wp == RETRY => {
             show(hwnd);
             0
@@ -265,11 +296,15 @@ unsafe fn menu(hwnd: HWND) {
     AppendMenuW(m, MF_STRING, ID_QUIT, wide(t("Thoát", "Quit")).as_ptr());
     let mut pt = POINT { x: 0, y: 0 };
     GetCursorPos(&mut pt);
+    let icons = menu_icons(m, pt);
     // without these two the menu does not close when clicking elsewhere
     SetForegroundWindow(hwnd);
     let cmd = TrackPopupMenu(m, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, null());
     PostMessageW(hwnd, WM_NULL, 0, 0);
     DestroyMenu(m);
+    for b in icons {
+        DeleteObject(b);
+    }
     match cmd as usize {
         ID_TOGGLE => app::toggle(),
         ID_SETTINGS => settings_ui::open(),
@@ -305,6 +340,69 @@ fn start_copy() -> bool {
     std::env::current_exe().and_then(|exe| std::process::Command::new(exe).args(std::env::args_os().skip(1)).spawn()).is_ok()
 }
 
+/// The system icon as an `n`×`n` premultiplied 32-bpp top-down DIB, the form a menu item bitmap needs to keep its
+/// alpha; null when that file or id does not exist. `SHDefExtractIconW` (a negative index is a resource id) picks the
+/// closest frame and scales it; the file is read as data by its full path under the Windows folder, nothing in it runs.
+unsafe fn menu_bitmap(dc: HDC, (file, id): SysIcon, n: i32) -> HBITMAP {
+    let mut dir = [0u16; 260];
+    let k = GetSystemWindowsDirectoryW(dir.as_mut_ptr(), dir.len() as u32) as usize;
+    if k == 0 || k >= dir.len() {
+        return null_mut();
+    }
+    let path = wide(&format!("{}\\{file}", String::from_utf16_lossy(&dir[..k])));
+    let mut icon: HICON = null_mut();
+    if SHDefExtractIconW(path.as_ptr(), -(id as i32), 0, &mut icon, null_mut(), n as u32) != 0 || icon.is_null() {
+        return null_mut();
+    }
+    let mut bi: BITMAPINFO = std::mem::zeroed();
+    bi.bmiHeader =
+        BITMAPINFOHEADER { biSize: size_of::<BITMAPINFOHEADER>() as u32, biWidth: n, biHeight: -n, biPlanes: 1, biBitCount: 32, ..std::mem::zeroed() };
+    let mut bits = null_mut();
+    let bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
+    if !bmp.is_null() && !bits.is_null() {
+        // drawn onto transparent black, the icon's alpha blend leaves premultiplied pixels with its own alpha
+        std::slice::from_raw_parts_mut(bits as *mut u8, (n * n * 4) as usize).fill(0);
+        let old = SelectObject(dc, bmp);
+        DrawIconEx(dc, 0, 0, icon, n, n, 0, null_mut(), DI_NORMAL);
+        GdiFlush();
+        SelectObject(dc, old);
+    }
+    DestroyIcon(icon);
+    bmp
+}
+
+/// The toggle (while on), Settings, the update item, Restart and Quit get their system icon (`MENU_ICONS`) at the
+/// small-icon size for the DPI of the monitor the menu opens on. The bitmaps are freed after the menu closed.
+unsafe fn menu_icons(m: HMENU, at: POINT) -> Vec<HBITMAP> {
+    let (mut dpi, mut dpi_y) = (96, 96);
+    if GetDpiForMonitor(MonitorFromPoint(at, MONITOR_DEFAULTTONEAREST), MDT_EFFECTIVE_DPI, &mut dpi, &mut dpi_y) != 0 {
+        dpi = 96;
+    }
+    let n = GetSystemMetricsForDpi(SM_CXSMICON, dpi).max(16);
+    let dc = CreateCompatibleDC(null_mut());
+    let mut out = Vec::new();
+    for (item, mut id) in MENU_ICONS {
+        // the green check marks Vietnamese typing on; off, the toggle has no icon and no check mark
+        if item == ID_TOGGLE && !app::enabled() {
+            continue;
+        }
+        // an install that needs the admin's click gets the shield, as Windows marks such actions
+        if item == ID_UPDATE && admin::is_elevated() {
+            id = ICON_UPDATE_ADMIN;
+        }
+        let b = menu_bitmap(dc, id, n);
+        let mii = MENUITEMINFOW { cbSize: size_of::<MENUITEMINFOW>() as u32, fMask: MIIM_BITMAP, hbmpItem: b, ..std::mem::zeroed() };
+        // refused for an item this menu does not have (no update waiting, no Restart)
+        if !b.is_null() && SetMenuItemInfoW(m, item as u32, 0, &mii) == 0 {
+            DeleteObject(b);
+        } else if !b.is_null() {
+            out.push(b);
+        }
+    }
+    DeleteDC(dc);
+    out
+}
+
 /// The NUL-terminated wide string at `p` equals `s`.
 pub(crate) unsafe fn wide_eq(p: *const u16, s: &str) -> bool {
     let mut i = 0;
@@ -334,5 +432,33 @@ mod tests {
         assert_eq!(tooltip(false, ImeState::Type, 0x11, true), "TrioKey: English — off");
         assert_eq!(tooltip(true, ImeState::Yield, 0x11, true), "TrioKey: English — yielding to the Japanese IME");
         assert_eq!(tooltip(true, ImeState::Yield, 0, true), "TrioKey: English — yielding to the CJK IME");
+    }
+
+    /// The system menu icons load at the sizes 100 %..200 % ask for, as premultiplied pixels with real transparency. The
+    /// Windows 11 ones may be missing on another Windows (CI runs Windows Server): those are skipped, the shield is not.
+    #[test]
+    fn menu_icons_load_with_alpha() {
+        unsafe {
+            let dc = CreateCompatibleDC(null_mut());
+            assert!(!menu_bitmap(dc, ICON_UPDATE_ADMIN, 16).is_null(), "the shield is on every Windows");
+            assert!(menu_bitmap(dc, (r"System32\imageres.dll", 65000), 16).is_null(), "a missing id gives no icon");
+            for id in MENU_ICONS.map(|(_, id)| id).into_iter().chain([ICON_UPDATE_ADMIN]) {
+                for n in [16, 20, 24, 32] {
+                    let b = menu_bitmap(dc, id, n);
+                    if b.is_null() {
+                        continue;
+                    }
+                    let mut px = vec![0u8; (n * n * 4) as usize];
+                    let mut bm: BITMAP = std::mem::zeroed();
+                    GetObjectW(b, size_of::<BITMAP>() as i32, (&mut bm as *mut BITMAP).cast());
+                    std::ptr::copy_nonoverlapping(bm.bmBits as *const u8, px.as_mut_ptr(), px.len());
+                    let p = px.as_chunks::<4>().0;
+                    assert!(p.iter().any(|p| p[3] == 0) && p.iter().any(|p| p[3] >= 200), "icon {id:?} at {n}: no transparency or no ink");
+                    assert!(p.iter().all(|p| p[0] <= p[3] && p[1] <= p[3] && p[2] <= p[3]), "icon {id:?} at {n}: not premultiplied");
+                    DeleteObject(b);
+                }
+            }
+            DeleteDC(dc);
+        }
     }
 }

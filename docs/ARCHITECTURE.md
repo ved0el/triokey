@@ -284,8 +284,22 @@ the hand cursor and the browser or message box the links open; checklist rows 2a
 `Khởi động lại` · `Thoát`, in the interface language (`Vietnamese`, `Settings…`, `Restart`, `Quit`). The tooltip
 says `TrioKey: Tiếng Việt`, `TrioKey: Tiếng Anh — đã tắt` or `TrioKey: Tiếng Anh — đang nhường IME Nhật` (in English
 `TrioKey: Vietnamese`, `TrioKey: English — off`, `TrioKey: English — yielding to the Japanese IME`; `ime::cjk_name`
-names the language). The menu keeps the system look (section 2.6) and, like the system's own tray menus, has no
-icons: Windows offers no stock menu icons, and drawn ones were dropped in 0.4.1.
+names the language). The menu keeps the system look (section 2.6).
+
+**Icons.** The menu uses the system's own colour icons, read at run time from the Windows folder (nothing is shipped):
+`Tiếng Việt` gets a plain green check mark while on (`shell32.dll` 16802, with its `MF_CHECKED` state, which screen
+readers report; off it has neither), `Cài đặt…` the Settings app's own gear (`ImmersiveControlPanelSystemSettings.exe` 10, flatter than the shell's gears), the update item the download arrow
+(`imageres.dll` 184; while elevated the UAC shield, 78, as Windows marks actions that need an administrator),
+`Khởi động lại` the circular arrows (`imageres.dll` 1401) and `Thoát` a plain red X (`shell32.dll` 240); check and X
+have no circle around them. The numbers are icon group resource ids, which Microsoft does not document: some exist
+only from Windows 11 (1401 at least), and an id that is
+missing leaves its item without an icon; a renumbered one would show another picture. The stock shell icons
+(`SHGetStockIconInfo`) were not enough: they have nothing for restart or quit, and their gear (`SIID_SETTINGS`) is
+blank on recent Windows 11 builds. Each icon is read with `SHDefExtractIconW` (negative index = resource id) by its
+full path under `GetSystemWindowsDirectoryW`, as data, at the small-icon size for the DPI of the monitor under the cursor
+(`SM_CXSMICON`), drawn with `DrawIconEx` onto a zeroed 32-bpp top-down DIB, which leaves premultiplied pixels with the
+icon's own alpha, and set with `MENUITEMINFOW` / `MIIM_BITMAP`; the bitmaps are freed once `TrackPopupMenu` has
+returned.
 
 **Restart.** `Khởi động lại` starts a new copy of this exe with the same arguments
 (`std::process::Command::new(current_exe())`, which calls `CreateProcessW`, never `ShellExecute`), then quits the way
@@ -676,7 +690,7 @@ The macOS app keeps the same files, in the same formats, in `~/Library/Applicati
 
 Outside that folder TrioKey writes only: the Run value `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\TrioKey`
 (start with Windows, normal mode), the scheduled task `TrioKey` and `%ProgramFiles%\TrioKey\`
-(admin mode, section 8), and `triokey.new.exe` / `triokey.old.exe` next to the running exe during
+(admin mode, section 8), and `triokey.new.exe` / `triokey.exe.old` next to the running exe during
 an update (section 9).
 
 ## 8. Elevated copy
@@ -828,12 +842,21 @@ The exe is always downloaded into memory and verified before anything is written
 ### 9.4 Swap and repair
 
 `triokey.new.exe` is created with no sharing, written, flushed to disk and closed. Then
-`triokey.exe` is renamed to `triokey.old.exe` (Windows allows renaming a running image) and the
-new file takes the name. If the second rename fails, the first is undone with retries for about a
-second; if that fails too, the status line asks the user to rename `triokey.old.exe` back, and
-the next install attempt does it itself (`repair`). One install per run; the new version runs
-from the next start, which deletes `triokey.old.exe` and any leftover `triokey.new.exe` (only in
-a build with an update key, and not in an elevated copy outside Program Files).
+`triokey.exe` is renamed to `triokey.exe.old` (Windows allows renaming a running image) and the
+new file takes the name. The previous version's name does not end in `.exe`, so a double click in
+Explorer cannot start it by mistake (0.4.1 and earlier called it `triokey.old.exe`; that name is
+still repaired and deleted). If the second rename fails, the first is undone with retries for about a
+second; if that fails too, the status line asks the user to rename `triokey.exe.old` back, and
+the next install attempt does it itself (`repair`). One install per run.
+
+**Restart after an install.** The updater thread then waits until no key or mouse input has come
+for 10 s (`GetLastInputInfo`, polled every 2 s), so a word being typed is never cut, and posts to
+the tray, which restarts the way `Khởi động lại` does (section 2.7): the same path now names the
+new file, since a renamed running image keeps the path it was started from. Only the copies that
+may install can get here, and both may restart (section 8.3). If the new copy does not start,
+the old one keeps running and the new version runs from the next start. Each start deletes
+`triokey.exe.old`, `triokey.old.exe` and any leftover `triokey.new.exe` (only in a build with an
+update key, and not in an elevated copy outside Program Files).
 
 ### 9.5 What is not protected against
 

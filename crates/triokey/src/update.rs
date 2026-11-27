@@ -19,6 +19,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use minisign_verify::{PublicKey, Signature};
 use windows_sys::Win32::Networking::WinHttp::*;
+use windows_sys::Win32::System::SystemInformation::GetTickCount;
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONINFORMATION, MB_OK, SW_SHOWNORMAL};
 
@@ -35,7 +37,13 @@ const RELEASES_URL: &str = triokey_shared::RELEASES;
 const HOSTS: [&str; 3] = ["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"];
 const FILE: &str = "triokey.exe";
 const NEW: &str = "triokey.new.exe";
-const OLD: &str = "triokey.old.exe";
+/// Not `*.exe`, so a double click cannot start the previous version by mistake.
+const OLD: &str = "triokey.exe.old";
+/// The name 0.4.1 and earlier gave the previous version: still repaired and cleaned up.
+const LEGACY_OLD: &str = "triokey.old.exe";
+/// After an install TrioKey restarts itself once no key or mouse input came for this long, so a word being typed is
+/// never cut (docs/ARCHITECTURE.md, 9.4 Swap and repair).
+const IDLE: Duration = Duration::from_secs(10);
 const MAX_SIG: usize = 4096;
 const MAX_EXE: usize = 20 << 20;
 const MAX_HOPS: usize = 5;
@@ -68,8 +76,8 @@ impl Error {
             Error::Signature => ("chữ ký không hợp lệ, không cài", "the signature is not valid, nothing installed"),
             Error::File | Error::NotWritable => ("không ghi được vào thư mục chứa triokey.exe", "the folder of triokey.exe is not writable"),
             Error::Stranded => (
-                "đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe",
-                "the file swap stopped half-way: Quit, then rename triokey.old.exe to triokey.exe",
+                "đổi file dở dang: hãy Thoát rồi đổi tên triokey.exe.old thành triokey.exe",
+                "the file swap stopped half-way: Quit, then rename triokey.exe.old to triokey.exe",
             ),
         };
         triokey_shared::pick(en, vi, english)
@@ -174,15 +182,18 @@ fn verified(key: &PublicKey, current: &str, sig_text: &str, fetch: Fetch) -> Res
 }
 
 /// A swap that stopped half-way (see `install`) left no `triokey.exe`: give the old one its
-/// name back.
-fn repair(exe: &Path, old: &Path) {
-    if !exe.exists() && old.exists() {
-        let _ = fs::rename(old, exe);
+/// name back (under either name it may have).
+fn repair(dir: &Path) {
+    let exe = dir.join(FILE);
+    for old in [OLD, LEGACY_OLD] {
+        if !exe.exists() && dir.join(old).exists() {
+            let _ = fs::rename(dir.join(old), &exe);
+        }
     }
 }
 
 /// Step 3: write the verified bytes into `dir` (the running exe's folder), then swap:
-/// `triokey.exe` becomes `triokey.old.exe` (Windows lets a running image be renamed) and the
+/// `triokey.exe` becomes `triokey.exe.old` (Windows lets a running image be renamed) and the
 /// new file takes its name.
 ///
 /// The new file is created without sharing and flushed to disk before it is closed, so nothing
@@ -190,15 +201,16 @@ fn repair(exe: &Path, old: &Path) {
 /// shortcut: the handle is closed before the two renames, which go by path. Callers only pass
 /// a folder of the caller's own privilege level (`mode`), where a swap gains nothing; rename
 /// by handle if that ever changes.
-/// shortcut: a process killed between the two renames leaves `triokey.old.exe` and
+/// shortcut: a process killed between the two renames leaves `triokey.exe.old` and
 /// `triokey.new.exe` but no `triokey.exe`, and a TrioKey that cannot start cannot repair that.
 /// Replacing the name in one step (`ReplaceFileW`, or a hard link) is untested on a running
 /// image; switch to it once that has been tried on a real machine.
 fn install(dir: &Path, bytes: &[u8]) -> Result<(), Error> {
     let (exe, new, old) = (dir.join(FILE), dir.join(NEW), dir.join(OLD));
-    repair(&exe, &old);
-    // left by a run that was killed half-way
+    repair(dir);
+    // left by a run that was killed half-way, and the previous version under its old name
     let _ = fs::remove_file(&new);
+    let _ = fs::remove_file(dir.join(LEGACY_OLD));
     let mut f = fs::OpenOptions::new().write(true).create_new(true).share_mode(0).open(&new).map_err(|_| Error::NotWritable)?;
     // sync_all: the file must not get its final name while its data is only in the cache
     let written = f.write_all(bytes).and_then(|_| f.sync_all());
@@ -347,7 +359,7 @@ struct State {
     /// the click leads to the releases page).
     pending: Option<(String, bool)>,
     /// Installed in this run; active from the next start. One install per run: the running
-    /// image now is `triokey.old.exe` and stays locked until exit.
+    /// image now is `triokey.exe.old` and stays locked until exit.
     installed: Option<String>,
     /// Shown in the settings window, as data: worded at display time, in the language of that moment.
     status: Status,
@@ -396,9 +408,10 @@ impl Status {
             Status::Unusable(e) => p("Có bản phát hành mới nhưng chưa dùng được: ", "A new release exists but cannot be used: ") + e.text(en) + ".",
             Status::Waiting(v) => p(&format!("Có bản mới v{v}."), &format!("Version {v} is available.")),
             Status::InstallFailed(v, e) => p(&format!("Có bản {v} nhưng chưa cài được: "), &format!("Version {v} could not be installed: ")) + e.text(en) + ".",
-            Status::Installed(v) => {
-                p(&format!("Đã cập nhật lên {v}, có hiệu lực lần chạy sau."), &format!("Updated to {v}; it takes effect at the next start."))
-            }
+            Status::Installed(v) => p(
+                &format!("Đã cập nhật lên {v}; TrioKey tự khởi động lại khi bạn ngừng gõ."),
+                &format!("Updated to {v}; TrioKey restarts itself once you stop typing."),
+            ),
         }
     }
 }
@@ -464,6 +477,15 @@ pub fn click() {
     }
 }
 
+/// Time since the last key or mouse input in this session.
+fn idle() -> Duration {
+    let mut li = LASTINPUTINFO { cbSize: size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+    if unsafe { GetLastInputInfo(&mut li) } == 0 {
+        return Duration::ZERO;
+    }
+    Duration::from_millis(unsafe { GetTickCount() }.wrapping_sub(li.dwTime) as u64)
+}
+
 fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
@@ -519,11 +541,18 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
         _ => Err(Error::NotWritable),
     };
     match result {
-        Ok(()) => set(|s| {
-            let t = Status::Installed(version.clone()).text(triokey_shared::english());
-            (s.pending, s.status, s.balloon) = (None, Status::Installed(version.clone()), Some(("TrioKey".into(), t)));
-            s.installed = Some(version);
-        }),
+        Ok(()) => {
+            set(|s| {
+                let t = Status::Installed(version.clone()).text(triokey_shared::english());
+                (s.pending, s.status, s.balloon) = (None, Status::Installed(version.clone()), Some(("TrioKey".into(), t)));
+                s.installed = Some(version);
+            });
+            // this thread has nothing left to do in this run (`installed`): wait for a pause, then hand over
+            while idle() < IDLE {
+                std::thread::sleep(Duration::from_secs(2));
+            }
+            tray::restart();
+        }
         Err(Error::NotWritable) => set(|s| {
             s.status = Status::Waiting(version.clone());
             if !known || manual {
@@ -548,8 +577,9 @@ pub fn spawn() {
         // The previous version, and a download cut short. No `repair` here: this process was
         // started from `triokey.exe`, so that name exists.
         if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(own_dir) {
-            let _ = fs::remove_file(dir.join(OLD));
-            let _ = fs::remove_file(dir.join(NEW));
+            for f in [OLD, LEGACY_OLD, NEW] {
+                let _ = fs::remove_file(dir.join(f));
+            }
         }
     }
     let (tx, rx) = channel();
@@ -637,9 +667,9 @@ pub(crate) mod tests {
         assert_eq!(Status::CheckFailed(Error::Net).text(true), "Could not check: GitHub could not be reached.");
         assert_eq!(
             Status::InstallFailed("9.9.9".into(), Error::Stranded).text(false),
-            "Có bản 9.9.9 nhưng chưa cài được: đổi file dở dang: hãy Thoát rồi đổi tên triokey.old.exe thành triokey.exe."
+            "Có bản 9.9.9 nhưng chưa cài được: đổi file dở dang: hãy Thoát rồi đổi tên triokey.exe.old thành triokey.exe."
         );
-        assert_eq!(Status::Installed("1.0.0".into()).text(false), "Đã cập nhật lên 1.0.0, có hiệu lực lần chạy sau.");
+        assert_eq!(Status::Installed("1.0.0".into()).text(false), "Đã cập nhật lên 1.0.0; TrioKey tự khởi động lại khi bạn ngừng gõ.");
     }
 
     #[test]
@@ -648,6 +678,7 @@ pub(crate) mod tests {
         assert_eq!(own_dir(Path::new(r"D:\tools\TrioKey.EXE")), Some(Path::new(r"D:\tools")));
         assert_eq!(own_dir(Path::new(r"D:\tools\triokey (1).exe")), None);
         assert_eq!(own_dir(Path::new(r"D:\tools\triokey.old.exe")), None);
+        assert_eq!(own_dir(Path::new(r"D:\tools\triokey.exe.old")), None);
     }
 
     #[test]
@@ -797,6 +828,12 @@ pub(crate) mod tests {
         assert_eq!(install(&dir, b"MZ newer"), Ok(()));
         assert_eq!(fs::read(dir.join(FILE)).unwrap(), b"MZ newer");
         assert_eq!(fs::read(dir.join(OLD)).unwrap(), b"running");
+        // the same, left by 0.4.1 or earlier under the old name: repaired, and the old name does not stay behind
+        fs::remove_file(dir.join(FILE)).unwrap();
+        fs::rename(dir.join(OLD), dir.join(LEGACY_OLD)).unwrap();
+        assert_eq!(install(&dir, b"MZ newest"), Ok(()));
+        assert_eq!(fs::read(dir.join(OLD)).unwrap(), b"running");
+        assert!(!dir.join(LEGACY_OLD).exists());
         // a folder the new file cannot be created in is reported as such
         assert_eq!(install(&dir.join("missing"), EXE), Err(Error::NotWritable));
         fs::remove_dir_all(&dir).unwrap();
