@@ -28,12 +28,14 @@ const ID_QUIT: usize = 2;
 const ID_SETTINGS: usize = 3;
 const ID_UPDATE: usize = 4;
 const ID_RESTART: usize = 5;
+const ID_CHECK: usize = 6;
 /// Menu item -> the system's own icon: file under the Windows folder and icon group resource id (docs/ARCHITECTURE.md,
 /// 2.7 Tray menu). The ids are not documented; one that is missing leaves its item without an icon.
-const MENU_ICONS: [(usize, SysIcon); 5] = [
+const MENU_ICONS: [(usize, SysIcon); 6] = [
     (ID_TOGGLE, (r"System32\shell32.dll", 16802)),                    // green check mark, no circle
     (ID_SETTINGS, (r"ImmersiveControlPanel\SystemSettings.exe", 10)), // the Settings app's gear
     (ID_UPDATE, (r"System32\imageres.dll", 184)),                     // download arrow
+    (ID_CHECK, (r"System32\imageres.dll", 184)),                      // the same, in the update item's place
     (ID_RESTART, (r"System32\imageres.dll", 1401)),                   // circular arrows (Windows 11)
     (ID_QUIT, (r"System32\shell32.dll", 240)),                        // red X, no circle
 ];
@@ -285,9 +287,11 @@ unsafe fn menu(hwnd: HWND) {
     let check = if app::enabled() { MF_CHECKED } else { 0 };
     AppendMenuW(m, MF_STRING | check, ID_TOGGLE, wide(t("Tiếng Việt", "Vietnamese")).as_ptr());
     AppendMenuW(m, MF_STRING, ID_SETTINGS, wide(t("Cài đặt…", "Settings…")).as_ptr());
-    // only while a newer version waits for a click
+    // the waiting version while there is one, else a check (in a build that can update)
     if let Some(label) = update::menu_label(english()) {
         AppendMenuW(m, MF_STRING, ID_UPDATE, wide(&label).as_ptr());
+    } else if update::available() {
+        AppendMenuW(m, MF_STRING, ID_CHECK, wide(t("Kiểm tra bản mới", "Check for updates")).as_ptr());
     }
     AppendMenuW(m, MF_SEPARATOR, 0, null());
     if can_restart() {
@@ -309,6 +313,7 @@ unsafe fn menu(hwnd: HWND) {
         ID_TOGGLE => app::toggle(),
         ID_SETTINGS => settings_ui::open(),
         ID_UPDATE => update::click(),
+        ID_CHECK => update::check_from_menu(),
         // the new copy waits up to 3 s for this one to let go of the mutex (`already_running`)
         ID_RESTART if start_copy() => {
             DestroyWindow(hwnd);

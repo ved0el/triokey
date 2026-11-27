@@ -43,7 +43,7 @@ const OLD: &str = "triokey.exe.old";
 const LEGACY_OLD: &str = "triokey.old.exe";
 /// After an install TrioKey restarts itself once no key or mouse input came for this long, so a word being typed is
 /// never cut (docs/ARCHITECTURE.md, 9.4 Swap and repair).
-const IDLE: Duration = Duration::from_secs(10);
+const IDLE: Duration = Duration::from_secs(2);
 const MAX_SIG: usize = 4096;
 const MAX_EXE: usize = 20 << 20;
 const MAX_HOPS: usize = 5;
@@ -189,6 +189,15 @@ fn repair(dir: &Path) {
         if !exe.exists() && dir.join(old).exists() {
             let _ = fs::rename(dir.join(old), &exe);
         }
+    }
+}
+
+/// `triokey.old.exe` (the previous version as 0.4.1 and earlier named it) becomes `triokey.exe.old`, or goes when that
+/// already exists.
+fn keep_legacy(dir: &Path) {
+    let legacy = dir.join(LEGACY_OLD);
+    if legacy.exists() && (dir.join(OLD).exists() || fs::rename(&legacy, dir.join(OLD)).is_err()) {
+        let _ = fs::remove_file(&legacy);
     }
 }
 
@@ -365,9 +374,12 @@ struct State {
     status: Status,
     /// (title, text) for the tray to show once.
     balloon: Option<(String, String)>,
+    /// The check came from the tray menu, which has no status line: its answer becomes a notification unless the run
+    /// already showed one.
+    announce: bool,
 }
 
-static STATE: Mutex<State> = Mutex::new(State { pending: None, installed: None, status: Status::None, balloon: None });
+static STATE: Mutex<State> = Mutex::new(State { pending: None, installed: None, status: Status::None, balloon: None, announce: false });
 static TX: OnceLock<Sender<bool>> = OnceLock::new();
 
 fn state() -> std::sync::MutexGuard<'static, State> {
@@ -375,7 +387,12 @@ fn state() -> std::sync::MutexGuard<'static, State> {
 }
 
 fn set(f: impl FnOnce(&mut State)) {
-    f(&mut state());
+    let mut s = state();
+    f(&mut s);
+    if s.balloon.is_some() {
+        s.announce = false;
+    }
+    drop(s);
     tray::notify_update();
 }
 
@@ -448,6 +465,12 @@ pub fn menu_label(en: bool) -> Option<String> {
         (true, true) => format!("Version {v} — click to update"),
         (false, true) => format!("Version {v} — open the download page"),
     })
+}
+
+/// Tray menu `Kiểm tra bản mới`: check now, and say the answer in a notification.
+pub fn check_from_menu() {
+    state().announce = true;
+    check_now();
 }
 
 /// Settings button: check now, whatever `auto_update` says.
@@ -549,7 +572,7 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
             });
             // this thread has nothing left to do in this run (`installed`): wait for a pause, then hand over
             while idle() < IDLE {
-                std::thread::sleep(Duration::from_secs(2));
+                std::thread::sleep(Duration::from_millis(500));
             }
             tray::restart();
         }
@@ -574,12 +597,12 @@ fn run(key: &PublicKey, clicked: bool, manual: bool) {
 pub fn spawn() {
     let Some(key) = key() else { return };
     if mode() != Mode::Notify {
-        // The previous version, and a download cut short. No `repair` here: this process was
-        // started from `triokey.exe`, so that name exists.
+        // A download cut short goes; the previous version stays as `triokey.exe.old` until the next install, and one
+        // left by 0.4.1 or earlier under its runnable name takes that name. No `repair` here: this process was started
+        // from `triokey.exe`, so that name exists.
         if let Some(dir) = std::env::current_exe().ok().as_deref().and_then(own_dir) {
-            for f in [OLD, LEGACY_OLD, NEW] {
-                let _ = fs::remove_file(dir.join(f));
-            }
+            let _ = fs::remove_file(dir.join(NEW));
+            keep_legacy(dir);
         }
     }
     let (tx, rx) = channel();
@@ -588,7 +611,14 @@ pub fn spawn() {
         let mut wait = START_DELAY;
         loop {
             match rx.recv_timeout(wait) {
-                Ok(clicked) => run(&key, clicked, true),
+                Ok(clicked) => {
+                    run(&key, clicked, true);
+                    set(|s| {
+                        if std::mem::take(&mut s.announce) {
+                            s.balloon = Some(("TrioKey".into(), s.status.text(triokey_shared::english())));
+                        }
+                    });
+                }
                 Err(RecvTimeoutError::Timeout) => {
                     let s = app::settings();
                     // also true when the clock was set back
@@ -834,6 +864,14 @@ pub(crate) mod tests {
         assert_eq!(install(&dir, b"MZ newest"), Ok(()));
         assert_eq!(fs::read(dir.join(OLD)).unwrap(), b"running");
         assert!(!dir.join(LEGACY_OLD).exists());
+        // at start: a leftover under the old name takes the new one, or goes when the new one exists
+        fs::write(dir.join(LEGACY_OLD), "older").unwrap();
+        keep_legacy(&dir);
+        assert_eq!((fs::read(dir.join(OLD)).unwrap(), dir.join(LEGACY_OLD).exists()), (b"running".to_vec(), false));
+        fs::remove_file(dir.join(OLD)).unwrap();
+        fs::write(dir.join(LEGACY_OLD), "older").unwrap();
+        keep_legacy(&dir);
+        assert_eq!((fs::read(dir.join(OLD)).unwrap(), dir.join(LEGACY_OLD).exists()), (b"older".to_vec(), false));
         // a folder the new file cannot be created in is reported as such
         assert_eq!(install(&dir.join("missing"), EXE), Err(Error::NotWritable));
         fs::remove_dir_all(&dir).unwrap();

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3 (2026-11-27)
+
+- **Restart right after an update (Windows):** the new version starts as soon as there has been no input for 2 s (was 10 s), so it is in use almost at once and still never cuts a word. This needs the updating copy to be 0.4.2 or later; an update from 0.4.1 still applies at the next start.
+- **`Kiểm tra bản mới` in the Windows tray menu** (Check for updates): checks at once and answers with a notification.
+- **The previous version stays as `triokey.exe.old`** until the next update replaces it, as a way back (0.4.2 deleted it at the next start). A `triokey.old.exe` left by an update from 0.4.1 is renamed to `triokey.exe.old`.
+
 ## 0.4.2 (2026-11-27)
 
 - **Windows tray menu icons again**, now the system's own Windows 11 colour icons: a plain green check on `Tiếng Việt` while it is on, the Settings app's gear for Settings, download arrow for the update (the UAC shield for the admin copy), circular arrows for Restart, a plain red X for Quit. Where Windows lacks one (Windows 10), that item has no icon.

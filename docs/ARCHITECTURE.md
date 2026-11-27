@@ -280,7 +280,8 @@ the hand cursor and the browser or message box the links open; checklist rows 2a
 
 ### 2.7 Tray menu
 
-`tray.rs`: `Tiếng Việt` (checked while on) · `Cài đặt…` · the update item while a version waits · separator ·
+`tray.rs`: `Tiếng Việt` (checked while on) · `Cài đặt…` · the update item while a version waits, else `Kiểm tra bản mới`
+(`Check for updates`, in a build with an update key; section 9) · separator ·
 `Khởi động lại` · `Thoát`, in the interface language (`Vietnamese`, `Settings…`, `Restart`, `Quit`). The tooltip
 says `TrioKey: Tiếng Việt`, `TrioKey: Tiếng Anh — đã tắt` or `TrioKey: Tiếng Anh — đang nhường IME Nhật` (in English
 `TrioKey: Vietnamese`, `TrioKey: English — off`, `TrioKey: English — yielding to the Japanese IME`; `ime::cjk_name`
@@ -851,13 +852,20 @@ second; if that fails too, the status line asks the user to rename `triokey.exe.
 the next install attempt does it itself (`repair`). One install per run.
 
 **Restart after an install.** The updater thread then waits until no key or mouse input has come
-for 10 s (`GetLastInputInfo`, polled every 2 s), so a word being typed is never cut, and posts to
+for 2 s (`GetLastInputInfo`, polled every 0.5 s): right after the install in practice, yet never in the middle
+of a word, and posts to
 the tray, which restarts the way `Khởi động lại` does (section 2.7): the same path now names the
 new file, since a renamed running image keeps the path it was started from. Only the copies that
 may install can get here, and both may restart (section 8.3). If the new copy does not start,
-the old one keeps running and the new version runs from the next start. Each start deletes
-`triokey.exe.old`, `triokey.old.exe` and any leftover `triokey.new.exe` (only in a build with an
-update key, and not in an elevated copy outside Program Files).
+the old one keeps running and the new version runs from the next start. `triokey.exe.old` stays
+as a way back until the next install replaces it. Each start deletes a leftover `triokey.new.exe`
+and renames a `triokey.old.exe` left by an older version to `triokey.exe.old` (deleting it when
+that name is taken), only in a build with an update key and not in an elevated copy outside
+Program Files.
+
+**Check from the menu.** `Kiểm tra bản mới` in the tray menu runs the same check as the settings
+button, and since the menu has no status line the answer comes as a notification (the status text:
+latest, could not check, or the version found, whose own notification is the one shown).
 
 ### 9.5 What is not protected against
 
