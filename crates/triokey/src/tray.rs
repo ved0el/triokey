@@ -358,14 +358,22 @@ unsafe fn menu_bitmap(dc: HDC, (file, id): SysIcon, n: i32) -> HBITMAP {
     bi.bmiHeader =
         BITMAPINFOHEADER { biSize: size_of::<BITMAPINFOHEADER>() as u32, biWidth: n, biHeight: -n, biPlanes: 1, biBitCount: 32, ..std::mem::zeroed() };
     let mut bits = null_mut();
-    let bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
+    let mut bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &mut bits, null_mut(), 0);
     if !bmp.is_null() && !bits.is_null() {
         // drawn onto transparent black, the icon's alpha blend leaves premultiplied pixels with its own alpha
-        std::slice::from_raw_parts_mut(bits as *mut u8, (n * n * 4) as usize).fill(0);
+        let px = std::slice::from_raw_parts_mut(bits as *mut u8, (n * n * 4) as usize);
+        px.fill(0);
         let old = SelectObject(dc, bmp);
         DrawIconEx(dc, 0, 0, icon, n, n, 0, null_mut(), DI_NORMAL);
         GdiFlush();
         SelectObject(dc, old);
+        // An icon without an alpha channel (older Windows has some under the same ids) comes out all transparent or as
+        // an opaque square: no icon rather than a blank or a box.
+        let alpha = px.as_chunks::<4>().0.iter().map(|p| p[3]);
+        if !(alpha.clone().any(|a| a == 0) && alpha.clone().any(|a| a >= 128)) {
+            DeleteObject(bmp);
+            bmp = null_mut();
+        }
     }
     DestroyIcon(icon);
     bmp
@@ -435,7 +443,8 @@ mod tests {
     }
 
     /// The system menu icons load at the sizes 100 %..200 % ask for, as premultiplied pixels with real transparency. The
-    /// Windows 11 ones may be missing on another Windows (CI runs Windows Server): those are skipped, the shield is not.
+    /// Windows 11 ones may be missing or without alpha on another Windows (CI runs Windows Server): `menu_bitmap` gives
+    /// none for those and they are skipped; the shield is never skipped.
     #[test]
     fn menu_icons_load_with_alpha() {
         unsafe {
@@ -453,7 +462,7 @@ mod tests {
                     GetObjectW(b, size_of::<BITMAP>() as i32, (&mut bm as *mut BITMAP).cast());
                     std::ptr::copy_nonoverlapping(bm.bmBits as *const u8, px.as_mut_ptr(), px.len());
                     let p = px.as_chunks::<4>().0;
-                    assert!(p.iter().any(|p| p[3] == 0) && p.iter().any(|p| p[3] >= 200), "icon {id:?} at {n}: no transparency or no ink");
+                    assert!(p.iter().any(|p| p[3] == 0) && p.iter().any(|p| p[3] >= 128), "icon {id:?} at {n}: no transparency or no ink");
                     assert!(p.iter().all(|p| p[0] <= p[3] && p[1] <= p[3] && p[2] <= p[3]), "icon {id:?} at {n}: not premultiplied");
                     DeleteObject(b);
                 }

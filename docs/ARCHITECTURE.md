@@ -293,7 +293,8 @@ readers report; off it has neither), `Cài đặt…` the Settings app's own gea
 `Khởi động lại` the circular arrows (`imageres.dll` 1401) and `Thoát` a plain red X (`shell32.dll` 240); check and X
 have no circle around them. The numbers are icon group resource ids, which Microsoft does not document: some exist
 only from Windows 11 (1401 at least), and an id that is
-missing leaves its item without an icon; a renumbered one would show another picture. The stock shell icons
+missing leaves its item without an icon, as does one without an alpha channel (drawn, it has no transparent
+and opaque pixels both: Windows Server's Settings icon is one); a renumbered one would show another picture. The stock shell icons
 (`SHGetStockIconInfo`) were not enough: they have nothing for restart or quit, and their gear (`SIID_SETTINGS`) is
 blank on recent Windows 11 builds. Each icon is read with `SHDefExtractIconW` (negative index = resource id) by its
 full path under `GetSystemWindowsDirectoryW`, as data, at the small-icon size for the DPI of the monitor under the cursor
